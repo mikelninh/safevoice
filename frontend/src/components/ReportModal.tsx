@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchReport } from '../services/api'
+import { fetchReport, downloadPdf } from '../services/api'
 import { t, type Lang } from '../i18n'
 
 interface Props {
@@ -146,6 +146,13 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
             className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
           >
             {copied ? t(lang, 'report.copied') : t(lang, 'report.copy')}
+          </button>
+          <button
+            onClick={() => downloadPdf(caseId, reportType, lang)}
+            disabled={!report}
+            className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors border border-slate-600"
+          >
+            {isDE ? '⬇ PDF Export' : '⬇ PDF Export'}
           </button>
           <button
             onClick={onClose}

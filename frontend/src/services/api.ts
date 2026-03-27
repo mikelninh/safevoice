@@ -37,3 +37,19 @@ export async function fetchReport(
   if (!res.ok) throw new Error('Failed to generate report')
   return res.json()
 }
+
+export async function downloadPdf(
+  caseId: string,
+  reportType: 'general' | 'netzdg' | 'police',
+  lang: 'de' | 'en'
+): Promise<void> {
+  const res = await fetch(`${BASE}/reports/${caseId}/pdf?report_type=${reportType}&lang=${lang}`)
+  if (!res.ok) throw new Error('Failed to generate PDF')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `safevoice_${caseId}_${reportType}_${lang}.pdf`
+  a.click()
+  URL.revokeObjectURL(url)
+}

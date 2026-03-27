@@ -1,14 +1,44 @@
 """
-Classification service.
-MVP: rule-based classifier with keyword signals.
-Production: replace with fine-tuned transformer model + LLM legal analysis.
+Classification service — unified classifier with 3-tier fallback:
+1. Claude API (most accurate, context-aware, German law expertise)
+2. Transformer model (offline, fast, good toxicity detection)
+3. Regex rules (always works, zero external deps)
 """
 
+import logging
 import re
 from app.models.evidence import (
     ClassificationResult, Severity, Category, GermanLaw
 )
 from app.data.mock_data import LAW_185, LAW_186, LAW_241, LAW_126A, NETZ_DG, LAW_263, LAW_263A, LAW_269
+
+logger = logging.getLogger(__name__)
+
+
+def classify(text: str) -> ClassificationResult:
+    """
+    Classify text using the best available classifier.
+    Priority: Claude API → Transformer → Regex fallback.
+    """
+    # Tier 1: Claude API
+    from app.services.classifier_llm import classify_with_llm, is_available as llm_available
+    if llm_available():
+        result = classify_with_llm(text)
+        if result is not None:
+            logger.info("Classified with Claude API (tier 1)")
+            return result
+
+    # Tier 2: Transformer model
+    from app.services.classifier_transformer import classify_with_transformer, is_available as transformer_available
+    if transformer_available():
+        result = classify_with_transformer(text)
+        if result is not None:
+            logger.info("Classified with transformer (tier 2)")
+            return result
+
+    # Tier 3: Regex fallback
+    logger.info("Classified with regex rules (tier 3)")
+    return classify_regex(text)
 
 
 # Signal dictionaries - extend these significantly in production
@@ -120,7 +150,8 @@ def _match_signals(text: str, patterns: list[str]) -> bool:
     return any(re.search(p, text_lower) for p in patterns)
 
 
-def classify(text: str) -> ClassificationResult:
+def classify_regex(text: str) -> ClassificationResult:
+    """Regex-based classifier — always available, zero deps."""
     categories: list[Category] = []
     applicable_laws: list[GermanLaw] = []
     severity = Severity.LOW

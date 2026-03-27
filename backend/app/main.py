@@ -23,4 +23,7 @@ app.include_router(reports.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "SafeVoice API"}
+    from app.services.classifier_llm import is_available as llm_ok
+    from app.services.classifier_transformer import is_available as transformer_ok
+    tier = "claude_api" if llm_ok() else ("transformer" if transformer_ok() else "regex")
+    return {"status": "ok", "service": "SafeVoice API", "classifier_tier": tier}

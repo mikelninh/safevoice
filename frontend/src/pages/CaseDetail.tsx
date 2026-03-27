@@ -7,6 +7,7 @@ import SeverityBadge from '../components/SeverityBadge'
 import EvidenceCard from '../components/EvidenceCard'
 import PatternFlagCard from '../components/PatternFlagCard'
 import ReportModal from '../components/ReportModal'
+import { getLocalCase } from '../services/storage'
 
 interface Props { lang: Lang }
 
@@ -19,6 +20,13 @@ export default function CaseDetail({ lang }: Props) {
 
   useEffect(() => {
     if (!id) return
+    // Try local storage first, then API
+    const local = getLocalCase(id)
+    if (local) {
+      setCaseData(local)
+      setLoading(false)
+      return
+    }
     fetchCase(id)
       .then(setCaseData)
       .finally(() => setLoading(false))

@@ -2,9 +2,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from app.services.classifier import classify
 from app.services.pattern_detector import detect_patterns, compute_overall_severity
+from app.services.evidence import hash_content, capture_timestamp, archive_url_sync
 from app.models.evidence import ClassificationResult, EvidenceItem, PatternFlag, Severity
-from datetime import datetime
-import hashlib
 import uuid
 
 router = APIRouter(prefix="/analyze", tags=["analyze"])
@@ -37,18 +36,22 @@ def ingest_url(req: AnalyzeTextRequest):
     MVP: accepts text directly (simulates scraping a URL).
     Production: fetch + parse the actual URL.
     """
-    content_hash = "sha256:" + hashlib.sha256(req.text.encode()).hexdigest()
+    content_hash = hash_content(req.text)
+    captured_at = capture_timestamp()
     classification = classify(req.text)
+
+    # Try to archive the URL (non-blocking, graceful failure)
+    archived_url = archive_url_sync(req.url) if req.url else None
 
     evidence = EvidenceItem(
         id=str(uuid.uuid4()),
         url=req.url or "https://instagram.com/mock",
         platform="instagram",
-        captured_at=datetime.now(),
+        captured_at=captured_at,
         author_username=req.author_username,
         content_text=req.text,
         content_hash=content_hash,
-        archived_url=f"https://archive.org/mock/{content_hash[:8]}",
+        archived_url=archived_url,
         classification=classification
     )
 

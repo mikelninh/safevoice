@@ -4,6 +4,7 @@ import { fetchCases } from '../services/api'
 import { t, type Lang } from '../i18n'
 import type { Case } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
+import { getLocalCases, migrateLegacyEvidence } from '../services/storage'
 
 interface Props { lang: Lang }
 
@@ -13,8 +14,22 @@ export default function Cases({ lang }: Props) {
   const isDE = lang === 'de'
 
   useEffect(() => {
+    // Migrate any legacy evidence items from old format
+    migrateLegacyEvidence()
+
+    // Load local cases + demo cases from API
+    const localCases = getLocalCases()
     fetchCases()
-      .then(setCases)
+      .then(apiCases => {
+        // Merge: local cases first, then demo cases (avoid ID collisions)
+        const localIds = new Set(localCases.map(c => c.id))
+        const demoCases = apiCases.filter(c => !localIds.has(c.id))
+        setCases([...localCases, ...demoCases])
+      })
+      .catch(() => {
+        // API down — show local cases only
+        setCases(localCases)
+      })
       .finally(() => setLoading(false))
   }, [])
 

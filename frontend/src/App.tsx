@@ -6,6 +6,8 @@ import Home from './pages/Home'
 import Analyze from './pages/Analyze'
 import Cases from './pages/Cases'
 import CaseDetail from './pages/CaseDetail'
+import SafeExit from './components/SafeExit'
+import AcknowledgementBanner from './components/AcknowledgementBanner'
 
 function NavBar({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   const location = useLocation()
@@ -56,6 +58,7 @@ function AppShell() {
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       <NavBar lang={lang} setLang={setLang} />
+      <AcknowledgementBanner lang={lang} />
       <main>
         <Routes>
           <Route path="/" element={<Home lang={lang} />} />
@@ -66,6 +69,7 @@ function AppShell() {
           <Route path="/share" element={<Analyze lang={lang} />} />
         </Routes>
       </main>
+      <SafeExit lang={lang} />
     </div>
   )
 }

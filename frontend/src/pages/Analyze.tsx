@@ -6,6 +6,8 @@ import type { EvidenceItem } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
 import CategoryTag from '../components/CategoryTag'
 import LawCard from '../components/LawCard'
+import AnalysisProgress from '../components/AnalysisProgress'
+import { createCase } from '../services/storage'
 
 interface Props { lang: Lang }
 
@@ -47,11 +49,8 @@ export default function Analyze({ lang }: Props) {
   }
 
   const handleSave = () => {
-    // MVP: save to localStorage
     if (!result) return
-    const existing = JSON.parse(localStorage.getItem('sv_evidence') ?? '[]')
-    existing.push(result)
-    localStorage.setItem('sv_evidence', JSON.stringify(existing))
+    createCase(result)
     setSaved(true)
   }
 
@@ -118,6 +117,9 @@ export default function Analyze({ lang }: Props) {
           {loading ? t(lang, 'analyze.analyzing') : t(lang, 'analyze.submit')}
         </button>
       </div>
+
+      {/* Loading progress */}
+      {loading && <AnalysisProgress lang={lang} />}
 
       {/* Error */}
       {error && (
