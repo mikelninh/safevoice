@@ -1,15 +1,27 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { analyzeText } from '../services/api'
+import { analyzeText, scrapeUrl } from '../services/api'
 import { t, type Lang } from '../i18n'
 import type { EvidenceItem } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
 import CategoryTag from '../components/CategoryTag'
 import LawCard from '../components/LawCard'
 import AnalysisProgress from '../components/AnalysisProgress'
+import HateAidReferral from '../components/HateAidReferral'
 import { createCase } from '../services/storage'
 
 interface Props { lang: Lang }
+
+function isSocialUrl(str: string): boolean {
+  return /^https?:\/\/(www\.)?(instagram\.com|x\.com|twitter\.com|tiktok\.com|facebook\.com)/i.test(str.trim())
+}
+
+function platformLabel(platform: string): string {
+  const labels: Record<string, string> = {
+    instagram: 'Instagram', x: 'X / Twitter', tiktok: 'TikTok', facebook: 'Facebook', web: 'Web',
+  }
+  return labels[platform] || platform
+}
 
 export default function Analyze({ lang }: Props) {
   const [params] = useSearchParams()
@@ -18,31 +30,56 @@ export default function Analyze({ lang }: Props) {
   const [author, setAuthor] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<EvidenceItem | null>(null)
+  const [commentResults, setCommentResults] = useState<EvidenceItem[]>([])
+  const [scrapedPlatform, setScrapedPlatform] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const isDE = lang === 'de'
 
   // Auto-analyze if coming from share target
   useEffect(() => {
-    const sharedText = params.get('text') ?? params.get('url')
-    if (sharedText && !result) {
+    const sharedUrl = params.get('url')
+    const sharedText = params.get('text')
+    if (sharedUrl && !result) {
+      setUrl(sharedUrl)
+      handleSubmit(undefined, sharedUrl)
+    } else if (sharedText && !result) {
+      setText(sharedText)
       handleSubmit(sharedText)
     }
   }, [])
 
-  const handleSubmit = async (overrideText?: string) => {
-    const content = overrideText ?? text ?? url
-    if (!content.trim()) return
+  const handleSubmit = async (overrideText?: string, overrideUrl?: string) => {
+    const inputUrl = overrideUrl ?? url
+    const inputText = overrideText ?? text
+
+    if (!inputText.trim() && !inputUrl.trim()) return
 
     setLoading(true)
     setError(null)
     setResult(null)
+    setCommentResults([])
+    setScrapedPlatform(null)
+    setSaved(false)
 
     try {
-      const res = await analyzeText(content, author || 'unknown', url)
-      setResult(res.evidence)
-    } catch {
-      setError(isDE ? 'Analyse fehlgeschlagen. Bitte versuche es erneut.' : 'Analysis failed. Please try again.')
+      // If URL looks like a social media link, use the scraper
+      if (inputUrl.trim() && isSocialUrl(inputUrl)) {
+        const res = await scrapeUrl(inputUrl.trim())
+        setResult(res.evidence)
+        setCommentResults(res.comments ?? [])
+        setScrapedPlatform(res.platform)
+      } else {
+        // Otherwise use direct text analysis
+        const content = inputText || inputUrl
+        const res = await analyzeText(content, author || 'unknown', inputUrl)
+        setResult(res.evidence)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      setError(
+        msg || (isDE ? 'Analyse fehlgeschlagen. Bitte versuche es erneut.' : 'Analysis failed. Please try again.')
+      )
     } finally {
       setLoading(false)
     }
@@ -58,9 +95,13 @@ export default function Analyze({ lang }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-white mb-6">
+      <h1 className="text-2xl font-bold text-white mb-2">
         {t(lang, 'analyze.title')}
       </h1>
+      <div className="flex items-center gap-2 mb-6">
+        <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+        <span className="text-green-300 text-sm">{t(lang, 'analyze.privacy')}</span>
+      </div>
 
       {/* Form */}
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-6 space-y-4">
@@ -68,13 +109,20 @@ export default function Analyze({ lang }: Props) {
           <label className="block text-slate-300 text-sm font-medium mb-1.5">
             {t(lang, 'analyze.url.label')}
           </label>
-          <input
-            type="url"
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            placeholder={t(lang, 'analyze.url.placeholder')}
-            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500"
-          />
+          <div className="relative">
+            <input
+              type="url"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder={t(lang, 'analyze.url.placeholder')}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 pr-24"
+            />
+            {url.trim() && isSocialUrl(url) && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-900 border border-indigo-700 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
+                {isDE ? 'Auto-Abruf' : 'Auto-fetch'}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="relative flex items-center gap-3">
@@ -131,6 +179,19 @@ export default function Analyze({ lang }: Props) {
       {/* Result */}
       {result && c && (
         <div className="space-y-4">
+          {/* Scraped platform badge */}
+          {scrapedPlatform && (
+            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+              <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+              <span className="text-green-300 text-sm font-medium">
+                {isDE ? `Von ${platformLabel(scrapedPlatform)} abgerufen` : `Fetched from ${platformLabel(scrapedPlatform)}`}
+              </span>
+              <span className="text-slate-500 text-xs ml-auto">
+                @{result.author_username}
+              </span>
+            </div>
+          )}
+
           {/* Immediate action alert */}
           {c.requires_immediate_action && (
             <div className="bg-red-900 border border-red-600 rounded-xl p-4">
@@ -204,6 +265,9 @@ export default function Analyze({ lang }: Props) {
             </div>
           </div>
 
+          {/* HateAid referral for severe cases */}
+          <HateAidReferral lang={lang} severity={c.severity} />
+
           {/* Save to case */}
           <button
             onClick={handleSave}
@@ -212,6 +276,42 @@ export default function Analyze({ lang }: Props) {
           >
             {saved ? `✓ ${t(lang, 'result.saved')}` : t(lang, 'result.save')}
           </button>
+
+          {/* Scraped comments */}
+          {commentResults.length > 0 && (
+            <div>
+              <h3 className="text-slate-400 text-xs uppercase tracking-wider mb-3">
+                {commentResults.length} {isDE ? 'Kommentare analysiert' : 'comments analysed'}
+              </h3>
+              <div className="space-y-2">
+                {commentResults.map(comment => (
+                  <div
+                    key={comment.id}
+                    className={`bg-slate-800 border rounded-lg p-3 ${
+                      comment.classification?.severity === 'critical' ? 'border-red-700' :
+                      comment.classification?.severity === 'high' ? 'border-orange-700' :
+                      'border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-slate-400 text-xs">@{comment.author_username}</span>
+                      {comment.classification && (
+                        <SeverityBadge severity={comment.classification.severity} lang={lang} />
+                      )}
+                    </div>
+                    <p className="text-slate-300 text-sm">{comment.content_text}</p>
+                    {comment.classification && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {comment.classification.categories.map(cat => (
+                          <CategoryTag key={cat} category={cat} lang={lang} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

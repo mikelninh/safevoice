@@ -88,6 +88,60 @@ class TestRegexClassifier:
         assert 0.0 <= result.confidence <= 1.0
 
 
+# === TURKISH CLASSIFIER TESTS ===
+
+class TestTurkishClassifier:
+    """Regex classifier must detect Turkish harassment."""
+
+    def test_death_threat_tr(self):
+        result = classify_regex("Seni öldüreceğim, dikkat et")
+        assert Category.DEATH_THREAT in result.categories
+        assert result.severity == Severity.CRITICAL
+
+    def test_threat_tr(self):
+        result = classify_regex("Pişman olursun, nerede olduğunu biliyorum")
+        assert Category.THREAT in result.categories
+
+    def test_misogyny_tr(self):
+        result = classify_regex("Kadınlar sussun, sen bir kaltak")
+        assert Category.MISOGYNY in result.categories
+
+    def test_harassment_tr(self):
+        result = classify_regex("Sen bir aptal gerizekalı, kapa çeneni")
+        assert Category.HARASSMENT in result.categories
+
+    def test_body_shaming_tr(self):
+        result = classify_regex("Sen çok şişko ve çirkin bir insansın")
+        assert Category.BODY_SHAMING in result.categories
+
+
+# === ARABIC CLASSIFIER TESTS ===
+
+class TestArabicClassifier:
+    """Regex classifier must detect Arabic harassment."""
+
+    def test_death_threat_ar(self):
+        result = classify_regex("سأقتلك يا كلب")
+        assert Category.DEATH_THREAT in result.categories
+        assert result.severity == Severity.CRITICAL
+
+    def test_threat_ar(self):
+        result = classify_regex("ستندم على كلامك، اعرف وين تسكن")
+        assert Category.THREAT in result.categories
+
+    def test_misogyny_ar(self):
+        result = classify_regex("اسكتي يا شرموطة، المرأة مكانها البيت")
+        assert Category.MISOGYNY in result.categories
+
+    def test_harassment_ar(self):
+        result = classify_regex("انت غبي وحمار، اخرس")
+        assert Category.HARASSMENT in result.categories
+
+    def test_body_shaming_ar(self):
+        result = classify_regex("انتي سمينة وقبيحة")
+        assert Category.BODY_SHAMING in result.categories
+
+
 # === UNIFIED CLASSIFY TESTS (fallback chain) ===
 
 class TestUnifiedClassify:

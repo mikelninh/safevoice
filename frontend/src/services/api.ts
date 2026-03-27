@@ -28,6 +28,31 @@ export async function analyzeText(
   return res.json()
 }
 
+export async function scrapeUrl(url: string): Promise<{
+  evidence: EvidenceItem
+  comments: EvidenceItem[]
+  classification: ClassificationResult
+  platform: string
+  scraped: {
+    author_username: string
+    author_display_name: string | null
+    posted_at: string | null
+    comment_count: number
+    media_count: number
+  }
+}> {
+  const res = await fetch(`${BASE}/analyze/url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Scraping failed' }))
+    throw new Error(err.detail || 'Scraping failed')
+  }
+  return res.json()
+}
+
 export async function fetchReport(
   caseId: string,
   reportType: 'general' | 'netzdg' | 'police',

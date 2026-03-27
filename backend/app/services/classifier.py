@@ -43,58 +43,107 @@ def classify(text: str) -> ClassificationResult:
 
 # Signal dictionaries - extend these significantly in production
 DEATH_THREAT_SIGNALS = [
+    # English
     r"\b(kill|murder|slaughter|hunt|eliminate)\s+(you|u|her|them|yourself)\b",
     r"\bkill\s+your\s*self\b",
     r"\b(kys|go\s+die|go\s+kill\s+yourself)\b",
     r"\b(you|u|she)\s+(will|won't)\s+(die|survive|live)\b",
+    # German
     r"\btod\b.*\b(dir|ihr|dich)\b",
     r"\b(umbringen|töten|ermorden)\b",
     r"\bwatch\s+(your|yourself)\b",
     r"\bI\s+know\s+where\s+you\b",
     r"\bich\s+weiß\s+wo\s+du\b",
     r"\bpas\s+auf\s+dich\s+auf\b",
+    # Turkish
+    r"\b(seni\s+öldürürüm|seni\s+öldüreceğim|öldürürüm)\b",
+    r"\bgebertir[ie]m\b",
+    r"\bkanını\s+akıtırım\b",
+    r"\bseni\s+bitiririm\b",
+    # Arabic
+    r"(سأقتلك|راح\s*اقتلك|بقتلك)",
+    r"(سأذبحك|هقتلك|موتي)",
 ]
 
 THREAT_SIGNALS = [
+    # English
     r"\b(you'll|you will|you're going to)\s+(regret|pay|suffer)\b",
     r"\bsomething\s+(will|might|could)\s+happen\b",
     r"\b(watch|careful|beware)\b",
+    # German
     r"\bdrohe\b",
     r"\bpassiert\s+(dir|ihr)\s+(was|etwas)\b",
+    # Turkish
+    r"\b(pişman\s+olursun|pişman\s+ederim|göreceksin)\b",
+    r"\b(dikkat\s+et|başına\s+gelecekleri\s+gör)\b",
+    r"\bnerede\s+olduğunu\s+biliyorum\b",
+    # Arabic
+    r"(ستندم|راح\s*تندم|انتبه\s*لنفسك)",
+    r"(اعرف\s*وين\s*تسكن|بعرف\s*وينك)",
 ]
 
 MISOGYNY_SIGNALS = [
+    # English
     r"\b(women|woman|female|girl)\s+(should|must|need to)\s+(shut up|be quiet|stay home|stay in the kitchen)\b",
+    r"\b(bitch|whore|slut|cunt)\b",
+    # German
     r"\bfrauen\s+(gehören|sollen|müssen|haben\s+kein(e)?|sind)\b",
     r"\bfrauen\s+wie\s+du\b",
     r"\bkein\s+(platz|recht)\s+für\s+(frauen|weiber)\b",
     r"\b(weib|weiber|schlampe|hure|schlampen)\b",
-    r"\b(bitch|whore|slut|cunt)\b",
     r"\b(keine\s+meinung|keine\s+ahnung|nichts\s+zu\s+sagen)\s+(haben|verdient)\b",
     r"\b(meinung\s+verdient|recht\s+auf\s+meinung)\b",
     r"frauen\s+(können|können\s+nicht|dürfen\s+nicht)\b",
+    # Turkish
+    r"\b(kadınlar\s+(sussun|sus|konuşmasın))\b",
+    r"\b(kaltak|orospu|sürtük)\b",
+    r"\bkadının\s+(yeri|haddini)\b",
+    # Arabic
+    r"(شرموطة|عاهرة|قحبة)",
+    r"(المرأة\s*مكانها|اسكتي|النسوان)",
 ]
 
 SEXUAL_HARASSMENT_SIGNALS = [
+    # English
     r"\b(send|show)\s+(me|nudes|pics|photos)\b",
     r"\bsex\s+(with|from)\s+(you|her)\b",
+    # German
     r"\b(fick|fick dich|ficken)\b",
     r"\b(schick|zeig)\s+(mir|bilder|fotos)\b",
+    # Turkish
+    r"\b(seni\s+sikerim|sik(erim|tir))\b",
+    r"\bfotoğraflarını\s+(at|gönder)\b",
+    # Arabic
+    r"(ابعتيلي\s*صور|نيك|كسمك)",
 ]
 
 HARASSMENT_SIGNALS = [
+    # English
     r"\b(idiot|moron|stupid|dumb|brain\s*dead|malnourished|loser)\b",
     r"\b(shut\s+up|stfu|nobody\s+asked|nobody\s+cares)\b",
     r"\b(delete\s+(this|yourself)|go\s+die|kys)\b",
+    # German
     r"\b(idiot|dumm|blöd|vollidiot|depp)\b",
     r"\bhalt\s+(die\s+)?klappe\b",
+    # Turkish
+    r"\b(aptal|salak|gerizekalı|mal|dangalak|ezik)\b",
+    r"\b(kapa\s+çeneni|defol|siktir)\b",
+    # Arabic
+    r"(غبي|حمار|أحمق|تافه|كلب)",
+    r"(اخرس|انقلع|طز\s*فيك)",
 ]
 
 BODY_SHAMING_SIGNALS = [
+    # English
     r"\b(fat|ugly|disgusting|gross|hideous)\b",
     r"\b(lose\s+weight|diet|gym)\b",
     r"\b(nobody\s+wants|no\s+one\s+wants)\s+(you|her)\b",
+    # German
     r"\b(hässlich|fett|eklig|widerlich)\b",
+    # Turkish
+    r"\b(şişko|çirkin|iğrenç|obez)\b",
+    # Arabic
+    r"(سمينة|قبيحة|مقرفة|بشعة)",
 ]
 
 FALSE_FACTS_SIGNALS = [

@@ -34,15 +34,15 @@ Build the infrastructure Germany — and Europe — needs for digital justice.
 *Goal: Real users. Real cases. Real reports filed.*
 
 - [ ] 2.1 User accounts — encrypted, DSGVO-compliant, Hetzner-hosted
-- [ ] 2.2 Instagram scraping — fetch public posts/comments by URL
-- [ ] 2.3 X/Twitter support
+- [x] 2.2 Instagram scraping — fetch public posts/comments by URL
+- [x] 2.3 X/Twitter support — unified scraper with auto-detection
 - [ ] 2.4 WhatsApp evidence upload — screenshot + metadata extraction
-- [ ] 2.5 Anonymous reporting mode — no account needed
-- [ ] 2.6 HateAid integration — warm handoff to human counselor
-- [ ] 2.7 BaFin reporting — structured scam reports to financial regulator
-- [ ] 2.8 Onlinewache integration — pre-fill police report form
-- [ ] 2.9 Android share target — native share sheet integration
-- [ ] 2.10 Multilingual classifier — Turkish, Arabic (top DE harassment languages)
+- [x] 2.5 Anonymous reporting mode — no account needed, data on device
+- [x] 2.6 HateAid integration — warm handoff with hotline + deep link
+- [x] 2.7 BaFin reporting — structured scam reports with wallet/amount extraction
+- [x] 2.8 Onlinewache integration — all 16 Bundesländer, copy-ready text
+- [x] 2.9 Android share target — PWA POST share with file support
+- [x] 2.10 Multilingual classifier — Turkish + Arabic (10/10 tests)
 
 ### PHASE 3 — Institutional (Month 4-6)
 *Goal: Police, NGOs, law firms use SafeVoice as their intake tool.*
