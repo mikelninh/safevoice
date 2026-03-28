@@ -6,6 +6,8 @@ import Home from './pages/Home'
 import Analyze from './pages/Analyze'
 import Cases from './pages/Cases'
 import CaseDetail from './pages/CaseDetail'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
 import SafeExit from './components/SafeExit'
 import AcknowledgementBanner from './components/AcknowledgementBanner'
 
@@ -40,6 +42,7 @@ function NavBar({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
         <div className="flex items-center gap-5">
           {navLink('/analyze', t(lang, 'nav.new'))}
           {navLink('/cases', t(lang, 'nav.cases'))}
+          {navLink('/dashboard', 'Dashboard')}
           <button
             onClick={() => setLang(lang === 'de' ? 'en' : 'de')}
             className="text-slate-500 hover:text-slate-300 text-xs font-mono border border-slate-700 rounded px-2 py-1 transition-colors"
@@ -65,6 +68,8 @@ function AppShell() {
           <Route path="/analyze" element={<Analyze lang={lang} />} />
           <Route path="/cases" element={<Cases lang={lang} />} />
           <Route path="/cases/:id" element={<CaseDetail lang={lang} />} />
+          <Route path="/login" element={<Login lang={lang} onLogin={() => {}} />} />
+          <Route path="/dashboard" element={<Dashboard lang={lang} />} />
           {/* PWA share target */}
           <Route path="/share" element={<Analyze lang={lang} />} />
         </Routes>
