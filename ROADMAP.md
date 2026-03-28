@@ -125,18 +125,14 @@ Every feature is DONE when:
 
 ---
 
-## Current Phase 1 Progress
+## Progress Summary
 
-| Step | Status | DoD |
-|------|--------|-----|
-| 1.1 Core classifier | ✅ 13/13 tests | Regex engine, all categories |
-| 1.2 Law mapping | ✅ | § 185/186/241/126a/263/263a/269 + NetzDG |
-| 1.3 Pattern detection | ✅ | Coordination, escalation, repeat |
-| 1.4 Report generator | ✅ | NetzDG + Strafanzeige + general |
-| 1.5 React PWA | ✅ | Builds clean, bilingual |
-| 1.6 Mock data | ✅ | 4 cases, all categories |
-| 1.7 Emotional UI | ✅ | SafeExit, Banner, Progress, StatsBar |
-| 1.8 Classifier upgrade | ✅ 23/23 tests | Claude API → transformer → regex |
-| 1.9 Evidence archiving | ✅ 10/10 tests | SHA-256 + UTC + archive.org |
-| 1.10 Local persistence | ✅ | localStorage CRUD + migration |
-| 1.11 PDF export | ✅ 9/9 tests | A4 PDF, general/NetzDG/police, DE+EN |
+| Phase | Status | Tests |
+|-------|--------|-------|
+| Phase 1 — Foundation | **11/11 COMPLETE** | 42 |
+| Phase 2 — Trust & Reach | **9/10** (2.1 deferred) | 88 |
+| Phase 3 — Institutional | **8/8 COMPLETE** | 179 |
+| Phase 4 — Scale | 0/8 | — |
+| Phase 5 — Policy Impact | 0/5 | — |
+
+**Total: 179 backend tests passing. 29/29 implemented features shipped.**
