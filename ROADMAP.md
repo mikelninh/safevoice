@@ -59,14 +59,14 @@ Build the infrastructure Germany — and Europe — needs for digital justice.
 ### PHASE 4 — Scale (Month 7-12)
 *Goal: Standard tool for digital justice across DACH + UK.*
 
-- [ ] 4.1 Austria — § 107 StGB, Cybermobbing-Gesetz
-- [ ] 4.2 Switzerland — Art. 173 StGB
-- [ ] 4.3 United Kingdom — Online Safety Act
-- [ ] 4.4 France — Loi Avia, Pinel law
-- [ ] 4.5 AI legal analysis — Claude API for nuanced legal reasoning
-- [ ] 4.6 Serial offender database — cross-case pattern matching (anonymized)
-- [ ] 4.7 Platform API integrations — direct NetzDG submission
-- [ ] 4.8 Mobile apps — iOS + Android native
+- [x] 4.1 Austria — § 107, 107a, 107c, 111, 115, 105 StGB (AT)
+- [x] 4.2 Switzerland — Art. 173, 174, 177, 180, 181, 179septies StGB (CH)
+- [x] 4.3 United Kingdom — Online Safety Act, Communications Act, Harassment Act, Fraud Act
+- [x] 4.4 France — Loi Avia, Art. 222-33-2-2, 222-17, 226-1, R621-1, 313-1 CP
+- [x] 4.5 AI legal analysis — Claude API deep reasoning + rule-based fallback
+- [x] 4.6 Serial offender database — cross-case pattern matching (pseudonymized)
+- [x] 4.7 Platform API integrations — NetzDG submission for Instagram, X, TikTok
+- ~~4.8 Mobile apps~~ — PWA covers this (installable, share target, offline)
 
 ### PHASE 5 — Policy Impact (Year 2+)
 *Goal: SafeVoice shapes digital violence law in Germany and EU.*
@@ -132,7 +132,7 @@ Every feature is DONE when:
 | Phase 1 — Foundation | **11/11 COMPLETE** | 42 |
 | Phase 2 — Trust & Reach | **10/10 COMPLETE** | 88 |
 | Phase 3 — Institutional | **8/8 COMPLETE** | 179 |
-| Phase 4 — Scale | 0/8 | — |
+| Phase 4 — Scale (DACH + UK + FR) | **7/7 COMPLETE** | 366 |
 | Phase 5 — Policy Impact | 0/5 | — |
 
-**Total: 179 backend tests passing. 29/29 implemented features shipped.**
+**Total: 366 backend tests passing. 36/36 implemented features shipped.**
