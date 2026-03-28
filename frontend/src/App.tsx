@@ -8,6 +8,8 @@ import Cases from './pages/Cases'
 import CaseDetail from './pages/CaseDetail'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Impressum from './pages/Impressum'
+import Datenschutz from './pages/Datenschutz'
 import SafeExit from './components/SafeExit'
 import AcknowledgementBanner from './components/AcknowledgementBanner'
 
@@ -72,9 +74,24 @@ function AppShell() {
           <Route path="/dashboard" element={<Dashboard lang={lang} />} />
           {/* PWA share target */}
           <Route path="/share" element={<Analyze lang={lang} />} />
+          {/* Legal pages (required in Germany) */}
+          <Route path="/impressum" element={<Impressum lang={lang} />} />
+          <Route path="/datenschutz" element={<Datenschutz lang={lang} />} />
         </Routes>
       </main>
       <SafeExit lang={lang} />
+      {/* Footer with legal links */}
+      <footer className="border-t border-slate-800 mt-12 py-6 px-4">
+        <div className="max-w-2xl mx-auto flex items-center justify-center gap-6 text-sm text-slate-500">
+          <Link to="/impressum" className="hover:text-slate-300 transition-colors">
+            {t(lang, 'footer.legal')}
+          </Link>
+          <span className="text-slate-700">|</span>
+          <Link to="/datenschutz" className="hover:text-slate-300 transition-colors">
+            {t(lang, 'footer.privacy')}
+          </Link>
+        </div>
+      </footer>
     </div>
   )
 }
