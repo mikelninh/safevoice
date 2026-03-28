@@ -36,7 +36,7 @@ Build the infrastructure Germany — and Europe — needs for digital justice.
 - [ ] 2.1 User accounts — encrypted, DSGVO-compliant, Hetzner-hosted
 - [x] 2.2 Instagram scraping — fetch public posts/comments by URL
 - [x] 2.3 X/Twitter support — unified scraper with auto-detection
-- [ ] 2.4 WhatsApp evidence upload — screenshot + metadata extraction
+- [x] 2.4 WhatsApp evidence upload — screenshot OCR + metadata extraction
 - [x] 2.5 Anonymous reporting mode — no account needed, data on device
 - [x] 2.6 HateAid integration — warm handoff with hotline + deep link
 - [x] 2.7 BaFin reporting — structured scam reports with wallet/amount extraction
@@ -47,14 +47,14 @@ Build the infrastructure Germany — and Europe — needs for digital justice.
 ### PHASE 3 — Institutional (Month 4-6)
 *Goal: Police, NGOs, law firms use SafeVoice as their intake tool.*
 
-- [ ] 3.1 Receiver portal — structured case intake for police / NGOs
-- [ ] 3.2 Case assignment — route cases to right jurisdiction / unit
-- [ ] 3.3 API for partners — HateAid, Weißer Ring, law firms
-- [ ] 3.4 Anonymized data dashboard — aggregate patterns for BKA / research
-- [ ] 3.5 Evidence chain verification — cryptographic proof of integrity
-- [ ] 3.6 Court export format — structured evidence package
-- [ ] 3.7 Institutional accounts — police departments, universities, employers
-- [ ] 3.8 SLA reporting — NetzDG 24h/7d deadline tracking
+- [x] 3.1 Receiver portal — partner API with structured case intake
+- [x] 3.2 Case assignment — jurisdiction + unit routing via partner API
+- [x] 3.3 API for partners — API key auth, submit/retrieve/assign cases
+- [x] 3.4 Anonymized data dashboard — aggregate stats, categories, platforms
+- [x] 3.5 Evidence chain verification — SHA-256 hash chain + verify endpoint
+- [x] 3.6 Court export format — ZIP with PDFs, manifest, hash verification
+- [x] 3.7 Institutional accounts — orgs, members, roles, API key management
+- [x] 3.8 SLA reporting — NetzDG 24h/7d deadline tracking + dashboard
 
 ### PHASE 4 — Scale (Month 7-12)
 *Goal: Standard tool for digital justice across DACH + UK.*

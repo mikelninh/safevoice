@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import cases, analyze, reports
+from app.routers import cases, analyze, reports, chain, upload, sla, partners, dashboard
 
 app = FastAPI(
     title="SafeVoice API",
@@ -19,6 +19,11 @@ app.add_middleware(
 app.include_router(cases.router)
 app.include_router(analyze.router)
 app.include_router(reports.router)
+app.include_router(chain.router)
+app.include_router(upload.router)
+app.include_router(sla.router)
+app.include_router(partners.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/health")

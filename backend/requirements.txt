@@ -11,5 +11,6 @@ langdetect==1.0.9
 anthropic>=0.86.0
 torch>=2.0.0
 transformers>=4.30.0
+pytesseract>=0.3.10
 pytest==8.2.0
 pytest-asyncio==0.23.6

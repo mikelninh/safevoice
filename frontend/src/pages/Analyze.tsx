@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { analyzeText, scrapeUrl } from '../services/api'
+import { analyzeText, scrapeUrl, uploadScreenshot } from '../services/api'
 import { t, type Lang } from '../i18n'
 import type { EvidenceItem } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
@@ -18,7 +18,7 @@ function isSocialUrl(str: string): boolean {
 
 function platformLabel(platform: string): string {
   const labels: Record<string, string> = {
-    instagram: 'Instagram', x: 'X / Twitter', tiktok: 'TikTok', facebook: 'Facebook', web: 'Web',
+    instagram: 'Instagram', x: 'X / Twitter', tiktok: 'TikTok', facebook: 'Facebook', web: 'Web', whatsapp: 'WhatsApp', screenshot: 'Screenshot',
   }
   return labels[platform] || platform
 }
@@ -34,6 +34,9 @@ export default function Analyze({ lang }: Props) {
   const [scrapedPlatform, setScrapedPlatform] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false)
   const isDE = lang === 'de'
 
   // Auto-analyze if coming from share target
@@ -85,6 +88,38 @@ export default function Analyze({ lang }: Props) {
     }
   }
 
+  const handleScreenshotUpload = async () => {
+    if (!screenshotFile) return
+
+    setUploadingScreenshot(true)
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    setCommentResults([])
+    setScrapedPlatform(null)
+    setSaved(false)
+    setUploadProgress(0)
+
+    try {
+      const res = await uploadScreenshot(screenshotFile, (pct) => {
+        setUploadProgress(pct)
+      })
+      setResult(res.evidence)
+      if (res.ocr_metadata.is_whatsapp) {
+        setScrapedPlatform('whatsapp')
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      setError(
+        msg || (isDE ? 'Screenshot-Upload fehlgeschlagen.' : 'Screenshot upload failed.')
+      )
+    } finally {
+      setLoading(false)
+      setUploadingScreenshot(false)
+      setUploadProgress(null)
+    }
+  }
+
   const handleSave = () => {
     if (!result) return
     createCase(result)
@@ -123,6 +158,62 @@ export default function Analyze({ lang }: Props) {
               </span>
             )}
           </div>
+        </div>
+
+        <div className="relative flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-700"></div>
+          <span className="text-slate-500 text-xs">{isDE ? 'oder' : 'or'}</span>
+          <div className="flex-1 h-px bg-slate-700"></div>
+        </div>
+
+        {/* Screenshot upload */}
+        <div>
+          <label className="block text-slate-300 text-sm font-medium mb-1.5">
+            {isDE ? 'Screenshot hochladen (WhatsApp, DM, ...)' : 'Upload screenshot (WhatsApp, DM, ...)'}
+          </label>
+          <div className="relative">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => {
+                const f = e.target.files?.[0] ?? null
+                setScreenshotFile(f)
+              }}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800"
+            />
+          </div>
+          {screenshotFile && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-slate-400 text-xs truncate max-w-[200px]">
+                {screenshotFile.name}
+              </span>
+              <span className="text-slate-500 text-xs">
+                ({(screenshotFile.size / 1024).toFixed(0)} KB)
+              </span>
+              <button
+                onClick={handleScreenshotUpload}
+                disabled={uploadingScreenshot}
+                className="ml-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {uploadingScreenshot
+                  ? (isDE ? 'Wird hochgeladen...' : 'Uploading...')
+                  : (isDE ? 'Analysieren' : 'Analyze')}
+              </button>
+            </div>
+          )}
+          {uploadProgress !== null && (
+            <div className="mt-2">
+              <div className="w-full bg-slate-700 rounded-full h-1.5">
+                <div
+                  className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+              <span className="text-slate-500 text-xs mt-1 block">
+                {uploadProgress}%
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="relative flex items-center gap-3">

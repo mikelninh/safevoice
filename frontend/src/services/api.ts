@@ -63,6 +63,48 @@ export async function fetchReport(
   return res.json()
 }
 
+export async function uploadScreenshot(
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<{
+  evidence: EvidenceItem
+  classification: ClassificationResult
+  ocr_metadata: {
+    text_extracted: boolean
+    is_whatsapp: boolean
+    timestamps_found: string[]
+    has_read_receipts: boolean
+    whatsapp_indicators: string[]
+  }
+}> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${BASE}/upload/screenshot`)
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100))
+      }
+    })
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(JSON.parse(xhr.responseText))
+      } else {
+        const err = JSON.parse(xhr.responseText).detail ?? 'Upload failed'
+        reject(new Error(err))
+      }
+    })
+
+    xhr.addEventListener('error', () => reject(new Error('Upload failed')))
+    xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
+
+    const formData = new FormData()
+    formData.append('file', file)
+    xhr.send(formData)
+  })
+}
+
 export async function downloadPdf(
   caseId: string,
   reportType: 'general' | 'netzdg' | 'police',
