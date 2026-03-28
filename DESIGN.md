@@ -284,7 +284,49 @@ Three report types, each optimized for its audience:
 
 ---
 
-## 12. Tech stack summary
+## 12. User accounts & authentication
+
+### Magic link auth (no passwords)
+- User enters email → receives a login link (15-minute expiry)
+- Clicking the link creates a 30-day session
+- No passwords to leak, breach, or brute-force
+- Email is the only identifier — minimal PII
+
+### Why NOT passwords?
+- Victims are stressed — they forget passwords
+- Password resets create another attack surface
+- Magic links are phishing-resistant (one-time use, short expiry)
+- Simpler UX: one field, one click
+
+### Why NOT OAuth (Google/Facebook login)?
+- Victims may be harassed on those platforms — logging in via the abuser's platform feels unsafe
+- Third-party auth means data flows through Google/Facebook
+- We want zero dependency on platforms we're helping people report
+
+### Database strategy: PostgreSQL + SQLite
+- SQLite for development (zero setup, file-based)
+- PostgreSQL for production (Hetzner, German hosting, DSGVO)
+- Repository pattern: same code, swappable storage layer
+
+### Encryption: server-side at rest (AES-256)
+- NOT full E2E — because institutional features require server-side access
+- Protects against: database theft, hosting provider access, unauthorized DB access
+- Allows: legitimate law enforcement cooperation (with warrant), data recovery, pattern analysis
+- Transparent to users: "Your cases are encrypted. Only you and orgs you share with can access them."
+
+### Deletion model
+| Action | What happens | Recovery? |
+|--------|-------------|-----------|
+| Delete case | Hidden immediately, hard-deleted in 7 days | Yes, within 7 days |
+| Delete account | Soft delete, hard-deleted in 7 days | Yes, within 7 days |
+| Emergency delete | **Immediate hard delete. Everything gone.** | No. By design. |
+| DSGVO erasure request | Hard delete within 72 hours | No |
+
+Emergency delete exists because a victim may discover their abuser found SafeVoice. One tap, everything gone, no trace.
+
+---
+
+## 13. Tech stack summary
 
 | Layer | Technology | Why |
 |-------|-----------|-----|

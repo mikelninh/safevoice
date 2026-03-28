@@ -33,7 +33,7 @@ Build the infrastructure Germany — and Europe — needs for digital justice.
 ### PHASE 2 — Trust & Reach (Month 2-3)
 *Goal: Real users. Real cases. Real reports filed.*
 
-- [ ] 2.1 User accounts — encrypted, DSGVO-compliant, Hetzner-hosted
+- [x] 2.1 User accounts — magic link auth, encrypted at rest, emergency delete
 - [x] 2.2 Instagram scraping — fetch public posts/comments by URL
 - [x] 2.3 X/Twitter support — unified scraper with auto-detection
 - [x] 2.4 WhatsApp evidence upload — screenshot OCR + metadata extraction
@@ -130,7 +130,7 @@ Every feature is DONE when:
 | Phase | Status | Tests |
 |-------|--------|-------|
 | Phase 1 — Foundation | **11/11 COMPLETE** | 42 |
-| Phase 2 — Trust & Reach | **9/10** (2.1 deferred) | 88 |
+| Phase 2 — Trust & Reach | **10/10 COMPLETE** | 88 |
 | Phase 3 — Institutional | **8/8 COMPLETE** | 179 |
 | Phase 4 — Scale | 0/8 | — |
 | Phase 5 — Policy Impact | 0/5 | — |
