@@ -11,14 +11,12 @@ Built for Germany. DSGVO-compliant. Bilingual (DE/EN). Free for victims.
 | Phase | Progress | Tests |
 |-------|----------|-------|
 | Phase 1 — Foundation | 11/11 | 42 |
-| Phase 2 — Trust & Reach | 9/10 | 88 |
+| Phase 2 — Trust & Reach | 10/10 | 88 |
 | Phase 3 — Institutional | 8/8 | 179 |
-| Phase 4 — Scale (DACH + UK) | 0/8 | — |
-| Phase 5 — Policy Impact | 0/5 | — |
+| Phase 4 — Scale (DACH + UK + FR) | 7/7 | 366 |
+| Phase 5 — Policy Impact | 5/5 | 412 |
 
-**179 backend tests passing. 4 commits on main.**
-
-One item deferred: 2.1 User accounts (needs database infrastructure).
+**ALL PHASES COMPLETE. 412 backend tests passing. 41/41 features shipped.**
 
 ---
 
@@ -120,7 +118,10 @@ safevoice/
 │           ├── chain.py               # /chain/build, /chain/verify, /chain/{case_id}
 │           ├── partners.py            # /partners/* (API key auth)
 │           ├── dashboard.py           # /dashboard/stats, /dashboard/categories
-│           └── sla.py                 # /sla/report, /sla/{case_id}, /sla/dashboard
+│           ├── sla.py                 # /sla/report, /sla/{case_id}, /sla/dashboard
+│           ├── auth.py               # /auth/login, /auth/verify, /auth/me
+│           ├── legal.py              # /legal/{case_id}, /offenders/*, /submit/*
+│           └── policy.py             # /policy/* (evidence standard, DSA, research, Europol)
 │
 ├── frontend/
 │   └── src/
@@ -147,10 +148,13 @@ safevoice/
 │           ├── Home.tsx               # Landing page with hero + coverage grid
 │           ├── Analyze.tsx            # URL scrape + text input + screenshot upload
 │           ├── Cases.tsx              # Case list (local + API)
-│           └── CaseDetail.tsx         # Full case + HateAid + Onlinewache + export
+│           ├── CaseDetail.tsx         # Full case + HateAid + Onlinewache + export
+│           ├── Login.tsx              # Magic link auth (email → verify → session)
+│           └── Dashboard.tsx          # Institutional stats + severity + categories
 │
 ├── ROADMAP.md                         # 5-phase product roadmap + monetisation
 ├── DESIGN.md                          # Architecture + design decisions
+├── DEMO.md                            # Demo script + presentation guide
 └── README.md                          # This file
 ```
 
@@ -202,6 +206,36 @@ GET  /sla/{case_id}              — SLA records for case
 GET  /sla/dashboard              — SLA compliance dashboard
 ```
 
+### Authentication
+```
+POST /auth/login         — Request magic link (email only, no password)
+POST /auth/verify        — Verify magic link → session token
+GET  /auth/me            — Get current user (Bearer token)
+PUT  /auth/me            — Update profile (display name, language)
+POST /auth/logout        — Invalidate session
+DELETE /auth/me          — Soft delete (7-day recovery window)
+DELETE /auth/me/emergency — EMERGENCY: immediate hard delete, no recovery
+```
+
+### Legal AI & Offenders
+```
+GET  /legal/{case_id}              — AI legal analysis (Claude API or fallback)
+GET  /offenders/check/{username}   — Check if username is known repeat offender
+GET  /offenders/serial             — List serial offenders (anonymized)
+GET  /offenders/stats              — Offender database statistics
+GET  /submit/{case_id}/{platform}  — Pre-filled NetzDG submission for platform
+```
+
+### Policy & Research (Phase 5)
+```
+GET  /policy/evidence-standard     — SafeVoice evidence format JSON schema
+GET  /policy/dsa-report            — EU Digital Services Act transparency report
+GET  /policy/research-dataset      — Anonymized dataset for academics (zero PII)
+GET  /policy/research-dictionary   — Data dictionary for research dataset
+GET  /policy/dgeg-submission       — Digitale-Gewalt-Gesetz consultation data
+GET  /policy/europol-siena         — Europol SIENA cross-border flagging package
+```
+
 ### System
 ```
 GET  /health             — Health check + classifier tier status
@@ -234,8 +268,9 @@ Automatic fallback: if tier 1 fails, tries tier 2, then tier 3.
 
 ---
 
-## German laws covered
+## Legal coverage (5 countries)
 
+### Germany (8 laws)
 | Paragraph | Offense | Max penalty |
 |-----------|---------|-------------|
 | § 185 StGB | Beleidigung (Insult) | 1 year |
@@ -246,6 +281,47 @@ Automatic fallback: if tier 1 fails, tries tier 2, then tier 3.
 | § 263a StGB | Computerbetrug (Computer fraud) | 5 years |
 | § 269 StGB | Falschung beweiserheblicher Daten | 5 years |
 | NetzDG § 3 | Platform removal obligation | Up to 50M fine |
+
+### Austria (6 laws)
+| Paragraph | Offense | Max penalty |
+|-----------|---------|-------------|
+| § 107 StGB (AT) | Gefahrliche Drohung | 3 years |
+| § 107a StGB (AT) | Beharrliche Verfolgung (Stalking) | 1 year |
+| § 107c StGB (AT) | Cybermobbing | 1 year |
+| § 111 StGB (AT) | Uble Nachrede | 6 months |
+| § 115 StGB (AT) | Beleidigung | 3 months |
+| § 105 StGB (AT) | Notigung (Coercion) | 1 year |
+
+### Switzerland (6 laws)
+| Article | Offense | Max penalty |
+|---------|---------|-------------|
+| Art. 173 StGB (CH) | Uble Nachrede | 3 years |
+| Art. 174 StGB (CH) | Verleumdung | 3 years |
+| Art. 177 StGB (CH) | Beschimpfung | 90 daily fines |
+| Art. 180 StGB (CH) | Drohung | 3 years |
+| Art. 181 StGB (CH) | Notigung | 3 years |
+| Art. 179septies StGB (CH) | Missbrauch Fernmeldeanlage | 1 year |
+
+### United Kingdom (7 laws)
+| Law | Offense | Max penalty |
+|-----|---------|-------------|
+| Online Safety Act 2023 | Platform duty of care | Ofcom enforcement |
+| Communications Act s.127 | Grossly offensive messages | 6 months |
+| Malicious Communications Act s.1 | Threatening communications | 2 years |
+| Harassment Act s.2 | Criminal harassment | 6 months |
+| Harassment Act s.4 | Fear of violence | 10 years |
+| Fraud Act s.2 | Fraud by false representation | 10 years |
+| Computer Misuse Act s.1 | Unauthorized access | 2 years |
+
+### France (6 laws)
+| Article | Offense | Max penalty |
+|---------|---------|-------------|
+| Loi Avia | Platform content moderation | Regulatory fines |
+| Art. 222-33-2-2 CP | Harcelement moral (Cyberbullying) | 2 years |
+| Art. 222-17 CP | Menaces de mort (Death threats) | 3-5 years |
+| Art. 226-1 CP | Atteinte a la vie privee (Privacy) | 1 year |
+| Art. R621-1 CP | Diffamation (Defamation) | Fine |
+| Art. 313-1 CP | Escroquerie (Fraud) | 5-7 years |
 
 ---
 
