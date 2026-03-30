@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Impressum from './pages/Impressum'
 import Datenschutz from './pages/Datenschutz'
+import ApiDocs from './pages/ApiDocs'
 import SafeExit from './components/SafeExit'
 import AcknowledgementBanner from './components/AcknowledgementBanner'
 
@@ -72,6 +73,7 @@ function AppShell() {
           <Route path="/cases/:id" element={<CaseDetail lang={lang} />} />
           <Route path="/login" element={<Login lang={lang} onLogin={() => {}} />} />
           <Route path="/dashboard" element={<Dashboard lang={lang} />} />
+          <Route path="/api" element={<ApiDocs lang={lang} />} />
           {/* PWA share target */}
           <Route path="/share" element={<Analyze lang={lang} />} />
           {/* Legal pages (required in Germany) */}
