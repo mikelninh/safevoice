@@ -20,13 +20,13 @@ Go to **Neuer Fall / New Case** (http://localhost:5173/analyze)
 
 Paste:
 ```
-Frauen wie du sollten die Klappe halten. Ich weiß wo du wohnst.
+I will kill you and your entire family. You are dead.
 ```
 
-Click **Analysieren**. Show the result:
-- Severity badge (HIGH/CRITICAL)
-- Categories: Misogyny + Threat
-- Laws: § 185 StGB, § 241 StGB, NetzDG § 3
+Click **Analyze**. Show the result:
+- Severity badge: CRITICAL (red)
+- Categories: Death Threat + Threat
+- Laws: § 241 StGB, § 126a StGB, NetzDG § 3
 - Bilingual summary (DE + EN)
 
 **Say:** "From paste to legal classification in 3 seconds. No legal knowledge required."
