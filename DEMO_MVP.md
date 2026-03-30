@@ -63,7 +63,7 @@ Show the JSON response: severity, categories, laws, summaries.
 
 ## If asked about the AI
 
-"I use a 3-tier classifier. Tier 1 is OpenAI with a system prompt that acts as a German legal expert. I enforce structured JSON output so the response is always parseable. Tier 2 is a HuggingFace transformer for offline use. Tier 3 is regex as a guaranteed fallback — the app never fails to classify."
+"Right now the app uses a regex classifier that detects threats, misogyny, scams by keyword patterns in German and English. My next step is integrating OpenAI GPT-4o-mini with prompt engineering — a system prompt that acts as a German legal expert, with structured JSON output so the response is always parseable. I'm also planning a HuggingFace transformer as a middle tier for offline use."
 
 ## If asked about the database
 
@@ -71,4 +71,4 @@ Show the JSON response: severity, categories, laws, summaries.
 
 ## If asked about evidence integrity
 
-"SHA-256 hash at capture time. If anyone changes the text later, the hash won't match. UTC timestamps with timezone — legally required in Germany for court evidence."
+"The system hashes content with SHA-256 at capture time and stores UTC timestamps. This is built and working — I'm currently exploring the details of how cryptographic hashing ensures evidence hasn't been tampered with. It's important for German courts."

@@ -64,14 +64,14 @@ Text, Instagram URL, or X/Twitter URL.
 
 | Tier | Engine | When |
 |------|--------|------|
-| 1 | OpenAI GPT-4o-mini | `OPENAI_API_KEY` set |
-| 2 | HuggingFace transformer | torch installed, no API key |
-| 3 | Regex patterns (DE/EN) | Always works, guaranteed fallback |
+| 1 | OpenAI GPT-4o-mini | `OPENAI_API_KEY` set (next step) |
+| 2 | HuggingFace transformer | torch installed (next step) |
+| 3 | Regex patterns (DE/EN) | Always works, guaranteed fallback (working now) |
 
-The AI returns structured JSON: severity, categories, applicable laws, bilingual summary.
+The classifier returns: severity, categories, applicable laws, bilingual summary.
 
-### 3. Evidence is preserved
-- SHA-256 content hash (tamper-proof)
+### 3. Evidence is preserved (exploring)
+- SHA-256 content hash — built, diving deeper into how it works
 - UTC timestamp with timezone (legal requirement)
 - archive.org backup
 
@@ -138,10 +138,10 @@ Full interactive docs: http://localhost:8000/docs
 |-------|-----------|
 | Frontend | React + TypeScript + Vite (PWA) |
 | Backend | Python + FastAPI |
-| AI Tier 1 | OpenAI GPT-4o-mini |
-| AI Tier 2 | HuggingFace Transformers |
-| AI Tier 3 | Regex patterns (DE/EN) |
-| Evidence | SHA-256 + UTC timestamps |
+| AI Tier 1 | OpenAI GPT-4o-mini (next) |
+| AI Tier 2 | HuggingFace Transformers (next) |
+| AI Tier 3 | Regex patterns DE/EN (working) |
+| Evidence | SHA-256 + UTC timestamps (exploring) |
 | Reports | ReportLab (PDF) |
 | Deploy | Docker |
 
