@@ -64,8 +64,8 @@ Text, Instagram URL, or X/Twitter URL.
 
 | Tier | Engine | When |
 |------|--------|------|
-| 1 | OpenAI GPT-4o-mini | `OPENAI_API_KEY` set (next step) |
-| 2 | HuggingFace transformer | torch installed (next step) |
+| 1 | OpenAI GPT-4o-mini | `OPENAI_API_KEY` set (in progress) |
+| 2 | HuggingFace transformer | torch installed (next) |
 | 3 | Regex patterns (DE/EN) | Always works, guaranteed fallback (working now) |
 
 The classifier returns: severity, categories, applicable laws, bilingual summary.
@@ -138,7 +138,7 @@ Full interactive docs: http://localhost:8000/docs
 |-------|-----------|
 | Frontend | React + TypeScript + Vite (PWA) |
 | Backend | Python + FastAPI |
-| AI Tier 1 | OpenAI GPT-4o-mini (next) |
+| AI Tier 1 | OpenAI GPT-4o-mini (in progress) |
 | AI Tier 2 | HuggingFace Transformers (next) |
 | AI Tier 3 | Regex patterns DE/EN (working) |
 | Evidence | SHA-256 + UTC timestamps (exploring) |

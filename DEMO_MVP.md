@@ -63,7 +63,7 @@ Show the JSON response: severity, categories, laws, summaries.
 
 ## If asked about the AI
 
-"Right now the app uses a regex classifier that detects threats, misogyny, scams by keyword patterns in German and English. My next step is integrating OpenAI GPT-4o-mini with prompt engineering — a system prompt that acts as a German legal expert, with structured JSON output so the response is always parseable. I'm also planning a HuggingFace transformer as a middle tier for offline use."
+"The app has a regex classifier working for keyword-based detection in German and English. I'm currently working on integrating OpenAI GPT-4o-mini with prompt engineering — a system prompt that acts as a German legal expert, with structured JSON output so the response is always parseable. The integration is functional and I'm refining the prompts. Next after that is a HuggingFace transformer as a middle tier for offline use."
 
 ## If asked about the database
 
