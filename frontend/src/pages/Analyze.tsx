@@ -142,9 +142,10 @@ export default function Analyze({ lang }: Props) {
       {/* Form */}
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-6 space-y-4">
         <div>
-          <label className="block text-slate-300 text-sm font-medium mb-1.5">
+          <label className="block text-slate-300 text-sm font-medium mb-0.5">
             {t(lang, 'analyze.url.label')}
           </label>
+          <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.url.hint')}</p>
           <div className="relative">
             <input
               type="url"
@@ -224,9 +225,10 @@ export default function Analyze({ lang }: Props) {
         </div>
 
         <div>
-          <label className="block text-slate-300 text-sm font-medium mb-1.5">
+          <label className="block text-slate-300 text-sm font-medium mb-0.5">
             {t(lang, 'analyze.text.label')}
           </label>
+          <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.text.hint')}</p>
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}

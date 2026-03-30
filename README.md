@@ -57,7 +57,10 @@ Without it, the regex classifier (Tier 3) is used automatically.
 ## How It Works
 
 ### 1. Victim pastes content
-Text, Instagram URL, or X/Twitter URL.
+Three ways to get content in:
+- **Paste the comment text** — copy a harassing comment directly from Instagram/WhatsApp/X, paste into SafeVoice (best for comments)
+- **Paste a post link** — SafeVoice fetches the post caption automatically (works for Instagram posts, reels, X tweets)
+- **Upload a screenshot** — OCR extracts the text from WhatsApp/DM screenshots
 
 ### 2. AI classifies it
 3-tier classifier with automatic fallback:
