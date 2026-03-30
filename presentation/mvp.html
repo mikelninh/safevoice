@@ -23,8 +23,11 @@
   .reveal .accent { color: #818cf8; }
   .reveal .red { color: #f87171; }
   .reveal .green { color: #4ade80; }
+  .reveal .yellow { color: #fbbf24; }
   .reveal .dim { color: #64748b; }
   .reveal .badge { display: inline-block; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 999px; padding: 4px 16px; font-size: 0.5em; color: #a5b4fc; margin-bottom: 12px; }
+  .reveal .badge-green { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: #86efac; }
+  .reveal .badge-yellow { background: rgba(250,204,21,0.15); border-color: rgba(250,204,21,0.4); color: #fde68a; }
   .reveal .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: #4f46e5; border-radius: 14px; font-size: 1.3em; font-weight: 800; color: white; margin-bottom: 12px; }
   .reveal .stat-row { display: flex; gap: 20px; justify-content: center; margin: 28px 0; }
   .reveal .stat-box { background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 14px; padding: 20px 28px; text-align: center; }
@@ -32,14 +35,18 @@
   .reveal .stat-box .label { font-size: 0.5em; color: #94a3b8; margin-top: 4px; }
   .reveal .flow-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px 0; }
   .reveal .flow-box { background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 12px; padding: 18px 22px; text-align: center; min-width: 130px; }
+  .reveal .flow-box.done { border-color: #22c55e; }
+  .reveal .flow-box.next { border-color: #eab308; border-style: dashed; }
   .reveal .flow-box .ft { font-size: 0.65em; font-weight: 700; color: #c7d2fe; }
   .reveal .flow-box .fd { font-size: 0.45em; color: #94a3b8; margin-top: 4px; }
+  .reveal .flow-box .status { font-size: 0.4em; margin-top: 6px; font-weight: 600; }
   .reveal .flow-arrow { font-size: 1.2em; color: #4338ca; }
   .reveal .demo-box { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 28px; margin: 20px auto; max-width: 580px; }
-  .reveal .tier-row { display: flex; gap: 14px; margin: 20px 0; }
-  .reveal .tier-card { flex: 1; background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 12px; padding: 16px; text-align: left; }
-  .reveal .tier-card h4 { font-size: 0.6em; color: #a5b4fc; margin: 0 0 6px 0; font-weight: 700; }
-  .reveal .tier-card p { font-size: 0.45em; color: #94a3b8; margin: 0; line-height: 1.5; }
+  .reveal .roadmap-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; text-align: left; }
+  .reveal .roadmap-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+  .reveal .roadmap-text { font-size: 0.6em; }
+  .reveal .roadmap-text strong { color: #e2e8f0; }
+  .reveal .roadmap-text span { color: #94a3b8; }
   .slide-number { color: #475569 !important; }
 </style>
 </head>
@@ -54,77 +61,94 @@
   <p style="font-size:0.85em;">Document digital harassment.<br>Classify under German law. File reports.</p>
   <p class="small" style="margin-top:24px;">
     Every 3 minutes, someone in Germany is harassed online.<br>
-    <span class="red">90% goes unreported</span> — because victims don't know which laws apply,<br>
+    <span class="red">90% goes unreported</span> &mdash; because victims don't know which laws apply,<br>
     evidence disappears, and reporting takes hours.
   </p>
   <p class="small" style="margin-top:16px;">SafeVoice fixes this. <span class="accent">In 30 seconds.</span></p>
 </section>
 
-<!-- SLIDE 2: HOW IT WORKS -->
+<!-- SLIDE 2: WHAT I'VE BUILT SO FAR -->
 <section>
-  <span class="badge">HOW IT WORKS</span>
-  <h2>Paste. Classify. Report.</h2>
+  <span class="badge">PROGRESS</span>
+  <h2>What I've built &amp; what's next</h2>
 
   <div class="flow-row">
-    <div class="flow-box">
-      <div class="ft">PASTE</div>
-      <div class="fd">URL, text, or<br>screenshot</div>
+    <div class="flow-box done">
+      <div class="ft">BACKEND</div>
+      <div class="fd">FastAPI + endpoints<br>+ data models</div>
+      <div class="status green">&#10003; Done</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box done">
+      <div class="ft">DATABASE</div>
+      <div class="fd">Cases, evidence,<br>classifications, laws</div>
+      <div class="status green">&#10003; Done</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box next">
+      <div class="ft">AI CLASSIFIER</div>
+      <div class="fd">Prompt engineering<br>+ structured output</div>
+      <div class="status yellow">&#9654; Next</div>
     </div>
     <div class="flow-arrow">&rarr;</div>
     <div class="flow-box">
-      <div class="ft">CLASSIFY</div>
-      <div class="fd">3-tier AI maps<br>to criminal law</div>
-    </div>
-    <div class="flow-arrow">&rarr;</div>
-    <div class="flow-box">
-      <div class="ft">DOCUMENT</div>
-      <div class="fd">SHA-256 hash<br>UTC timestamp</div>
-    </div>
-    <div class="flow-arrow">&rarr;</div>
-    <div class="flow-box">
-      <div class="ft">REPORT</div>
+      <div class="ft">REPORTS</div>
       <div class="fd">NetzDG, police<br>PDF export</div>
+      <div class="status dim">Planned</div>
     </div>
   </div>
 
-  <div class="demo-box">
-    <p style="font-size:0.6em; color:#94a3b8; margin:0;">Input:</p>
-    <p style="font-size:0.7em; color:#f87171; margin:6px 0; font-style:italic;">"Frauen wie du sollten die Klappe halten. Ich wei&szlig; wo du wohnst."</p>
-    <p style="font-size:0.55em; color:#94a3b8; margin:12px 0 0;">Output:</p>
-    <p style="font-size:0.6em; margin:4px 0;">
-      <span style="background:#991b1b; padding:2px 8px; border-radius:5px; color:#fca5a5; font-weight:700; font-size:0.9em;">CRITICAL</span>
-      &nbsp; Misogyny + Threat &bull; &sect; 185 + &sect; 241 StGB &bull; NetzDG 24h removal
+  <div style="max-width:520px; margin:20px auto;">
+    <div class="roadmap-item">
+      <div class="roadmap-dot" style="background:#22c55e;"></div>
+      <div class="roadmap-text"><strong>Backend + API:</strong> <span>FastAPI with 8 endpoints, Pydantic models, CORS</span></div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot" style="background:#22c55e;"></div>
+      <div class="roadmap-text"><strong>Database schema:</strong> <span>6 tables &mdash; users, cases, evidence, classifications, categories, laws</span></div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot" style="background:#22c55e;"></div>
+      <div class="roadmap-text"><strong>German law mapping:</strong> <span>8 laws (&#167; 185, 186, 241, 126a, 263, 263a, 269 StGB + NetzDG)</span></div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot" style="background:#22c55e;"></div>
+      <div class="roadmap-text"><strong>Evidence integrity:</strong> <span>SHA-256 hashing + UTC timestamps at capture time</span></div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot" style="background:#eab308;"></div>
+      <div class="roadmap-text"><strong>AI classifier (next):</strong> <span>Claude API integration, prompt engineering, structured JSON output</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 3: AI PLAN -->
+<section>
+  <span class="badge badge-yellow">NEXT STEP</span>
+  <h2>AI classification &mdash; the plan</h2>
+
+  <div style="text-align:left; max-width:620px; margin:20px auto; font-size:0.65em; line-height:1.8;">
+    <p><span class="accent">Goal:</span> Victim pastes text &rarr; AI returns severity, offense categories, and applicable German laws as structured JSON</p>
+
+    <p style="margin-top:16px;"><span class="accent">Approach: 3-tier classifier with fallback</span></p>
+    <p style="padding-left:16px;">
+      <strong>Tier 1:</strong> Claude API &mdash; best accuracy, understands context and sarcasm<br>
+      <strong>Tier 2:</strong> HuggingFace transformer &mdash; works offline, no API key<br>
+      <strong>Tier 3:</strong> Regex patterns &mdash; guaranteed fallback, never fails
+    </p>
+
+    <p style="margin-top:16px;"><span class="accent">Prompt engineering plan:</span></p>
+    <p style="padding-left:16px;">
+      1. System prompt with legal expert persona<br>
+      2. Category enums (harassment, threat, misogyny, scam...)<br>
+      3. Law list (&#167; 185, &#167; 241 StGB, NetzDG...)<br>
+      4. JSON schema enforcement for structured output<br>
+      5. Compare techniques: zero-shot vs. system prompt vs. JSON schema vs. few-shot
     </p>
   </div>
 
-  <p class="small">No account needed &bull; No legal knowledge required &bull; Free for victims</p>
-</section>
-
-<!-- SLIDE 3: AI ARCHITECTURE -->
-<section>
-  <span class="badge">AI ENGINEERING</span>
-  <h2>3-tier classifier with fallback</h2>
-  <p class="small" style="margin-bottom:14px;">SafeVoice never returns "analysis unavailable"</p>
-
-  <div class="tier-row">
-    <div class="tier-card" style="border-color:#4f46e5;">
-      <h4>TIER 1: Claude API</h4>
-      <p>Understands context, sarcasm, indirect threats. Maps to specific &sect; StGB paragraphs. Writes bilingual summaries (DE+EN).</p>
-      <p style="margin-top:6px; color:#6366f1;">Structured JSON output via prompt engineering</p>
-    </div>
-    <div class="tier-card">
-      <h4>TIER 2: Transformer</h4>
-      <p>HuggingFace toxic-comment-model. Works offline. Multilingual toxicity scoring. No API key needed.</p>
-    </div>
-    <div class="tier-card">
-      <h4>TIER 3: Regex</h4>
-      <p>Keyword patterns in DE, EN, Turkish, Arabic. Zero dependencies. Instant. Guaranteed fallback.</p>
-    </div>
-  </div>
-
   <p class="small" style="margin-top:14px;">
-    Prompt engineering: system prompt with legal expert persona + category enums + law list + JSON schema enforcement<br>
-    Compared 4 techniques: zero-shot &rarr; system prompt &rarr; JSON schema &rarr; few-shot. <span class="accent">JSON schema won.</span>
+    Working prototype already classifies using regex (Tier 3) &mdash; <span class="accent">let me demo it</span>
   </p>
 </section>
 
@@ -135,47 +159,55 @@
 
   <div style="text-align:left; max-width:600px; margin:20px auto; font-size:0.65em; line-height:1.8;">
     <p><span class="accent">Frontend:</span> React + TypeScript + Vite (PWA, bilingual DE/EN)</p>
-    <p><span class="accent">Backend:</span> Python + FastAPI (8 MVP endpoints, 40+ total)</p>
-    <p><span class="accent">AI Tier 1:</span> Anthropic Claude API (structured JSON output)</p>
-    <p><span class="accent">AI Tier 2:</span> HuggingFace Transformers (offline toxicity model)</p>
-    <p><span class="accent">AI Tier 3:</span> Regex patterns (DE/EN/TR/AR, zero-dep fallback)</p>
-    <p><span class="accent">Evidence:</span> SHA-256 hashing + UTC timestamps + archive.org</p>
-    <p><span class="accent">Reports:</span> ReportLab PDF generation (court-ready A4)</p>
+    <p><span class="accent">Backend:</span> Python + FastAPI (8 MVP endpoints)</p>
+    <p><span class="accent">Database:</span> 6 tables &mdash; users, cases, evidence, classifications, categories, laws</p>
+    <p><span class="accent">Evidence:</span> SHA-256 hashing + UTC timestamps (court-ready)</p>
+    <p><span class="accent">AI (next):</span> Anthropic Claude API &rarr; HuggingFace &rarr; Regex fallback</p>
     <p><span class="accent">Deploy:</span> Docker container (one command starts everything)</p>
   </div>
 
   <div class="stat-row">
     <div class="stat-box">
-      <div class="num">3</div>
-      <div class="label">AI classifier tiers</div>
+      <div class="num">6</div>
+      <div class="label">database tables</div>
     </div>
     <div class="stat-box">
       <div class="num">8</div>
       <div class="label">German laws mapped</div>
     </div>
     <div class="stat-box">
-      <div class="num">4</div>
-      <div class="label">prompt techniques compared</div>
+      <div class="num">8</div>
+      <div class="label">API endpoints</div>
     </div>
   </div>
 </section>
 
-<!-- SLIDE 5: DEMO + CLOSING -->
+<!-- SLIDE 5: DEMO -->
 <section>
   <div class="logo-mark" style="width:64px; height:64px; font-size:1.5em;">SV</div>
   <h1>Live Demo</h1>
-  <p style="font-size:0.8em; color:#c7d2fe; margin-top:12px;">Let me show you.</p>
+  <p style="font-size:0.75em; color:#c7d2fe; margin-top:12px;">Working prototype with regex classifier (Tier 3)</p>
 
-  <div style="text-align:left; max-width:500px; margin:28px auto; font-size:0.6em; line-height:2;">
-    <p><span class="accent">1.</span> Paste harassment text &rarr; instant classification + laws</p>
-    <p><span class="accent">2.</span> Paste Instagram URL &rarr; auto-scrape + classify</p>
-    <p><span class="accent">3.</span> Open a case &rarr; view evidence + export PDF report</p>
-    <p><span class="accent">4.</span> API docs &rarr; http://localhost:8000/docs</p>
+  <div style="text-align:left; max-width:520px; margin:28px auto; font-size:0.6em; line-height:2;">
+    <p><span class="green">&#10003;</span> Paste harassment text &rarr; classification + applicable laws</p>
+    <p><span class="green">&#10003;</span> View case with evidence items + severity badges</p>
+    <p><span class="green">&#10003;</span> Export report (NetzDG / police / general)</p>
+    <p><span class="green">&#10003;</span> API docs at /docs &mdash; try endpoints live</p>
   </div>
 
-  <p class="small" style="margin-top:28px;">
-    github.com/mikelninh/safevoice<br><br>
-    <span class="accent">Digital justice. One report at a time.</span>
+  <div class="demo-box" style="max-width:520px;">
+    <p style="font-size:0.55em; color:#94a3b8; margin:0;">Try this input:</p>
+    <p style="font-size:0.65em; color:#f87171; margin:6px 0; font-style:italic;">"Frauen wie du sollten die Klappe halten. Ich wei&szlig; wo du wohnst."</p>
+    <p style="font-size:0.5em; color:#94a3b8; margin:10px 0 0;">Expected output:</p>
+    <p style="font-size:0.55em; margin:4px 0;">
+      <span style="background:#991b1b; padding:2px 8px; border-radius:5px; color:#fca5a5; font-weight:700;">CRITICAL</span>
+      &nbsp; Misogyny + Threat &bull; &#167; 185 + &#167; 241 StGB
+    </p>
+  </div>
+
+  <p class="small" style="margin-top:20px;">
+    <span class="yellow">Next:</span> Replace regex with Claude API + prompt engineering for much higher accuracy<br><br>
+    github.com/mikelninh/safevoice &bull; <span class="accent">Digital justice. One report at a time.</span>
   </p>
 </section>
 
