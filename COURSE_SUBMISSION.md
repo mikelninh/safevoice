@@ -6,13 +6,13 @@
 
 ## Project Idea Definition
 
-SafeVoice is a digital justice platform that helps victims of online harassment document evidence, get instant legal classification under criminal law, and file court-ready reports — in 30 seconds.
+SafeVoice is a digital justice platform that helps victims of online harassment document evidence, get instant legal classification under German criminal law, and file court-ready reports — in 30 seconds.
 
-It combines a React PWA frontend with a FastAPI backend powered by a 3-tier AI classification system (Claude API → HuggingFace transformer → regex fallback). The classifier maps content to 33 criminal laws across 5 countries (Germany, Austria, Switzerland, UK, France) in 4 languages (German, English, Turkish, Arabic).
+A victim pastes a social media link or text, the AI classifies it (threat? insult? scam?), maps it to the applicable German laws (§ 185, § 241 StGB, NetzDG), and generates a ready-to-file report for police or platforms. No legal knowledge required.
 
-The platform generates NetzDG platform reports, police complaints (Strafanzeige), BaFin scam reports, and court evidence packages (ZIP with PDFs, hash verification, chain of custody). It integrates with HateAid (counseling), Onlinewache (all 16 German states), and provides an institutional Partner API for police, NGOs, and law firms.
+Tech stack: React PWA frontend + FastAPI backend + 3-tier AI classifier (Claude API / HuggingFace transformer / regex fallback). Bilingual (DE/EN). DSGVO-compliant.
 
-Target users: victims of digital harassment, police cybercrime units, NGOs (HateAid, Weisser Ring), law firms, universities, and policy researchers.
+Target users: victims of digital harassment, support organizations (HateAid), researchers.
 
 ---
 
@@ -22,158 +22,75 @@ https://github.com/mikelninh/safevoice
 
 ---
 
-## Deployment
+## Database Schema
 
-[TODO: Deploy to Railway or Hetzner — Docker setup ready]
+6 MVP tables — following the core flow: **user → case → evidence → classification → categories + laws**
+
+```
+users              — who is documenting
+cases              — one incident (groups related evidence)
+evidence_items     — one piece of content (text, URL, screenshot) with SHA-256 hash
+classifications    — AI output: severity, confidence, summary (DE+EN)
+classification_categories — what type: harassment, threat, misogyny, scam (many-to-one)
+classification_laws       — which laws apply: § 185, § 241, NetzDG (many-to-one)
+```
+
+**Why this structure:**
+- A **case** groups related evidence (5 comments from 3 people = 1 case, 5 evidence items)
+- **Evidence** is a fact (this text was posted). **Classification** is an interpretation (the AI thinks it's a threat). Separated so we can re-classify without touching evidence.
+- **Categories** and **laws** are separate tables because one classification can have multiple of each (a comment can be both misogyny AND a threat, triggering both § 185 AND § 241)
+- **content_hash** (SHA-256) proves evidence hasn't been tampered with — required for courts
+- **captured_at** uses UTC with timezone — legal requirement in Germany
 
 ---
 
-## Database Schema
+## Endpoints (MVP)
 
-https://dbdiagram.io/[TODO: create diagram]
-
-**Tables implemented (in-memory MVP, PostgreSQL-ready):**
-
-- **users** — id (UUID), email, display_name, lang, status, created_at, last_login, deleted_at
-- **magic_links** — id, user_id FK, token, email, created_at, expires_at, used
-- **sessions** — id, user_id FK, token, created_at, expires_at, active
-- **evidence_items** — id, url, platform, captured_at (UTC), author_username, content_text, content_hash (SHA-256), classification (embedded), archived_url
-- **cases** — id, title, created_at, updated_at, victim_context, evidence_items[], pattern_flags[], overall_severity, status
-- **classifications** — severity, categories[], confidence, requires_immediate_action, summary (DE+EN), applicable_laws[], consequences (DE+EN)
-- **german_laws** — paragraph, title (DE+EN), description (DE+EN), max_penalty, applies_because (DE+EN)
-- **organizations** — id, name, org_type, contact_email, api_key, bundesland, active
-- **org_members** — id, org_id FK, email, display_name, role (admin/analyst/viewer)
-- **case_assignments** — id, case_id FK, org_id FK, assigned_to, jurisdiction, unit_type, status
-- **sla_records** — id, case_id, evidence_id, platform, reported_at, deadline_24h, deadline_7d, status, removed_at
-- **chain_links** — evidence_id, content_hash, previous_hash, chain_hash, timestamp, sequence_number
-
-**Infrastructure:**
-- Pydantic ORM models in backend/app/models/
-- In-memory stores (production: PostgreSQL via SQLAlchemy)
-- Docker Compose with PostgreSQL 16 configured
-- All timestamps UTC with timezone (legal requirement)
-
-**Endpoints (40+):**
-
-Analysis:
 ```
-POST /analyze/text         — classify raw text
-POST /analyze/ingest       — classify + create evidence item
-POST /analyze/url          — scrape Instagram/X URL + classify + comments
-POST /upload/screenshot    — OCR screenshot + classify (WhatsApp detection)
+GET  /health              — health check + which classifier tier is active
+
+POST /analyze/text        — classify raw text (stateless, good for testing)
+POST /analyze/ingest      — classify + save as evidence with hash + timestamp
+POST /analyze/url         — scrape Instagram/X URL + classify
+
+GET  /cases/              — list all cases
+GET  /cases/{id}          — case detail with all evidence + classifications
+
+GET  /reports/{id}        — text report (general / netzdg / police)
+GET  /reports/{id}/pdf    — downloadable court-ready PDF
 ```
 
-Cases & Reports:
-```
-GET  /cases/               — list cases
-GET  /cases/{id}           — case details
-GET  /reports/{id}         — text report (general/netzdg/police)
-GET  /reports/{id}/pdf     — PDF report
-GET  /reports/{id}/court-package — ZIP evidence package
-GET  /reports/{id}/bafin   — BaFin scam report
-```
+**8 endpoints covering the full flow: analyze → document → report.**
 
-Evidence Chain:
-```
-POST /chain/build          — build cryptographic hash chain
-POST /chain/verify         — verify chain integrity
-GET  /chain/{case_id}      — get/build chain
-```
+The platform also has 30+ additional endpoints (authentication, partner API, dashboard, SLA tracking, legal AI analysis, policy exports) — available for demo on request.
 
-Authentication:
-```
-POST   /auth/login         — request magic link
-POST   /auth/verify        — verify → session token
-GET    /auth/me            — current user
-DELETE /auth/me            — soft delete (7-day recovery)
-DELETE /auth/me/emergency  — instant hard delete, no recovery
-```
-
-Partner API (X-API-Key):
-```
-POST /partners/organizations     — register org
-POST /partners/cases/submit      — submit case via API
-POST /partners/cases/assign      — assign to org
-GET  /partners/cases             — list assigned cases
-```
-
-AI & Legal:
-```
-GET  /legal/{case_id}              — AI legal analysis (Claude API)
-GET  /offenders/check/{username}   — repeat offender check
-GET  /submit/{case_id}/{platform}  — NetzDG submission for Instagram/X/TikTok
-```
-
-Dashboard & SLA:
-```
-GET  /dashboard/stats       — anonymized aggregate stats
-POST /sla/report            — file NetzDG report (starts deadline)
-GET  /sla/dashboard         — compliance dashboard
-```
-
-Policy & Research:
-```
-GET  /policy/evidence-standard   — evidence format JSON schema
-GET  /policy/dsa-report          — EU DSA transparency report
-GET  /policy/research-dataset    — anonymized dataset (zero PII)
-GET  /policy/europol-siena       — Europol cross-border flagging
-```
-
-System:
-```
-GET  /health               — health + classifier tier status
-```
+Full interactive API docs: http://localhost:8000/docs
 
 ---
 
 ## Comparison Table
 
-| Criteria | Claude API (Tier 1) | HuggingFace Transformer (Tier 2) | Regex Rules (Tier 3) |
-|----------|-------------------|--------------------------------|---------------------|
-| **Model** | claude-sonnet-4-20250514 | martin-ha/toxic-comment-model | Custom regex patterns |
-| **Accuracy** | Highest — understands context, sarcasm, legal nuance | Good — multilingual toxicity scoring | Baseline — keyword matching |
-| **Languages** | All (via prompt) | Multilingual (model trained on multiple) | DE, EN, TR, AR (manual patterns) |
-| **Legal mapping** | Yes — cites specific § StGB paragraphs | No — gives toxicity score, we map to categories | Yes — hardcoded law associations |
-| **Latency** | 200-500ms | 100-300ms (first call slower) | <1ms |
-| **Cost** | ~$0.003/call | Free (local inference) | Free |
-| **Offline** | No (API required) | Yes (model cached locally) | Yes |
-| **Context awareness** | Yes — "I'll kill it at the gym" = not a threat | Partial — scores toxicity, no reasoning | No — would match "kill" |
-| **Bilingual output** | Yes — writes DE+EN summaries | No — score only | Yes — hardcoded summaries |
-| **Requires** | ANTHROPIC_API_KEY env var | torch + transformers installed | Nothing |
-| **Best for** | Production with API budget | Offline/low-cost deployment | Guaranteed fallback, never fails |
+### Classifier Tiers
 
-**Prompt Engineering Comparison:**
+| Criteria | Claude API (Tier 1) | Transformer (Tier 2) | Regex (Tier 3) |
+|----------|-------------------|---------------------|----------------|
+| **Model** | claude-sonnet-4-20250514 | martin-ha/toxic-comment-model | Custom patterns |
+| **Accuracy** | Highest — context, sarcasm, legal nuance | Good — toxicity scoring | Baseline — keywords |
+| **Legal mapping** | Yes — cites specific § StGB | No — score only, we map | Yes — hardcoded |
+| **Cost** | ~$0.003/call | Free | Free |
+| **Offline** | No | Yes | Yes |
+| **Latency** | 200-500ms | 100-300ms | <1ms |
+| **Context** | "I'll kill it at the gym" = not a threat | Partial | No |
+| **Best for** | Production | Offline / low-cost | Guaranteed fallback |
 
-| Technique | Prompt | Output quality | Notes |
-|-----------|--------|---------------|-------|
-| Zero-shot | "Classify this: {text}" | Low — generic labels | Missing legal context |
-| System prompt + categories | Full system prompt with Category enum + law list | High — correct legal mapping | 95%+ accuracy on test cases |
-| System prompt + JSON schema | Same + explicit JSON output format | Highest — structured, parseable | Used in production |
-| Few-shot with examples | System prompt + 3 example classifications | Similar to schema approach | Slower, higher token cost |
+### Prompt Engineering Techniques
 
----
-
-## Project Video Recording
-
-[TODO: 3-5 minute recording — follow DEMO.md script]
-
----
-
-## Project Slides
-
-presentation/index.html — 16 reveal.js slides (open in browser)
-
----
-
-## Screenshots
-
-[TODO: capture from running app at localhost:5173]
-- Home page with hero + coverage grid
-- Analyze page with classification result (CRITICAL severity)
-- Case detail with evidence + HateAid referral
-- Dashboard with severity distribution
-- PDF report
-- Court evidence ZIP contents
+| Technique | Output quality | Notes |
+|-----------|---------------|-------|
+| Zero-shot ("Classify this") | Low — generic labels | No legal context |
+| System prompt + categories | High — correct legal mapping | 95%+ accuracy |
+| System prompt + JSON schema | Highest — structured, parseable | **Used in production** |
+| Few-shot with examples | Similar to schema | Slower, higher cost |
 
 ---
 
@@ -181,97 +98,76 @@ presentation/index.html — 16 reveal.js slides (open in browser)
 
 ### Week 1 — Project idea definition
 
-| Date | Category | Objective | Resources | Done | Notes |
-|------|----------|-----------|-----------|------|-------|
-| 09.03.2026 | Project Task | Document project idea | Course examples | x | SafeVoice — digital harassment documentation platform |
-| | Learning Task | GA101.1 - Introduction to Generative AI and NLP | | x | Studied LLM landscape, chose Claude API for legal accuracy |
+| Date | Category | Objective | Done | Notes |
+|------|----------|-----------|------|-------|
+| 09.03.2026 | Project Task | Document project idea | x | SafeVoice — digital harassment documentation |
+| | Learning Task | GA101.1 - Intro to GenAI and NLP | x | Studied LLM landscape, chose Claude for legal accuracy |
 
 ### Week 2-3 — Backend & Database setup
 
-| Date | Category | Objective | Resources | Done | Notes |
-|------|----------|-----------|-----------|------|-------|
-| 16.03.2026 | Learning Task | GA101.2 - Introduction to NLP | | x | Text classification, tokenization, multilingual challenges |
-| | Project Task | Create DB schema (first draft) | dbdiagram.io | x | Evidence, Classification, Case, GermanLaw models |
-| 23.03.2026 | Project Task | Setup GitHub repo + .gitignore + .env | | x | github.com/mikelninh/safevoice |
-| | Project Task | Document needed endpoints | | x | 40+ endpoints across 11 routers |
-| | Project Task | Initial backend setup | FastAPI docs | x | FastAPI + Pydantic models + CORS |
-| | Learning Task | GA101.3 - Large Language Models | | x | Compared GPT-4, Claude, Gemini for legal classification |
-| | Project Task | Initial DB setup | SQLAlchemy docs | x | Pydantic models, in-memory stores (PostgreSQL-ready) |
-| | Project Task | CRUD endpoints | | x | Cases, evidence, reports, analyze |
+| Date | Category | Objective | Done | Notes |
+|------|----------|-----------|------|-------|
+| 16.03.2026 | Learning Task | GA101.2 - Introduction to NLP | x | Text classification, multilingual challenges |
+| | Project Task | Create DB schema | x | 6 tables: users, cases, evidence, classifications, categories, laws |
+| 23.03.2026 | Project Task | Setup GitHub repo + .env | x | github.com/mikelninh/safevoice |
+| | Project Task | Document endpoints | x | 8 MVP endpoints |
+| | Project Task | Backend setup | x | FastAPI + Pydantic models + CORS |
+| | Learning Task | GA101.3 - Large Language Models | x | Compared GPT-4, Claude, Gemini for legal classification |
+| | Project Task | DB setup | x | Pydantic models with in-memory stores (PostgreSQL-ready) |
+| | Project Task | CRUD endpoints | x | /cases, /analyze, /reports |
 
 ### Week 4 — First GenAI request
 
-| Date | Category | Objective | Resources | Done | Notes |
-|------|----------|-----------|-----------|------|-------|
-| 30.03.2026 | Learning Task | Study Anthropic API docs | anthropic.com/docs | x | Messages API, system prompts, structured output |
-| | Learning Task | GA101.4 - Prompt Engineering | | x | System prompts, JSON schema enforcement, temperature |
-| | Project Task | Create classification endpoint with AI | | x | POST /analyze/text → Claude API classifier |
-| | Project Task | Define system + user prompts | Prompt engineering guide | x | Legal expert system prompt with category enum, law list, JSON schema. Victim-centered instruction. |
-| | Project Task | Structured output → store in DB | Anthropic structured output docs | x | JSON response parsed to ClassificationResult Pydantic model |
-| | Project Task | Update DB schema | | x | Added ClassificationResult with severity, categories, laws, summaries |
+| Date | Category | Objective | Done | Notes |
+|------|----------|-----------|------|-------|
+| 30.03.2026 | Learning Task | Study Anthropic API docs | x | Messages API, system prompts, structured output |
+| | Learning Task | GA101.4 - Prompt Engineering | x | System prompts, JSON schema, temperature settings |
+| | Project Task | AI classification endpoint | x | POST /analyze/text → Claude API returns structured classification |
+| | Project Task | Define system + user prompts | x | Legal expert system prompt with category enum + law list + JSON schema |
+| | Project Task | Structured output → Pydantic model | x | Claude returns JSON → parsed to ClassificationResult |
+| | Project Task | Update DB schema | x | Added ClassificationResult with severity, categories, laws |
 
 ### Week 5-8 — GenAI iterations
 
-| Date | Category | Objective | Resources | Done | Notes |
-|------|----------|-----------|-----------|------|-------|
-| 06.04.2026 | Learning Task | GA102.1 - Ethics of Generative AI | | x | Victim-centered AI: never minimize threats, err on side of protection, transparent about limitations, "this is not legal advice" disclaimer |
-| 13.04.2026 | Project Task | Experiment with temperature, max_tokens | Anthropic API ref | x | Temperature 0 for legal classification (deterministic), max_tokens 1024 for classification, 2048 for legal analysis |
-| 20.04.2026 | Project Task | Try different prompting techniques | promptingguide.ai | x | Zero-shot → system prompt + categories → JSON schema enforcement. Schema approach won (parseable, consistent) |
-| 27.04.2026 | Project Task | Multiple text generation endpoints | | x | /analyze/text (classification), /legal/{id} (deep analysis), /ai dynamic prompts |
-| | Project Task | 2nd classifier client (transformer) | HuggingFace docs | x | Tier 2: martin-ha/toxic-comment-model via transformers pipeline. Offline fallback when API unavailable. |
-| | Project Task | 3rd classifier client (regex) | | x | Tier 3: Regex patterns in DE/EN/Turkish/Arabic. Zero-dependency guaranteed fallback. |
-| | Assignment | Comparison table | | x | See comparison table above — 3 classifier tiers + 4 prompt techniques compared |
+| Date | Category | Objective | Done | Notes |
+|------|----------|-----------|------|-------|
+| 06.04.2026 | Learning Task | GA102.1 - Ethics of GenAI | x | Victim-centered AI: never minimize threats, transparent limitations, "not legal advice" |
+| 13.04.2026 | Project Task | Experiment with temperature, max_tokens | x | Temperature 0 for legal classification (deterministic) |
+| 20.04.2026 | Project Task | Try prompting techniques | x | Zero-shot → system prompt → JSON schema. Schema approach won. |
+| 27.04.2026 | Project Task | 2nd classifier (transformer) | x | HuggingFace toxic-comment-model. Offline fallback. |
+| | Project Task | 3rd classifier (regex) | x | DE/EN/Turkish/Arabic patterns. Zero-dep fallback. |
+| | Assignment | Comparison table | x | 3 tiers + 4 prompt techniques compared |
 
 ### Week 9-10 — RAG & Extras
 
-| Date | Category | Objective | Resources | Done | Notes |
-|------|----------|-----------|-----------|------|-------|
-| 04.05.2026 | Learning Task | GA102.2 - Advanced GenAI Engineering | | x | RAG architecture, vector embeddings, context injection |
-| 11.05.2026 | Learning Task | Study RAG | LangChain RAG tutorial | x | Applied RAG pattern: case evidence as context → Claude API for legal reasoning |
-| | Project Task | RAG implementation | | x | Legal AI analysis: retrieves all evidence items for a case, structures as context, sends to Claude with legal expert system prompt. Essentially retrieval-augmented generation where the "documents" are case evidence items. |
-| | Project Task | Context-augmented generation | | x | /legal/{case_id} retrieves evidence → builds structured prompt → Claude generates: legal assessment (DE+EN), strongest charges, recommended actions, risk assessment, evidence gaps |
-| | Project Task | Frontend | React + TypeScript + Vite | x | 8 pages, 15 components, bilingual (DE/EN), PWA with share target |
-| | Project Task | Deployment prep | Docker docs | x | Dockerfile (multi-stage), docker-compose.yml (app + PostgreSQL), production-ready |
+| Date | Category | Objective | Done | Notes |
+|------|----------|-----------|------|-------|
+| 04.05.2026 | Learning Task | GA102.2 - Advanced GenAI Engineering | x | RAG architecture, context injection |
+| 11.05.2026 | Learning Task | Study RAG | x | Applied RAG pattern: case evidence as retrieval context |
+| | Project Task | RAG implementation | x | /legal/{case_id}: retrieves evidence → structures as context → Claude generates legal analysis with recommendations |
+| | Project Task | Frontend | x | React PWA, 8 pages, bilingual |
+| | Project Task | Deployment prep | x | Dockerfile + docker-compose ready |
 
 ### Week 11-12 — Finalizing & Presentation
 
-| Date | Category | Objective | Resources | Done | Notes |
-|------|----------|-----------|-----------|------|-------|
-| 18.05.2026 | Project Task | Clean up repo | | x | 452 tests, all passing, production-hardened |
-| 25.05.2026 | Project Task | README | | x | Comprehensive README with architecture, 40+ endpoints, test coverage |
-| | Project Task | Slides | reveal.js | x | 16-slide presentation (presentation/index.html) |
-| | Project Task | Video | | | [TODO: record 3-5 min demo following DEMO.md] |
-| 29.05.2026 | Presentation | Present! | | | |
+| Date | Category | Objective | Done | Notes |
+|------|----------|-----------|------|-------|
+| 18.05.2026 | Project Task | Clean up repo | x | 452 tests passing |
+| 25.05.2026 | Project Task | README | x | Full architecture + endpoints |
+| | Project Task | Slides | x | reveal.js presentation |
+| | Project Task | Video | | [TODO: 3-5 min demo] |
+| 29.05.2026 | Presentation | Present! | | |
 
 ---
 
-## How SafeVoice maps to course learning objectives
+## How SafeVoice maps to course topics
 
-| Course Topic | How SafeVoice implements it |
-|-------------|---------------------------|
-| **Fundamentals of AI/ML/LLMs** | 3-tier classifier: Claude API (LLM), HuggingFace transformer (ML), regex (rule-based). Understanding when to use each. |
-| **NLP: Data Preprocessing** | Text normalization (case folding, whitespace), multilingual handling (DE/EN/TR/AR), OCR text extraction from screenshots |
-| **NLP: Data Cleaning** | OCR output cleaning (collapse newlines, strip artifacts), HTML entity unescaping in scraped content, input sanitization (XSS, injection) |
-| **API Integration with AI models** | Anthropic Claude API (Messages API), HuggingFace Transformers pipeline, structured JSON output parsing |
-| **Structured Output** | Claude returns JSON matching ClassificationResult schema: severity, categories[], applicable_laws[], summaries. Parsed to Pydantic models. |
-| **Prompt Engineering** | System prompt with legal expert persona, category enums, law paragraphs, victim-centered instructions. JSON schema enforcement. Iterative refinement across 4 techniques. |
-| **GenAI Ethics** | Victim-centered design, never minimize threats, transparent limitations, "not legal advice" disclaimer, emergency delete, no tracking, DSGVO compliance, anonymized research data |
-| **RAG (Retrieval Augmented Generation)** | Legal AI analysis: retrieves case evidence items → structures as context → sends to Claude for deep legal reasoning. Policy export: retrieves aggregate case data → generates DSA reports, research datasets. |
-
----
-
-## Key technical achievements
-
-| Metric | Value |
-|--------|-------|
-| Backend tests | 452 |
-| Features shipped | 41 |
-| API endpoints | 40+ |
-| AI classifier tiers | 3 (Claude API → transformer → regex) |
-| Languages classified | 4 (DE, EN, TR, AR) |
-| Criminal laws mapped | 33 across 5 countries |
-| Report formats | 6 (general, NetzDG, police, BaFin, PDF, ZIP) |
-| Frontend pages | 8 |
-| React components | 15 |
-| Prompt techniques compared | 4 (zero-shot, system prompt, JSON schema, few-shot) |
-| Production features | Docker, rate limiting, security headers, CORS, legal pages |
+| Course Topic | SafeVoice implementation |
+|-------------|--------------------------|
+| **AI/ML/LLM fundamentals** | 3-tier classifier: LLM (Claude), ML (transformer), rules (regex) |
+| **NLP preprocessing** | Multilingual text normalization, OCR extraction, HTML unescaping |
+| **API integration** | Anthropic Messages API, HuggingFace pipeline, structured JSON parsing |
+| **Structured output** | Claude → JSON → ClassificationResult Pydantic model |
+| **Prompt engineering** | Legal expert system prompt, JSON schema enforcement, 4 techniques compared |
+| **GenAI ethics** | Victim-centered design, never minimize threats, DSGVO, emergency delete |
+| **RAG** | Evidence retrieval → context injection → Claude legal analysis |

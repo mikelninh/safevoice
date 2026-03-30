@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeVoice — MVP Presentation</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+<style>
+  :root {
+    --r-background-color: #0f172a;
+    --r-main-color: #e2e8f0;
+    --r-heading-color: #fff;
+    --r-link-color: #818cf8;
+    --r-selection-background-color: #4338ca;
+    --r-heading-font: system-ui, -apple-system, sans-serif;
+    --r-main-font: system-ui, -apple-system, sans-serif;
+  }
+  .reveal { font-size: 32px; }
+  .reveal h1 { font-size: 2.2em; font-weight: 800; }
+  .reveal h2 { font-size: 1.5em; font-weight: 700; color: #c7d2fe; }
+  .reveal .small { font-size: 0.6em; color: #94a3b8; }
+  .reveal .accent { color: #818cf8; }
+  .reveal .red { color: #f87171; }
+  .reveal .green { color: #4ade80; }
+  .reveal .dim { color: #64748b; }
+  .reveal .badge { display: inline-block; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 999px; padding: 4px 16px; font-size: 0.5em; color: #a5b4fc; margin-bottom: 12px; }
+  .reveal .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: #4f46e5; border-radius: 14px; font-size: 1.3em; font-weight: 800; color: white; margin-bottom: 12px; }
+  .reveal .stat-row { display: flex; gap: 20px; justify-content: center; margin: 28px 0; }
+  .reveal .stat-box { background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 14px; padding: 20px 28px; text-align: center; }
+  .reveal .stat-box .num { font-size: 2em; font-weight: 800; color: #818cf8; }
+  .reveal .stat-box .label { font-size: 0.5em; color: #94a3b8; margin-top: 4px; }
+  .reveal .flow-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px 0; }
+  .reveal .flow-box { background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 12px; padding: 18px 22px; text-align: center; min-width: 130px; }
+  .reveal .flow-box .ft { font-size: 0.65em; font-weight: 700; color: #c7d2fe; }
+  .reveal .flow-box .fd { font-size: 0.45em; color: #94a3b8; margin-top: 4px; }
+  .reveal .flow-arrow { font-size: 1.2em; color: #4338ca; }
+  .reveal .demo-box { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 28px; margin: 20px auto; max-width: 580px; }
+  .reveal .tier-row { display: flex; gap: 14px; margin: 20px 0; }
+  .reveal .tier-card { flex: 1; background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 12px; padding: 16px; text-align: left; }
+  .reveal .tier-card h4 { font-size: 0.6em; color: #a5b4fc; margin: 0 0 6px 0; font-weight: 700; }
+  .reveal .tier-card p { font-size: 0.45em; color: #94a3b8; margin: 0; line-height: 1.5; }
+  .slide-number { color: #475569 !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- SLIDE 1: TITLE + PROBLEM -->
+<section>
+  <div class="logo-mark">SV</div>
+  <h1>SafeVoice</h1>
+  <p style="font-size:0.85em;">Document digital harassment.<br>Classify under German law. File reports.</p>
+  <p class="small" style="margin-top:24px;">
+    Every 3 minutes, someone in Germany is harassed online.<br>
+    <span class="red">90% goes unreported</span> — because victims don't know which laws apply,<br>
+    evidence disappears, and reporting takes hours.
+  </p>
+  <p class="small" style="margin-top:16px;">SafeVoice fixes this. <span class="accent">In 30 seconds.</span></p>
+</section>
+
+<!-- SLIDE 2: HOW IT WORKS -->
+<section>
+  <span class="badge">HOW IT WORKS</span>
+  <h2>Paste. Classify. Report.</h2>
+
+  <div class="flow-row">
+    <div class="flow-box">
+      <div class="ft">PASTE</div>
+      <div class="fd">URL, text, or<br>screenshot</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">
+      <div class="ft">CLASSIFY</div>
+      <div class="fd">3-tier AI maps<br>to criminal law</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">
+      <div class="ft">DOCUMENT</div>
+      <div class="fd">SHA-256 hash<br>UTC timestamp</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">
+      <div class="ft">REPORT</div>
+      <div class="fd">NetzDG, police<br>PDF export</div>
+    </div>
+  </div>
+
+  <div class="demo-box">
+    <p style="font-size:0.6em; color:#94a3b8; margin:0;">Input:</p>
+    <p style="font-size:0.7em; color:#f87171; margin:6px 0; font-style:italic;">"Frauen wie du sollten die Klappe halten. Ich wei&szlig; wo du wohnst."</p>
+    <p style="font-size:0.55em; color:#94a3b8; margin:12px 0 0;">Output:</p>
+    <p style="font-size:0.6em; margin:4px 0;">
+      <span style="background:#991b1b; padding:2px 8px; border-radius:5px; color:#fca5a5; font-weight:700; font-size:0.9em;">CRITICAL</span>
+      &nbsp; Misogyny + Threat &bull; &sect; 185 + &sect; 241 StGB &bull; NetzDG 24h removal
+    </p>
+  </div>
+
+  <p class="small">No account needed &bull; No legal knowledge required &bull; Free for victims</p>
+</section>
+
+<!-- SLIDE 3: AI ARCHITECTURE -->
+<section>
+  <span class="badge">AI ENGINEERING</span>
+  <h2>3-tier classifier with fallback</h2>
+  <p class="small" style="margin-bottom:14px;">SafeVoice never returns "analysis unavailable"</p>
+
+  <div class="tier-row">
+    <div class="tier-card" style="border-color:#4f46e5;">
+      <h4>TIER 1: Claude API</h4>
+      <p>Understands context, sarcasm, indirect threats. Maps to specific &sect; StGB paragraphs. Writes bilingual summaries (DE+EN).</p>
+      <p style="margin-top:6px; color:#6366f1;">Structured JSON output via prompt engineering</p>
+    </div>
+    <div class="tier-card">
+      <h4>TIER 2: Transformer</h4>
+      <p>HuggingFace toxic-comment-model. Works offline. Multilingual toxicity scoring. No API key needed.</p>
+    </div>
+    <div class="tier-card">
+      <h4>TIER 3: Regex</h4>
+      <p>Keyword patterns in DE, EN, Turkish, Arabic. Zero dependencies. Instant. Guaranteed fallback.</p>
+    </div>
+  </div>
+
+  <p class="small" style="margin-top:14px;">
+    Prompt engineering: system prompt with legal expert persona + category enums + law list + JSON schema enforcement<br>
+    Compared 4 techniques: zero-shot &rarr; system prompt &rarr; JSON schema &rarr; few-shot. <span class="accent">JSON schema won.</span>
+  </p>
+</section>
+
+<!-- SLIDE 4: TECH STACK -->
+<section>
+  <span class="badge">TECH STACK</span>
+  <h2>Architecture</h2>
+
+  <div style="text-align:left; max-width:600px; margin:20px auto; font-size:0.65em; line-height:1.8;">
+    <p><span class="accent">Frontend:</span> React + TypeScript + Vite (PWA, bilingual DE/EN)</p>
+    <p><span class="accent">Backend:</span> Python + FastAPI (8 MVP endpoints, 40+ total)</p>
+    <p><span class="accent">AI Tier 1:</span> Anthropic Claude API (structured JSON output)</p>
+    <p><span class="accent">AI Tier 2:</span> HuggingFace Transformers (offline toxicity model)</p>
+    <p><span class="accent">AI Tier 3:</span> Regex patterns (DE/EN/TR/AR, zero-dep fallback)</p>
+    <p><span class="accent">Evidence:</span> SHA-256 hashing + UTC timestamps + archive.org</p>
+    <p><span class="accent">Reports:</span> ReportLab PDF generation (court-ready A4)</p>
+    <p><span class="accent">Deploy:</span> Docker multi-stage build + PostgreSQL</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="num">452</div>
+      <div class="label">tests passing</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">8</div>
+      <div class="label">German laws mapped</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">4</div>
+      <div class="label">classifier languages</div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 5: DEMO + CLOSING -->
+<section>
+  <div class="logo-mark" style="width:64px; height:64px; font-size:1.5em;">SV</div>
+  <h1>Live Demo</h1>
+  <p style="font-size:0.8em; color:#c7d2fe; margin-top:12px;">Let me show you.</p>
+
+  <div style="text-align:left; max-width:500px; margin:28px auto; font-size:0.6em; line-height:2;">
+    <p><span class="accent">1.</span> Paste harassment text &rarr; instant classification + laws</p>
+    <p><span class="accent">2.</span> Paste Instagram URL &rarr; auto-scrape + classify</p>
+    <p><span class="accent">3.</span> Open a case &rarr; view evidence + export PDF report</p>
+    <p><span class="accent">4.</span> API docs &rarr; http://localhost:8000/docs</p>
+  </div>
+
+  <p class="small" style="margin-top:28px;">
+    github.com/mikelninh/safevoice<br><br>
+    <span class="accent">Digital justice. One report at a time.</span>
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: true,
+  transition: 'slide',
+  center: true,
+  width: 1200,
+  height: 700,
+  margin: 0.08,
+});
+</script>
+</body>
+</html>

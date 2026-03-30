@@ -1,0 +1,52 @@
+// SafeVoice MVP — Database Schema
+// Paste into dbdiagram.io
+
+Table users {
+  id varchar [pk]
+  email varchar [unique]
+  lang varchar [default: 'de']
+  created_at timestamp [not null]
+}
+
+Table cases {
+  id varchar [pk]
+  user_id varchar [ref: > users.id]
+  title varchar [not null]
+  victim_context text
+  overall_severity varchar [note: 'low | medium | high | critical']
+  status varchar [default: 'open']
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table evidence_items {
+  id varchar [pk]
+  case_id varchar [ref: > cases.id]
+  url varchar
+  platform varchar [default: 'instagram']
+  author_username varchar
+  content_text text [not null]
+  content_hash varchar [not null, note: 'SHA-256']
+  captured_at timestamp [not null, note: 'UTC']
+  archived_url varchar
+}
+
+Table classifications {
+  id varchar [pk]
+  evidence_id varchar [unique, ref: - evidence_items.id]
+  severity varchar [not null]
+  confidence float
+  requires_immediate_action boolean
+  summary text
+  summary_de text
+}
+
+Table classification_categories {
+  classification_id varchar [ref: > classifications.id]
+  category varchar [not null, note: 'harassment | threat | misogyny | scam | ...']
+}
+
+Table classification_laws {
+  classification_id varchar [ref: > classifications.id]
+  law_paragraph varchar [not null, note: '§ 185 StGB, NetzDG § 3, ...']
+}
