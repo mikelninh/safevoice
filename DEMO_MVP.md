@@ -20,13 +20,13 @@ Go to **Neuer Fall / New Case** (http://localhost:5173/analyze)
 
 Paste:
 ```
-I will kill you and your entire family. You are dead.
+Women like you should shut up and stay in the kitchen. I know where you live. Watch yourself.
 ```
 
 Click **Analyze**. Show the result:
 - Severity badge: CRITICAL (red)
-- Categories: Death Threat + Threat
-- Laws: § 241 StGB, § 126a StGB, NetzDG § 3
+- Categories: Misogyny + Threat
+- Laws: § 185 StGB, § 241 StGB, NetzDG § 3
 - Bilingual summary (DE + EN)
 
 **Say:** "From paste to legal classification in 3 seconds. No legal knowledge required."
