@@ -1,49 +1,74 @@
 // SafeVoice — Database Schema
-// Each field labeled: USER INPUT / AI POPULATED / system generated
 // Paste into dbdiagram.io
 
 Table users {
-  id varchar [pk, note: 'system generated (UUID)']
+  id varchar [pk, note: 'system generated']
   email varchar [unique, not null, note: 'USER INPUT']
-  display_name varchar [note: 'USER INPUT (optional)']
-  lang varchar [default: 'de', note: 'USER INPUT (de/en)']
+  display_name varchar [note: 'USER INPUT']
+  lang varchar [default: 'de', note: 'USER INPUT']
   status varchar [default: 'active', note: 'system generated']
   created_at timestamp [not null, note: 'system generated']
 }
 
 Table cases {
-  id varchar [pk, note: 'system generated (UUID)']
-  user_id varchar [ref: > users.id, note: 'system generated (from session)']
-  title varchar [not null, note: 'system generated (from categories)']
-  victim_context text [note: 'USER INPUT — what happened?']
-  overall_severity varchar [note: 'AI POPULATED — highest across all evidence']
-  status varchar [default: 'open', note: 'USER INPUT (open/reported/resolved)']
+  id varchar [pk, note: 'system generated']
+  user_id varchar [ref: > users.id]
+  title varchar [not null, note: 'system generated']
+  victim_context text [note: 'USER INPUT']
+  overall_severity varchar [note: 'AI POPULATED']
+  status varchar [default: 'open', note: 'USER INPUT']
   created_at timestamp [not null, note: 'system generated']
   updated_at timestamp [not null, note: 'system generated']
 }
 
 Table evidence_items {
-  id varchar [pk, note: 'system generated (UUID)']
-  case_id varchar [ref: > cases.id, note: 'system generated']
-  content_text text [not null, note: 'USER INPUT or SCRAPED or OCR']
-  url varchar [note: 'USER INPUT (optional)']
-  platform varchar [default: 'instagram', note: 'system detected from URL']
+  id varchar [pk, note: 'system generated']
+  case_id varchar [ref: > cases.id]
+  content_text text [not null, note: 'USER INPUT or SCRAPED']
+  url varchar [note: 'USER INPUT']
+  platform varchar [note: 'system detected']
   author_username varchar [note: 'USER INPUT or SCRAPED']
-  content_hash varchar [not null, note: 'system generated — SHA-256']
-  captured_at timestamp [not null, note: 'system generated — UTC']
-  archived_url varchar [note: 'system generated — archive.org']
+  content_hash varchar [not null, note: 'system generated SHA-256']
+  captured_at timestamp [not null, note: 'system generated UTC']
 }
 
 Table classifications {
   id varchar [pk, note: 'system generated']
   evidence_id varchar [unique, ref: - evidence_items.id]
-  severity varchar [not null, note: 'AI POPULATED — low/medium/high/critical']
-  confidence float [note: 'AI POPULATED — 0.0 to 1.0']
+  severity varchar [not null, note: 'AI POPULATED']
+  confidence float [note: 'AI POPULATED']
   requires_immediate_action boolean [note: 'AI POPULATED']
-  categories varchar [not null, note: 'AI POPULATED — JSON array: ["threat","misogyny"]']
-  applicable_laws varchar [not null, note: 'AI POPULATED — JSON array: ["§ 241 StGB","NetzDG § 3"]']
-  summary text [note: 'AI POPULATED — English']
-  summary_de text [note: 'AI POPULATED — German']
-  potential_consequences text [note: 'AI POPULATED — English']
-  potential_consequences_de text [note: 'AI POPULATED — German']
+  summary text [note: 'AI POPULATED English']
+  summary_de text [note: 'AI POPULATED German']
+}
+
+Table categories {
+  id varchar [pk]
+  name varchar [not null, note: 'harassment, threat, misogyny, scam...']
+}
+
+Table laws {
+  id varchar [pk]
+  paragraph varchar [not null, note: '§ 185 StGB, § 241 StGB...']
+  title varchar [not null]
+  title_de varchar [not null]
+  max_penalty varchar [not null]
+}
+
+Table classification_categories {
+  classification_id varchar [ref: > classifications.id]
+  category_id varchar [ref: > categories.id]
+
+  indexes {
+    (classification_id, category_id) [pk]
+  }
+}
+
+Table classification_laws {
+  classification_id varchar [ref: > classifications.id]
+  law_id varchar [ref: > laws.id]
+
+  indexes {
+    (classification_id, law_id) [pk]
+  }
 }
