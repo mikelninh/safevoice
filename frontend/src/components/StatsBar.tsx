@@ -19,8 +19,8 @@ export default function StatsBar({ lang }: Props) {
       label: isDE ? 'Von Text zur Anzeige' : 'From text to report',
     },
     {
-      value: '4',
-      label: isDE ? 'Sprachen erkannt' : 'Languages detected',
+      value: 'DE/EN',
+      label: isDE ? 'Zweisprachig' : 'Bilingual',
     },
     {
       value: '€0',
