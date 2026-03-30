@@ -8,6 +8,7 @@ import CategoryTag from '../components/CategoryTag'
 import LawCard from '../components/LawCard'
 import AnalysisProgress from '../components/AnalysisProgress'
 import HateAidReferral from '../components/HateAidReferral'
+import LegalChat from '../components/LegalChat'
 import { createCase } from '../services/storage'
 
 interface Props { lang: Lang }
@@ -358,6 +359,9 @@ export default function Analyze({ lang }: Props) {
 
           {/* HateAid referral for severe cases */}
           <HateAidReferral lang={lang} severity={c.severity} />
+
+          {/* Legal follow-up chat */}
+          <LegalChat lang={lang} originalText={result.content_text} classification={c} />
 
           {/* Save to case */}
           <button
