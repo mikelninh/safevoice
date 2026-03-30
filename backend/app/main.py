@@ -72,8 +72,9 @@ app = FastAPI(
 
 app.add_middleware(SecurityHeadersMiddleware)
 
-_rate_limit = int(os.environ.get("RATE_LIMIT_RPM", "10000" if os.environ.get("TESTING") else "120"))
-app.add_middleware(RateLimitMiddleware, max_requests=_rate_limit, window_seconds=60)
+if not os.environ.get("TESTING"):
+    _rate_limit = int(os.environ.get("RATE_LIMIT_RPM", "120"))
+    app.add_middleware(RateLimitMiddleware, max_requests=_rate_limit, window_seconds=60)
 
 app.add_middleware(
     CORSMiddleware,
@@ -100,7 +101,7 @@ app.include_router(policy.router)
 def health():
     from app.services.classifier_llm import is_available as llm_ok
     from app.services.classifier_transformer import is_available as transformer_ok
-    tier = "claude_api" if llm_ok() else ("transformer" if transformer_ok() else "regex")
+    tier = "openai" if llm_ok() else ("transformer" if transformer_ok() else "regex")
     return {"status": "ok", "service": "SafeVoice API", "classifier_tier": tier}
 
 

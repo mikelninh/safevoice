@@ -1,5 +1,5 @@
 """
-LLM-based classifier using Claude API.
+LLM-based classifier using OpenAI API.
 Primary classifier — most accurate, understands context and nuance.
 Falls back gracefully if API key is missing or call fails.
 """
@@ -7,7 +7,13 @@ Falls back gracefully if API key is missing or call fails.
 import json
 import os
 import logging
-from anthropic import Anthropic
+
+try:
+    from openai import OpenAI
+    _openai_installed = True
+except ImportError:
+    _openai_installed = False
+
 from app.models.evidence import (
     ClassificationResult, Severity, Category, GermanLaw
 )
@@ -75,35 +81,35 @@ Never minimise threats. A threat is a threat even when phrased indirectly."""
 
 
 def is_available() -> bool:
-    """Check if Claude API is configured."""
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+    """Check if OpenAI API is configured and installed."""
+    return _openai_installed and bool(os.environ.get("OPENAI_API_KEY"))
 
 
 def classify_with_llm(text: str) -> ClassificationResult | None:
     """
-    Classify text using Claude API.
+    Classify text using OpenAI API.
     Returns None if API is unavailable or call fails.
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not _openai_installed:
+        return None
+    api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        logger.info("ANTHROPIC_API_KEY not set, skipping LLM classifier")
+        logger.info("OPENAI_API_KEY not set, skipping LLM classifier")
         return None
 
     try:
-        client = Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0,
             max_tokens=1024,
-            system=SYSTEM_PROMPT,
             messages=[
-                {
-                    "role": "user",
-                    "content": f"Classify this content:\n\n{text}"
-                }
-            ]
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"Classify this content:\n\n{text}"},
+            ],
         )
 
-        raw = message.content[0].text.strip()
+        raw = response.choices[0].message.content.strip()
         # Handle markdown code blocks
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1]
