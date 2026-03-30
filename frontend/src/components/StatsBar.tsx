@@ -1,6 +1,6 @@
 /**
- * StatsBar — "you are not alone" trust signal on home page.
- * Uses realistic mock stats. Phase 2: replace with live aggregated counts.
+ * StatsBar — trust signals on home page.
+ * Honest stats about what SafeVoice does, not inflated numbers.
  */
 import type { Lang } from '../i18n'
 
@@ -11,16 +11,16 @@ export default function StatsBar({ lang }: Props) {
 
   const stats = [
     {
-      value: '2.847',
-      label: isDE ? 'Fälle dokumentiert' : 'Cases documented',
+      value: '8',
+      label: isDE ? 'Deutsche Gesetze abgedeckt' : 'German laws covered',
     },
     {
-      value: '94%',
-      label: isDE ? 'Erhalten NetzDG-Antwort' : 'Receive NetzDG response',
+      value: '30s',
+      label: isDE ? 'Von Text zur Anzeige' : 'From text to report',
     },
     {
-      value: '48h',
-      label: isDE ? 'Ø Zeit bis Löschung' : 'Avg. time to removal',
+      value: '4',
+      label: isDE ? 'Sprachen erkannt' : 'Languages detected',
     },
     {
       value: '€0',

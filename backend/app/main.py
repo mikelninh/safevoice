@@ -1,6 +1,9 @@
 import os
 import time
 from collections import defaultdict
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
