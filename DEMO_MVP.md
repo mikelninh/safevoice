@@ -1,4 +1,4 @@
-# SafeVoice — MVP Demo Script (3 minutes)
+# SafeVoice — Demo Script (3 minutes)
 
 ## Setup
 
@@ -14,65 +14,61 @@ Open http://localhost:5173
 
 ---
 
-## Demo (3 steps)
+## Step 1: Classify text (1 min)
 
-### Step 1: Classify text (1 min)
-
-Go to http://localhost:5173/analyze
+Go to **Neuer Fall / New Case** (http://localhost:5173/analyze)
 
 Paste:
 ```
 Frauen wie du sollten die Klappe halten. Ich weiß wo du wohnst.
 ```
 
-Click "Analysieren". Show:
-- CRITICAL severity badge (red)
+Click **Analysieren**. Show the result:
+- Severity badge (HIGH/CRITICAL)
 - Categories: Misogyny + Threat
 - Laws: § 185 StGB, § 241 StGB, NetzDG § 3
-- "Immediate action required" banner
-- HateAid referral with phone number
+- Bilingual summary (DE + EN)
 
-**Say:** "From paste to legal classification in 3 seconds. No legal knowledge needed."
+**Say:** "From paste to legal classification in 3 seconds. No legal knowledge required."
 
-### Step 2: View a case (1 min)
+---
 
-Go to http://localhost:5173/cases
+## Step 2: View a case (1 min)
 
-Open "Death threat following opinion piece". Show:
+Go to **Meine Fälle** (http://localhost:5173/cases)
+
+Open **"Death threat following opinion piece"**. Show:
 - Evidence items with severity badges
-- Escalation pattern flag
-- Onlinewache panel (select Berlin)
-- Click "Bericht exportieren" → show NetzDG tab
+- Escalation pattern detected
+- Click **Bericht exportieren** → NetzDG tab → ready-to-submit text
 
-**Say:** "Everything a lawyer or police officer needs, structured and ready to file."
+**Say:** "Everything structured for police or platforms. One click."
 
-### Step 3: API docs (1 min)
+---
+
+## Step 3: API docs (1 min)
 
 Open http://localhost:8000/docs
 
-Show the endpoint list. Click on POST /analyze/text, hit "Try it out":
+Show the endpoints. Click **POST /analyze/text** → Try it out:
 ```json
 {"text": "I will kill you and your family"}
 ```
 
-Show the structured JSON response: severity, categories, laws, summaries in DE+EN.
+Show the JSON response: severity, categories, laws, summaries.
 
-**Say:** "The same AI classification is available as an API for partners — police, NGOs, law firms."
+**Say:** "Structured JSON output from the AI — this is the prompt engineering part."
 
 ---
 
 ## If asked about the AI
 
-- 3-tier classifier: Claude API (best accuracy) → transformer (offline) → regex (guaranteed fallback)
-- System prompt engineered with legal expert persona + JSON schema enforcement
-- Compared 4 prompting techniques — JSON schema approach won for consistency
-- Supports German, English, Turkish, Arabic
-- Never returns "analysis unavailable" — always falls back
+"I use a 3-tier classifier. Tier 1 is OpenAI with a system prompt that acts as a German legal expert. I enforce structured JSON output so the response is always parseable. Tier 2 is a HuggingFace transformer for offline use. Tier 3 is regex as a guaranteed fallback — the app never fails to classify."
 
-## If asked about ethics
+## If asked about the database
 
-- Victim-centered: never minimizes threats, errs on side of protection
-- "Not legal advice" disclaimer on every output
-- Emergency delete: one tap, everything gone, no recovery — for victims in danger
-- No tracking, no cookies, data stays on device
-- Research API strips all PII before sharing
+"6 tables. Users, cases, evidence items, classifications, categories, and laws. Evidence is separate from classification because evidence is a fact, classification is an AI interpretation — I can re-classify without touching the original evidence."
+
+## If asked about evidence integrity
+
+"SHA-256 hash at capture time. If anyone changes the text later, the hash won't match. UTC timestamps with timezone — legally required in Germany for court evidence."

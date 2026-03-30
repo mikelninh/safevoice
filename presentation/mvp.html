@@ -117,7 +117,7 @@
     </div>
     <div class="roadmap-item">
       <div class="roadmap-dot" style="background:#eab308;"></div>
-      <div class="roadmap-text"><strong>AI classifier (next):</strong> <span>Claude API integration, prompt engineering, structured JSON output</span></div>
+      <div class="roadmap-text"><strong>AI classifier (next):</strong> <span>OpenAI GPT-4o-mini integration, prompt engineering, structured JSON output</span></div>
     </div>
   </div>
 </section>
@@ -132,7 +132,7 @@
 
     <p style="margin-top:16px;"><span class="accent">Approach: 3-tier classifier with fallback</span></p>
     <p style="padding-left:16px;">
-      <strong>Tier 1:</strong> Claude API &mdash; best accuracy, understands context and sarcasm<br>
+      <strong>Tier 1:</strong> OpenAI GPT-4o-mini &mdash; best accuracy, understands context and sarcasm<br>
       <strong>Tier 2:</strong> HuggingFace transformer &mdash; works offline, no API key<br>
       <strong>Tier 3:</strong> Regex patterns &mdash; guaranteed fallback, never fails
     </p>
@@ -162,7 +162,7 @@
     <p><span class="accent">Backend:</span> Python + FastAPI (8 MVP endpoints)</p>
     <p><span class="accent">Database:</span> 6 tables &mdash; users, cases, evidence, classifications, categories, laws</p>
     <p><span class="accent">Evidence:</span> SHA-256 hashing + UTC timestamps (court-ready)</p>
-    <p><span class="accent">AI (next):</span> Anthropic Claude API &rarr; HuggingFace &rarr; Regex fallback</p>
+    <p><span class="accent">AI (next):</span> Anthropic OpenAI GPT-4o-mini &rarr; HuggingFace &rarr; Regex fallback</p>
     <p><span class="accent">Deploy:</span> Docker container (one command starts everything)</p>
   </div>
 
@@ -206,7 +206,7 @@
   </div>
 
   <p class="small" style="margin-top:20px;">
-    <span class="yellow">Next:</span> Replace regex with Claude API + prompt engineering for much higher accuracy<br><br>
+    <span class="yellow">Next:</span> Replace regex with OpenAI GPT-4o-mini + prompt engineering for much higher accuracy<br><br>
     github.com/mikelninh/safevoice &bull; <span class="accent">Digital justice. One report at a time.</span>
   </p>
 </section>
