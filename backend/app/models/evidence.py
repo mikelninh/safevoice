@@ -26,6 +26,10 @@ class Category(str, Enum):
     INVESTMENT_FRAUD = "investment_fraud"
     ROMANCE_SCAM = "romance_scam"
     IMPERSONATION = "impersonation"
+    VOLKSVERHETZUNG = "volksverhetzung"
+    VERLEUMDUNG = "verleumdung"
+    STALKING = "stalking"
+    INTIMATE_IMAGES = "intimate_images"
 
 
 class GermanLaw(BaseModel):

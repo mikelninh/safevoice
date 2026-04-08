@@ -100,6 +100,50 @@ LAW_269 = GermanLaw(
     applies_because_de="Die Straftat umfasst gefälschte digitale Identitäten, gefälschte Profile oder manipulierte Daten zur Täuschung von Opfern."
 )
 
+LAW_130 = GermanLaw(
+    paragraph="§ 130 StGB",
+    title="Incitement to Hatred (Volksverhetzung)",
+    title_de="Volksverhetzung",
+    description="Inciting hatred against segments of the population or individuals based on nationality, race, religion, ethnic origin, or calling for violence against them.",
+    description_de="Aufstacheln zum Hass gegen Bevölkerungsgruppen oder Einzelpersonen aufgrund von Nationalität, Rasse, Religion, ethnischer Herkunft oder Aufrufe zu Gewalt gegen diese.",
+    max_penalty="Up to 5 years imprisonment",
+    applies_because="The content incites hatred or violence against a protected group based on ethnicity, religion, or nationality.",
+    applies_because_de="Der Inhalt stachelt zum Hass oder zu Gewalt gegen eine geschützte Gruppe aufgrund von Ethnie, Religion oder Nationalität auf."
+)
+
+LAW_187 = GermanLaw(
+    paragraph="§ 187 StGB",
+    title="Slander (Verleumdung)",
+    title_de="Verleumdung",
+    description="Asserting or spreading false statements of fact about a person that are known to be untrue, with intent to damage their reputation or standing.",
+    description_de="Behaupten oder Verbreiten von Tatsachen über eine Person wider besseres Wissen, die geeignet sind, deren Ruf oder Ansehen zu schädigen.",
+    max_penalty="Up to 5 years imprisonment",
+    applies_because="The content spreads claims known to be false with the intent to destroy the victim's reputation.",
+    applies_because_de="Der Inhalt verbreitet wissentlich falsche Behauptungen mit dem Ziel, den Ruf des Opfers zu zerstören."
+)
+
+LAW_201A = GermanLaw(
+    paragraph="§ 201a StGB",
+    title="Violation of intimate privacy through images (Verletzung des höchstpersönlichen Lebensbereichs durch Bildaufnahmen)",
+    title_de="Verletzung des höchstpersönlichen Lebensbereichs und von Persönlichkeitsrechten durch Bildaufnahmen",
+    description="Creating, distributing, or making accessible images of a person's intimate area without consent, including deepfakes.",
+    description_de="Herstellen, Verbreiten oder Zugänglichmachen von Bildaufnahmen des höchstpersönlichen Lebensbereichs einer Person ohne Einwilligung, einschließlich Deepfakes.",
+    max_penalty="Up to 2 years imprisonment",
+    applies_because="Non-consensual intimate images or AI-generated fake intimate images (deepfakes) of the victim were created or shared.",
+    applies_because_de="Nicht einvernehmliche intime Bildaufnahmen oder KI-generierte gefälschte intime Bilder (Deepfakes) des Opfers wurden erstellt oder verbreitet."
+)
+
+LAW_238 = GermanLaw(
+    paragraph="§ 238 StGB",
+    title="Stalking (Nachstellung)",
+    title_de="Nachstellung",
+    description="Persistently pursuing or surveilling a person against their will, causing significant impairment of their life.",
+    description_de="Beharrliches Nachstellen oder Überwachen einer Person gegen deren Willen, das deren Lebensgestaltung schwerwiegend beeinträchtigt.",
+    max_penalty="Up to 3 years imprisonment (up to 5 in serious cases)",
+    applies_because="The perpetrator engages in repeated, unwanted contact or surveillance causing fear and disruption to the victim's daily life.",
+    applies_because_de="Der Täter stellt der Person beharrlich nach oder überwacht sie, was Angst und Beeinträchtigung des täglichen Lebens verursacht."
+)
+
 # --- Mock Cases ---
 
 MOCK_CASES: list[Case] = [

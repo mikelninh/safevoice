@@ -191,22 +191,36 @@ def seed_categories_and_laws():
         ("harassment", "Harassment", "Belästigung"),
         ("threat", "Threat", "Bedrohung"),
         ("hate_speech", "Hate Speech", "Hassrede"),
-        ("defamation", "Defamation", "Verleumdung"),
+        ("defamation", "Defamation", "Üble Nachrede"),
+        ("slander", "Slander", "Verleumdung"),
         ("fraud", "Fraud", "Betrug"),
         ("identity_theft", "Identity Theft", "Identitätsdiebstahl"),
-        ("cyberstalking", "Cyberstalking", "Cyberstalking"),
+        ("cyberstalking", "Cyberstalking / Stalking", "Cyberstalking / Nachstellung"),
         ("sexual_harassment", "Sexual Harassment", "Sexuelle Belästigung"),
+        ("volksverhetzung", "Incitement to Hatred", "Volksverhetzung"),
+        ("intimate_images", "Non-consensual Intimate Images / Deepfakes", "Nicht einvernehmliche intime Bildaufnahmen / Deepfakes"),
+        ("body_shaming", "Body Shaming", "Body-Shaming"),
+        ("misogyny", "Misogyny", "Misogynie"),
+        ("scam", "Scam / Fraud", "Betrug / Scam"),
+        ("phishing", "Phishing", "Phishing"),
     ]
 
     for id_name, name, name_de in categories:
-        if not db.query(Category).filter_by(name=name).first():
+        existing = db.query(Category).filter_by(id=id_name).first()
+        if existing:
+            existing.name = name
+            existing.name_de = name_de
+        else:
             db.add(Category(id=id_name, name=name, name_de=name_de))
 
     # German laws
     laws = [
+        ("stgb-130", "stgb", "130", "Incitement to Hatred", "Volksverhetzung", "Up to 5 years"),
         ("stgb-185", "stgb", "185", "Insult", "Beleidigung", "Up to 1 year or fine"),
         ("stgb-186", "stgb", "186", "Defamation", "Üble Nachrede", "Up to 1 year or fine"),
-        ("stgb-187", "stgb", "187", "Slander", "Verleumdung", "Up to 2 years or fine"),
+        ("stgb-187", "stgb", "187", "Slander", "Verleumdung", "Up to 5 years"),
+        ("stgb-201a", "stgb", "201a", "Intimate Image Violation", "Verletzung des höchstpersönlichen Lebensbereichs durch Bildaufnahmen", "Up to 2 years"),
+        ("stgb-238", "stgb", "238", "Stalking", "Nachstellung", "Up to 3 years (up to 5 in serious cases)"),
         ("stgb-241", "stgb", "241", "Threat", "Bedrohung", "Up to 1 year or fine"),
         ("stgb-126a", "stgb", "126a", "Criminal Threat", "Schwere Drohung", "Up to 3 years"),
         ("stgb-263", "stgb", "263", "Fraud", "Betrug", "Up to 5 years or fine"),
@@ -215,7 +229,14 @@ def seed_categories_and_laws():
     ]
 
     for id_name, code, section, name, name_de, penalty in laws:
-        if not db.query(Law).filter_by(id=id_name).first():
+        existing = db.query(Law).filter_by(id=id_name).first()
+        if existing:
+            existing.code = code
+            existing.section = section
+            existing.name = name
+            existing.name_de = name_de
+            existing.max_penalty = penalty
+        else:
             db.add(Law(id=id_name, code=code, section=section, name=name, name_de=name_de, max_penalty=penalty))
 
     db.commit()

@@ -1,8 +1,8 @@
 # SafeVoice
 
-**Document digital harassment. Classify under German law. File reports. In 30 seconds.**
+**Document digital harassment. Classify under German law. Generate court-ready reports. In 30 seconds.**
 
-Bilingual (DE/EN). DSGVO-compliant. Free for victims.
+Bilingual (DE/EN). Multilingual classifier (DE/EN/TR/AR). DSGVO-compliant. Free for victims.
 
 ---
 
@@ -11,15 +11,15 @@ Bilingual (DE/EN). DSGVO-compliant. Free for victims.
 Every 3 minutes, someone in Germany is harassed online. 90% goes unreported because:
 - Victims don't know which laws apply
 - Evidence disappears (posts get deleted)
-- Reporting takes hours
+- Reporting is complex and takes hours
 
 ## The Solution
 
-Paste text or a URL → AI classifies it under German criminal law → generate a court-ready report.
+Paste text, a URL, or upload a screenshot → AI classifies it under German criminal law → evidence is preserved with SHA-256 hash chain → court-ready PDF report generated.
 
 ```
-PASTE → CLASSIFY → DOCUMENT → REPORT
- 10s       3s       instant    1 click
+PASTE → CLASSIFY → PRESERVE → REPORT
+ 10s       3s      instant    1 click
 ```
 
 ---
@@ -67,14 +67,15 @@ Three ways to get content in:
 
 | Tier | Engine | When |
 |------|--------|------|
-| 1 | OpenAI GPT-4o-mini | `OPENAI_API_KEY` set (in progress) |
-| 2 | HuggingFace transformer | torch installed (next) |
-| 3 | Regex patterns (DE/EN) | Always works, guaranteed fallback (working now) |
+| 1 | OpenAI GPT-4o-mini | `OPENAI_API_KEY` set |
+| 2 | HuggingFace transformer | torch installed |
+| 3 | Regex patterns (DE/EN/TR/AR) | Always works, zero deps |
 
-The classifier returns: severity, categories, applicable laws, bilingual summary.
+Detects 18 offense categories across 4 languages. Returns: severity, categories, applicable German laws, bilingual summary + recommended actions.
 
-### 3. Evidence is preserved (exploring)
-- SHA-256 content hash — built, diving deeper into how it works
+### 3. Evidence is preserved
+- SHA-256 content hash for integrity
+- Cryptographic hash chain linking evidence items
 - UTC timestamp with timezone (legal requirement)
 - archive.org backup
 
@@ -87,15 +88,17 @@ The classifier returns: severity, categories, applicable laws, bilingual summary
 
 ## Database Schema
 
-6 tables following the core flow: **user → case → evidence → classification → categories + laws**
+8 tables following the core flow: **user → case → evidence → classification → categories + laws**
 
 ```
-users                    — who is documenting
-cases                    — one incident (groups related evidence)
-evidence_items           — one piece of content with SHA-256 hash
-classifications          — AI output: severity, confidence, summary (DE+EN)
-classification_categories — offense types (harassment, threat, misogyny...)
-classification_laws       — applicable laws (§ 185, § 241, NetzDG...)
+users                     — who is documenting
+cases                     — one incident (groups related evidence)
+evidence_items            — one piece of content with SHA-256 hash chain
+classifications           — AI output: severity, confidence, summary (DE+EN)
+categories                — 15 offense types (harassment, Volksverhetzung, stalking, deepfakes...)
+laws                      — 11 German law references (§130–§269 StGB, NetzDG)
+classification_categories — many-to-many junction
+classification_laws       — many-to-many junction
 ```
 
 ---
@@ -124,8 +127,12 @@ Full interactive docs: http://localhost:8000/docs
 
 | Paragraph | Offense | Max Penalty |
 |-----------|---------|-------------|
+| § 130 StGB | Volksverhetzung (Incitement to hatred) | 5 years |
 | § 185 StGB | Beleidigung (Insult) | 1 year |
 | § 186 StGB | Üble Nachrede (Defamation) | 1 year |
+| § 187 StGB | Verleumdung (Slander) | 5 years |
+| § 201a StGB | Intimate image violation / Deepfakes | 2 years |
+| § 238 StGB | Nachstellung (Stalking) | 3-5 years |
 | § 241 StGB | Bedrohung (Threat) | 2 years |
 | § 126a StGB | Strafbare Bedrohung (Criminal threat) | 3 years |
 | § 263 StGB | Betrug (Fraud) | 5 years |
@@ -139,14 +146,15 @@ Full interactive docs: http://localhost:8000/docs
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React + TypeScript + Vite (PWA) |
-| Backend | Python + FastAPI |
-| AI Tier 1 | OpenAI GPT-4o-mini (in progress) |
-| AI Tier 2 | HuggingFace Transformers (next) |
-| AI Tier 3 | Regex patterns DE/EN (working) |
-| Evidence | SHA-256 + UTC timestamps (exploring) |
+| Frontend | React 18 + TypeScript + Vite + Tailwind CSS |
+| Backend | Python 3.13 + FastAPI |
+| Database | SQLAlchemy (SQLite dev / PostgreSQL prod) |
+| AI Tier 1 | OpenAI GPT-4o-mini |
+| AI Tier 2 | HuggingFace Transformers |
+| AI Tier 3 | Regex patterns (DE/EN/TR/AR) |
+| Evidence | SHA-256 hash chain + UTC timestamps |
 | Reports | ReportLab (PDF) |
-| Deploy | Docker |
+| Deploy | Docker + docker-compose |
 
 ---
 

@@ -204,4 +204,4 @@ class TestAnalyzeEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert "classifier_tier" in data
-        assert data["classifier_tier"] in ("claude_api", "transformer", "regex")
+        assert data["classifier_tier"] in ("claude_api", "openai", "transformer", "regex")

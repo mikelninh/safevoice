@@ -324,7 +324,7 @@ class TestAPIRobustness:
         data = resp.json()
         assert data["status"] == "ok"
         assert data["service"] == "SafeVoice API"
-        assert data["classifier_tier"] in ("claude_api", "transformer", "regex")
+        assert data["classifier_tier"] in ("claude_api", "openai", "transformer", "regex")
 
     def test_partners_submit_without_api_key(self, client):
         """POST /partners/cases/submit without X-API-Key must return 401."""
