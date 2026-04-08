@@ -100,12 +100,23 @@ app.include_router(legal.router)
 app.include_router(policy.router)
 
 
+# Initialize database on startup
+from app.database import init_db, seed_categories_and_laws
+init_db()
+seed_categories_and_laws()
+
+
 @app.get("/health")
 def health():
     from app.services.classifier_llm import is_available as llm_ok
     from app.services.classifier_transformer import is_available as transformer_ok
+    from app.database import SessionLocal, Category, Law
+    db = SessionLocal()
     tier = "openai" if llm_ok() else ("transformer" if transformer_ok() else "regex")
-    return {"status": "ok", "service": "SafeVoice API", "classifier_tier": tier}
+    cats = db.query(Category).count()
+    laws = db.query(Law).count()
+    db.close()
+    return {"status": "ok", "service": "SafeVoice API", "classifier_tier": tier, "db": {"categories": cats, "laws": laws}}
 
 
 # ---------------------------------------------------------------------------
