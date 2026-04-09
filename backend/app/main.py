@@ -3,7 +3,10 @@ import time
 from collections import defaultdict
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"), override=False)
+# Only load .env in development (not in production where Railway sets env vars)
+_env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+if os.path.exists(_env_path):
+    load_dotenv(_env_path, override=False)
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
