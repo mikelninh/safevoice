@@ -308,8 +308,8 @@ INTIMATE_IMAGES_SIGNALS = [
 def _normalize_text(text: str) -> str:
     """Normalize obfuscation: repeated letters, common substitutions."""
     t = text.lower()
-    # Collapse repeated letters: fotzzze → fotze, stiiirb → stirb
-    t = re.sub(r'(.)\1{2,}', r'\1', t)
+    # Collapse repeated letters: fotzzze → fotze, killl → kill, stiiirb → stirb
+    t = re.sub(r'(.)\1{2,}', r'\1\1', t)  # keep max 2 (kill → kill, not kil)
     # Common substitutions
     t = t.replace('$', 's').replace('@', 'a').replace('0', 'o').replace('1', 'i').replace('3', 'e').replace('!', 'i')
     return t
