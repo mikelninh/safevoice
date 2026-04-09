@@ -16,4 +16,4 @@ COPY --from=frontend-build /app/frontend/dist ./static
 
 ENV PORT=8000
 EXPOSE ${PORT}
-CMD gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT}
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 2
