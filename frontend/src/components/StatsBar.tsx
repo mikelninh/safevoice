@@ -11,7 +11,7 @@ export default function StatsBar({ lang }: Props) {
 
   const stats = [
     {
-      value: '8',
+      value: '12',
       label: isDE ? 'Deutsche Gesetze abgedeckt' : 'German laws covered',
     },
     {
@@ -19,8 +19,8 @@ export default function StatsBar({ lang }: Props) {
       label: isDE ? 'Von Text zur Anzeige' : 'From text to report',
     },
     {
-      value: 'DE/EN',
-      label: isDE ? 'Zweisprachig' : 'Bilingual',
+      value: '4',
+      label: isDE ? 'Sprachen (DE/EN/TR/AR)' : 'Languages (DE/EN/TR/AR)',
     },
     {
       value: '€0',
