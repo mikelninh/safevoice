@@ -15,5 +15,6 @@ COPY backend/ ./
 COPY --from=frontend-build /app/frontend/dist ./static
 
 ENV PORT=8000
+ENV PYTHONUNBUFFERED=1
 EXPOSE ${PORT}
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 2
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]
