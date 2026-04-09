@@ -1,12 +1,13 @@
 import os
 import time
 from collections import defaultdict
-from dotenv import load_dotenv
-
-# Only load .env in development (not in production where Railway sets env vars)
-_env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
-if os.path.exists(_env_path):
-    load_dotenv(_env_path, override=False)
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+    if os.path.exists(_env_path):
+        load_dotenv(_env_path, override=False)
+except ImportError:
+    pass
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -102,6 +103,13 @@ from app.database import init_db, seed_categories_and_laws
 init_db()
 seed_categories_and_laws()
 
+
+@app.get("/debug-env")
+def debug_env():
+    """Temporary: check which env vars are set."""
+    import subprocess
+    all_vars = {k: v[:3] + "..." for k, v in os.environ.items() if "KEY" in k or "URL" in k or "CORS" in k or "RATE" in k or "PORT" in k}
+    return {"env_vars": all_vars, "total_env_count": len(os.environ)}
 
 @app.get("/health")
 def health():
