@@ -14,7 +14,10 @@ import uuid
 import enum
 
 # Database URL — defaults to SQLite for development
+# Railway/Heroku may provide postgres:// which SQLAlchemy 2.x doesn't accept
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./safevoice.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # SQLite doesn't support ARRAY/UUID natively
 is_sqlite = "sqlite" in DATABASE_URL
