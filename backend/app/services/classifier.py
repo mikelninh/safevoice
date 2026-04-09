@@ -51,6 +51,8 @@ DEATH_THREAT_SIGNALS = [
     # German
     r"\btod\b.*\b(dir|ihr|dich)\b",
     r"\b(umbringen|töten|ermorden)\b",
+    r"\bbringe?\s+(dich|euch|sie|ihn)\s+um\b",
+    r"\bich\s+mach\s+(dich|euch)\s+(fertig|kalt|platt)\b",
     r"\bwatch\s+(your|yourself)\b",
     r"\bI\s+know\s+where\s+you\b",
     r"\bich\s+weiß\s+wo\s+du\b",
@@ -219,7 +221,7 @@ VOLKSVERHETZUNG_SIGNALS = [
     # German — Volksverhetzung patterns
     r"\b(alle|diese)\s+(muslime|juden|araber|türken|ausländer|flüchtlinge|kanaken|neger)\s+(sollen|müssen|gehören)\s+(raus|weg|vergast|deportiert|getötet|aufgehängt)\b",
     r"\b(deutschland\s+den\s+deutschen|ausländer\s+raus)\b",
-    r"\b(dreckige?|scheiß)\s+(ausländer|türken|araber|muslime|juden|kanaken|neger|zigeuner|asylanten)\b",
+    r"\b(dreckige?r?|scheiß|verdammte?r?)\s+(ausländer|türken|araber|muslime|juden|kanaken|neger|zigeuner|asylanten)\b",
     r"\b(kanake|kanaken|neger|zigeuner|kümmeltürke|kameltreiber)\b",
     r"\b(vergasen|vergast|ab\s+ins\s+gas|in\s+die\s+gaskammer)\b",
     r"\b(holocaust\s+(gab\s+es\s+nicht|ist\s+eine?\s+lüge|nie\s+passiert))\b",
