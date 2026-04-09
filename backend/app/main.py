@@ -87,17 +87,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(cases.router)
-app.include_router(analyze.router)
-app.include_router(reports.router)
-app.include_router(chain.router)
-app.include_router(upload.router)
-app.include_router(sla.router)
-app.include_router(partners.router)
-app.include_router(dashboard.router)
-app.include_router(auth.router)
-app.include_router(legal.router)
-app.include_router(policy.router)
+# Mount all routers at both / and /api/ so frontend works in dev (proxy) and production (direct)
+for r in [cases.router, analyze.router, reports.router, chain.router, upload.router,
+          sla.router, partners.router, dashboard.router, auth.router, legal.router, policy.router]:
+    app.include_router(r)
+    app.include_router(r, prefix="/api")
 
 
 # Initialize database on startup

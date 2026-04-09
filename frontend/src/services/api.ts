@@ -1,6 +1,6 @@
 import type { Case, ClassificationResult, EvidenceItem } from '../types'
 
-const BASE = import.meta.env.DEV ? '/api' : ''
+const BASE = '/api'
 
 export async function fetchCases(): Promise<Case[]> {
   const res = await fetch(`${BASE}/cases/`)
