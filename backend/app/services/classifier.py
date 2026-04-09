@@ -47,6 +47,8 @@ DEATH_THREAT_SIGNALS = [
     r"\b(kill|murder|slaughter|hunt|eliminate)\s+(you|u|her|them|yourself)\b",
     r"\bkill\s+your\s*self\b",
     r"\b(kys|go\s+die|go\s+kill\s+yourself)\b",
+    r"\b(stirb|sterb|verreck|krepier|verrecke?)\b",
+    r"\bsoll?st\s+(sterben|verrecken|krepieren)\b",
     r"\b(you|u|she)\s+(will|won't)\s+(die|survive|live)\b",
     # German
     r"\btod\b.*\b(dir|ihr|dich)\b",
@@ -303,9 +305,20 @@ INTIMATE_IMAGES_SIGNALS = [
 ]
 
 
+def _normalize_text(text: str) -> str:
+    """Normalize obfuscation: repeated letters, common substitutions."""
+    t = text.lower()
+    # Collapse repeated letters: fotzzze → fotze, stiiirb → stirb
+    t = re.sub(r'(.)\1{2,}', r'\1', t)
+    # Common substitutions
+    t = t.replace('$', 's').replace('@', 'a').replace('0', 'o').replace('1', 'i').replace('3', 'e').replace('!', 'i')
+    return t
+
+
 def _match_signals(text: str, patterns: list[str]) -> bool:
     text_lower = text.lower()
-    return any(re.search(p, text_lower) for p in patterns)
+    text_normalized = _normalize_text(text)
+    return any(re.search(p, text_lower) or re.search(p, text_normalized) for p in patterns)
 
 
 def classify_regex(text: str) -> ClassificationResult:
