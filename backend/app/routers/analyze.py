@@ -204,6 +204,42 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
     }
 
 
+class ChatRequest(BaseModel):
+    question: str
+    context: str  # original text + classification summary
+
+
+@router.post("/chat")
+def legal_chat(req: ChatRequest):
+    """Answer follow-up legal questions about a classification."""
+    import os
+    try:
+        from openai import OpenAI
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return {"answer": "AI nicht verfügbar. Bitte OPENAI_API_KEY setzen."}
+
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.3,
+            max_tokens=500,
+            messages=[
+                {"role": "system", "content": """Du bist ein juristischer Berater für Opfer digitaler Gewalt in Deutschland.
+Beantworte Fragen zum konkreten Fall basierend auf dem Kontext.
+Sei präzise, nenne konkrete Paragraphen und Strafen.
+Erkläre verständlich, nicht juristisch.
+Antworte auf Deutsch.
+Ende jede Antwort mit: 'Dies ist keine Rechtsberatung. Für verbindliche Auskunft wende dich an eine Anwältin oder an HateAid (hateaid.org).'"""},
+                {"role": "user", "content": f"Kontext zum Fall:\n{req.context}\n\nFrage: {req.question}"},
+            ],
+        )
+        answer = response.choices[0].message.content
+        return {"answer": answer}
+    except Exception as e:
+        return {"answer": f"Fehler: {str(e)}"}
+
+
 @router.post("/case", response_model=AnalyzeCaseResponse)
 def analyze_case(req: AnalyzeCaseRequest):
     """Analyze a batch of evidence items for patterns (stateless)."""

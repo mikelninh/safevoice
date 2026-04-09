@@ -45,16 +45,15 @@ export default function LegalChat({ lang, originalText, classification }: Props)
         'Answer the question about this specific case. Be helpful, victim-centered, and precise about German law. Always mention this is not legal advice.',
       ].join('\n')
 
-      const res = await fetch('/api/analyze/text', {
+      const res = await fetch('/api/analyze/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: context }),
+        body: JSON.stringify({ question: userQ, context }),
       })
 
       if (res.ok) {
         const data = await res.json()
-        const answer = lang === 'de' ? data.summary_de : data.summary
-        setMessages(prev => [...prev, { role: 'ai', text: answer }])
+        setMessages(prev => [...prev, { role: 'ai', text: data.answer }])
       } else {
         setMessages(prev => [...prev, { role: 'ai', text: isDE ? 'Fehler bei der Analyse.' : 'Analysis failed.' }])
       }
