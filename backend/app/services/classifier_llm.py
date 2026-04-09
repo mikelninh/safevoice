@@ -1,6 +1,6 @@
 """
-LLM-based classifier using OpenAI API.
-Primary classifier — most accurate, understands context and nuance.
+LLM-based classifier using OpenAI API with Structured Output.
+Primary classifier — understands context, typos, slang, obfuscation.
 Falls back gracefully if API key is missing or call fails.
 """
 
@@ -18,83 +18,119 @@ from app.models.evidence import (
     ClassificationResult, Severity, Category, GermanLaw
 )
 from app.data.mock_data import (
-    LAW_185, LAW_186, LAW_241, LAW_126A, NETZ_DG,
-    LAW_263, LAW_263A, LAW_269
+    LAW_185, LAW_186, LAW_187, LAW_241, LAW_126A, LAW_130, LAW_201A, LAW_238,
+    NETZ_DG, LAW_263, LAW_263A, LAW_269
 )
 
 logger = logging.getLogger(__name__)
 
-# Map paragraph strings to law objects for lookup
+# All 12 laws mapped
 LAW_MAP = {
+    "§ 130 StGB": LAW_130,
     "§ 185 StGB": LAW_185,
     "§ 186 StGB": LAW_186,
+    "§ 187 StGB": LAW_187,
+    "§ 201a StGB": LAW_201A,
+    "§ 238 StGB": LAW_238,
     "§ 241 StGB": LAW_241,
     "§ 126a StGB": LAW_126A,
-    "NetzDG § 3": NETZ_DG,
     "§ 263 StGB": LAW_263,
     "§ 263a StGB": LAW_263A,
     "§ 269 StGB": LAW_269,
+    "NetzDG § 3": NETZ_DG,
 }
 
 CATEGORY_MAP = {c.value: c for c in Category}
 SEVERITY_MAP = {s.value: s for s in Severity}
 
-SYSTEM_PROMPT = """You are SafeVoice's legal classification engine. You analyse digital content (social media posts, DMs, comments) for harassment, threats, scams, and other offenses under German criminal law.
+SYSTEM_PROMPT = """Du bist SafeVoice — ein juristischer Klassifikator für digitale Gewalt in Deutschland.
 
-Your job:
-1. Classify the content into one or more categories
-2. Assess severity (low / medium / high / critical)
-3. Map to applicable German criminal law paragraphs
-4. Provide a concise summary in BOTH English and German
-5. Assess whether immediate action is needed (police report, evidence preservation)
+Du analysierst Texte aus sozialen Medien (Kommentare, DMs, Posts) und klassifizierst sie nach deutschem Strafrecht.
 
-Categories (use value strings exactly):
-- harassment, threat, death_threat, defamation, misogyny, body_shaming
-- coordinated_attack, false_facts, sexual_harassment
-- scam, phishing, investment_fraud, romance_scam, impersonation
+WICHTIG:
+- Verstehe Tippfehler, Slang, absichtliche Verschleierung (z.B. "f0tze", "stirbt" statt "stirb")
+- Wenn unklar: im Zweifel FÜR das Opfer entscheiden (höhere Severity)
+- Eine Drohung ist eine Drohung, auch wenn sie indirekt formuliert ist
+- Beachte den Gesamtkontext, nicht einzelne Wörter
 
-Applicable German laws (use paragraph strings exactly):
-- § 185 StGB (Beleidigung / Insult)
-- § 186 StGB (Üble Nachrede / Defamation)
-- § 241 StGB (Bedrohung / Threat)
-- § 126a StGB (Strafbare Bedrohung / Criminal threat)
-- § 263 StGB (Betrug / Fraud)
-- § 263a StGB (Computerbetrug / Computer fraud)
-- § 269 StGB (Fälschung beweiserheblicher Daten / Data falsification)
-- NetzDG § 3 (Network Enforcement Act — always include for social media content)
+KATEGORIEN (nutze exakt diese Werte):
+- harassment: Allgemeine Belästigung, Beleidigung
+- threat: Bedrohung (nicht tödlich)
+- death_threat: Todesdrohung oder Aufforderung zum Suizid
+- defamation: Üble Nachrede (§186)
+- verleumdung: Wissentlich falsche Behauptungen (§187)
+- misogyny: Frauenfeindliche Inhalte
+- body_shaming: Körperbezogene Beleidigung
+- sexual_harassment: Sexuelle Belästigung
+- volksverhetzung: Hassrede gegen geschützte Gruppen (§130)
+- stalking: Nachstellung, unerwünschter Kontakt (§238)
+- intimate_images: Nicht einvernehmliche intime Bilder/Deepfakes (§201a)
+- scam: Betrug allgemein
+- phishing: Phishing-Versuch
+- investment_fraud: Investitionsbetrug
+- romance_scam: Romance Scam
+- impersonation: Identitätsdiebstahl
+- false_facts: Falsche Tatsachenbehauptungen
+- coordinated_attack: Koordinierter Angriff mehrerer Accounts
 
-Respond with ONLY valid JSON in this exact schema:
-{
-  "severity": "low|medium|high|critical",
-  "categories": ["category1", "category2"],
-  "confidence": 0.0-1.0,
-  "requires_immediate_action": true/false,
-  "summary": "English summary",
-  "summary_de": "German summary",
-  "applicable_laws": ["§ 185 StGB", "NetzDG § 3"],
-  "potential_consequences": "English consequences",
-  "potential_consequences_de": "German consequences"
+GESETZE (nutze exakt diese Paragraphen):
+- § 130 StGB — Volksverhetzung (bis 5 Jahre)
+- § 185 StGB — Beleidigung (bis 1 Jahr)
+- § 186 StGB — Üble Nachrede (bis 1 Jahr)
+- § 187 StGB — Verleumdung (bis 5 Jahre)
+- § 201a StGB — Verletzung des höchstpersönlichen Lebensbereichs durch Bildaufnahmen (bis 2 Jahre)
+- § 238 StGB — Nachstellung/Stalking (bis 3 Jahre)
+- § 241 StGB — Bedrohung (bis 2 Jahre)
+- § 126a StGB — Strafbare Bedrohung (bis 3 Jahre)
+- § 263 StGB — Betrug (bis 5 Jahre)
+- § 263a StGB — Computerbetrug (bis 5 Jahre)
+- § 269 StGB — Fälschung beweiserheblicher Daten (bis 5 Jahre)
+- NetzDG § 3 — Plattformpflicht zur Löschung (immer bei Social Media Inhalten)
+
+SEVERITY:
+- low: Grenzwertig, Verstoß gegen Nutzungsbedingungen möglich
+- medium: Wahrscheinlicher Rechtsverstoß
+- high: Klarer Rechtsverstoß, Anzeige empfohlen
+- critical: Schwere Straftat, sofortige Anzeige + Beweissicherung
+
+Antworte NUR mit validem JSON."""
+
+RESPONSE_SCHEMA = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "classification",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+                "categories": {"type": "array", "items": {"type": "string"}},
+                "confidence": {"type": "number"},
+                "requires_immediate_action": {"type": "boolean"},
+                "summary": {"type": "string"},
+                "summary_de": {"type": "string"},
+                "applicable_laws": {"type": "array", "items": {"type": "string"}},
+                "potential_consequences": {"type": "string"},
+                "potential_consequences_de": {"type": "string"}
+            },
+            "required": ["severity", "categories", "confidence", "requires_immediate_action",
+                         "summary", "summary_de", "applicable_laws",
+                         "potential_consequences", "potential_consequences_de"],
+            "additionalProperties": False
+        }
+    }
 }
-
-Be precise. Be victim-centered. When in doubt about severity, err on the side of protecting the victim.
-Never minimise threats. A threat is a threat even when phrased indirectly."""
 
 
 def is_available() -> bool:
-    """Check if OpenAI API is configured and installed."""
     return _openai_installed and bool(os.environ.get("OPENAI_API_KEY"))
 
 
 def classify_with_llm(text: str) -> ClassificationResult | None:
-    """
-    Classify text using OpenAI API.
-    Returns None if API is unavailable or call fails.
-    """
     if not _openai_installed:
         return None
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        logger.info("OPENAI_API_KEY not set, skipping LLM classifier")
         return None
 
     try:
@@ -103,19 +139,14 @@ def classify_with_llm(text: str) -> ClassificationResult | None:
             model="gpt-4o-mini",
             temperature=0,
             max_tokens=1024,
+            response_format=RESPONSE_SCHEMA,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Classify this content:\n\n{text}"},
+                {"role": "user", "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
             ],
         )
 
-        raw = response.choices[0].message.content.strip()
-        # Handle markdown code blocks
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1]
-            raw = raw.rsplit("```", 1)[0]
-
-        data = json.loads(raw)
+        data = json.loads(response.choices[0].message.content)
         return _parse_result(data)
 
     except Exception as e:
@@ -124,7 +155,6 @@ def classify_with_llm(text: str) -> ClassificationResult | None:
 
 
 def _parse_result(data: dict) -> ClassificationResult:
-    """Parse JSON response into ClassificationResult."""
     severity = SEVERITY_MAP.get(data["severity"], Severity.MEDIUM)
 
     categories = []
@@ -140,7 +170,6 @@ def _parse_result(data: dict) -> ClassificationResult:
         law = LAW_MAP.get(law_str)
         if law:
             applicable_laws.append(law)
-    # Always include NetzDG for social media
     if NETZ_DG not in applicable_laws:
         applicable_laws.append(NETZ_DG)
 
