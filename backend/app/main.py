@@ -110,7 +110,9 @@ def health():
     cats = db.query(Category).count()
     laws = db.query(Law).count()
     db.close()
-    return {"status": "ok", "service": "SafeVoice API", "classifier_tier": tier, "db": {"categories": cats, "laws": laws}}
+    key = os.environ.get("OPENAI_API_KEY", "")
+    key_info = f"{key[:5]}...{key[-4:]}" if len(key) > 10 else ("empty" if not key else "too_short")
+    return {"status": "ok", "service": "SafeVoice API", "classifier_tier": tier, "db": {"categories": cats, "laws": laws}, "openai_key": key_info}
 
 
 # ---------------------------------------------------------------------------
