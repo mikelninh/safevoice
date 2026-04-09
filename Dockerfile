@@ -4,7 +4,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
-# Cache bust: force rebuild when api.ts changes
+ARG CACHEBUST=1
 RUN npm run build
 
 # Stage 2: Python backend + serve built frontend
