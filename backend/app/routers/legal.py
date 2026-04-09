@@ -2,9 +2,11 @@
 Legal AI analysis + serial offender endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
-from app.data.mock_data import get_case_by_id
+from sqlalchemy.orm import Session
+from app.database import get_db, Case as DBCase
+from app.services.db_helpers import case_to_pydantic
 from app.services.legal_ai import analyze_case_legally, is_available as ai_available
 from app.services.offender_db import (
     check_offender, get_serial_offenders, get_offender_stats, index_case,
@@ -17,11 +19,12 @@ router = APIRouter(tags=["legal"])
 # === AI Legal Analysis (4.5) ===
 
 @router.get("/legal/{case_id}")
-def get_legal_analysis(case_id: str):
+def get_legal_analysis(case_id: str, db: Session = Depends(get_db)):
     """Get AI-powered legal analysis for a case."""
-    case = get_case_by_id(case_id)
-    if not case:
+    db_case = db.query(DBCase).filter_by(id=case_id).first()
+    if not db_case:
         raise HTTPException(status_code=404, detail="Case not found")
+    case = case_to_pydantic(db_case)
 
     analysis = analyze_case_legally(case)
     return {
@@ -73,11 +76,13 @@ def get_platform_submission(
     case_id: str,
     platform: str,
     lang: str = Query(default="de"),
+    db: Session = Depends(get_db),
 ):
     """Generate pre-filled NetzDG submission for a specific platform."""
-    case = get_case_by_id(case_id)
-    if not case:
+    db_case = db.query(DBCase).filter_by(id=case_id).first()
+    if not db_case:
         raise HTTPException(status_code=404, detail="Case not found")
+    case = case_to_pydantic(db_case)
 
     submission = generate_platform_submission(case, platform, lang)
     return submission

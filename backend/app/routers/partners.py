@@ -3,7 +3,7 @@ Partner API — RESTful endpoints for institutional partners.
 Authentication via API key in X-API-Key header.
 """
 
-from fastapi import APIRouter, HTTPException, Header, Query
+from fastapi import APIRouter, HTTPException, Header, Query, Depends
 from pydantic import BaseModel
 from app.models.partner import CaseSubmission, OrgType, OrgRole
 from app.services.partner_store import (
@@ -14,7 +14,9 @@ from app.services.partner_store import (
 from app.services.classifier import classify
 from app.services.evidence import hash_content, capture_timestamp
 from app.models.evidence import EvidenceItem
-from app.data.mock_data import get_case_by_id, get_all_cases
+from app.database import get_db, Case as DBCase
+from app.services.db_helpers import case_to_pydantic
+from sqlalchemy.orm import Session
 import uuid
 
 router = APIRouter(prefix="/partners", tags=["partners"])
@@ -142,6 +144,7 @@ def submit_case(
 @router.get("/cases")
 def list_partner_cases(
     x_api_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
 ):
     """List cases assigned to the authenticated organization."""
     org = _require_api_key(x_api_key)
@@ -149,7 +152,8 @@ def list_partner_cases(
 
     result = []
     for a in assignments:
-        case = get_case_by_id(a.case_id)
+        db_case = db.query(DBCase).filter_by(id=a.case_id).first()
+        case = case_to_pydantic(db_case) if db_case else None
         result.append({
             "assignment": a,
             "case": case,
@@ -161,6 +165,7 @@ def list_partner_cases(
 def get_partner_case(
     case_id: str,
     x_api_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
 ):
     """Get a specific case (if assigned to this organization)."""
     org = _require_api_key(x_api_key)
@@ -169,10 +174,10 @@ def get_partner_case(
     if not any(a.case_id == case_id for a in assignments):
         raise HTTPException(status_code=403, detail="Case not assigned to your organization")
 
-    case = get_case_by_id(case_id)
-    if not case:
+    db_case = db.query(DBCase).filter_by(id=case_id).first()
+    if not db_case:
         raise HTTPException(status_code=404, detail="Case not found")
-    return case
+    return case_to_pydantic(db_case)
 
 
 # === Case assignment ===

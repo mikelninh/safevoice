@@ -1,19 +1,25 @@
-from fastapi import APIRouter, HTTPException
+"""
+Analysis endpoints — stateless classification + URL scraping.
+
+For persisted evidence (saved to DB), use POST /cases/{id}/evidence instead.
+These endpoints are for quick preview / classification without creating a case.
+"""
+
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.services.classifier import classify
 from app.services.pattern_detector import detect_patterns, compute_overall_severity
 from app.services.evidence import hash_content, capture_timestamp, archive_url_sync
 from app.services.scraper import scrape_url_sync, detect_platform
+from app.services.db_helpers import add_evidence_with_classification, get_last_hash
 from app.models.evidence import ClassificationResult, EvidenceItem, PatternFlag, Severity
+from app.database import get_db, Case as DBCase
+from app.schemas import AnalyzeTextRequest, AnalyzeUrlRequest, IngestRequest
 import uuid
 
 router = APIRouter(prefix="/analyze", tags=["analyze"])
-
-
-class AnalyzeTextRequest(BaseModel):
-    text: str
-    author_username: str = "unknown"
-    url: str = ""
 
 
 class AnalyzeCaseRequest(BaseModel):
@@ -28,56 +34,89 @@ class AnalyzeCaseResponse(BaseModel):
 
 @router.post("/text", response_model=ClassificationResult)
 def analyze_text(req: AnalyzeTextRequest):
+    """Quick classification — no persistence, no case needed."""
     return classify(req.text)
 
 
 @router.post("/ingest")
-def ingest_url(req: AnalyzeTextRequest):
+def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
     """
-    MVP: accepts text directly (simulates scraping a URL).
-    Production: fetch + parse the actual URL.
+    Classify text and optionally persist to a case.
+    If case_id is provided, evidence is saved to the database.
+    Otherwise, returns ephemeral result (backward compatible).
     """
-    content_hash = hash_content(req.text)
+    text = req.text
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Text content is required")
+
+    classification = classify(text)
+    content_hash = hash_content(text)
     captured_at = capture_timestamp()
-    classification = classify(req.text)
 
-    # Try to archive the URL (non-blocking, graceful failure)
-    archived_url = archive_url_sync(req.url) if req.url else None
+    # If case_id provided, persist to DB
+    if req.case_id:
+        case = db.query(DBCase).filter_by(id=req.case_id).first()
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
 
+        from app.services.classifier_llm import is_available as llm_ok
+        from app.services.classifier_transformer import is_available as transformer_ok
+        tier = 1 if llm_ok() else (2 if transformer_ok() else 3)
+
+        previous_hash = get_last_hash(db, req.case_id)
+        evidence = add_evidence_with_classification(
+            db=db,
+            case_id=req.case_id,
+            text=text,
+            classification_result=classification,
+            content_type="text",
+            source_url=req.url or None,
+            author_username=req.author_username,
+            previous_hash=previous_hash,
+            classifier_tier=tier,
+        )
+
+        return {
+            "evidence_id": evidence.id,
+            "case_id": req.case_id,
+            "classification": classification,
+            "content_hash": content_hash,
+            "persisted": True,
+            "message": "Evidence classified and saved to case."
+        }
+
+    # Ephemeral result (no case_id)
     evidence = EvidenceItem(
         id=str(uuid.uuid4()),
-        url=req.url or "https://instagram.com/mock",
-        platform="instagram",
+        url="",
+        platform="unknown",
         captured_at=captured_at,
-        author_username=req.author_username,
-        content_text=req.text,
+        author_username="unknown",
+        content_text=text,
         content_hash=content_hash,
-        archived_url=archived_url,
-        classification=classification
+        classification=classification,
     )
 
     return {
         "evidence": evidence,
         "classification": classification,
-        "message": "Evidence captured and classified."
+        "persisted": False,
+        "message": "Evidence classified (not saved — provide case_id to persist)."
     }
 
 
-class AnalyzeUrlRequest(BaseModel):
-    url: str
-
-
 @router.post("/url")
-def analyze_url(req: AnalyzeUrlRequest):
+def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
     """
     Scrape a social media URL, extract content, classify it.
-    Supports Instagram, X/Twitter, and generic web pages.
+    If case_id is provided, all evidence is persisted to the database.
     """
-    if not req.url.strip():
+    url = req.url
+    if not url or not url.strip():
         raise HTTPException(status_code=400, detail="URL is required")
 
-    platform = detect_platform(req.url) or "web"
-    scraped = scrape_url_sync(req.url)
+    platform = detect_platform(url) or "web"
+    scraped = scrape_url_sync(url)
 
     if not scraped:
         raise HTTPException(
@@ -86,39 +125,72 @@ def analyze_url(req: AnalyzeUrlRequest):
         )
 
     # Classify the main post
+    classification = classify(scraped.content_text)
     content_hash = hash_content(scraped.content_text)
     captured_at = capture_timestamp()
-    classification = classify(scraped.content_text)
-    archived_url = archive_url_sync(req.url)
+    archived_url = archive_url_sync(url)
 
+    # If case_id provided, persist everything to DB
+    if req.case_id:
+        case = db.query(DBCase).filter_by(id=req.case_id).first()
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        from app.services.classifier_llm import is_available as llm_ok
+        from app.services.classifier_transformer import is_available as transformer_ok
+        tier = 1 if llm_ok() else (2 if transformer_ok() else 3)
+
+        previous_hash = get_last_hash(db, req.case_id)
+        main_evidence = add_evidence_with_classification(
+            db=db, case_id=req.case_id, text=scraped.content_text,
+            classification_result=classification, content_type="url",
+            source_url=url, platform=platform, archived_url=archived_url,
+            previous_hash=previous_hash, classifier_tier=tier,
+        )
+
+        comment_ids = []
+        for comment in scraped.comments[:20]:
+            if not comment.get("text"):
+                continue
+            c_result = classify(comment["text"])
+            prev = get_last_hash(db, req.case_id)
+            c_evidence = add_evidence_with_classification(
+                db=db, case_id=req.case_id, text=comment["text"],
+                classification_result=c_result, content_type="comment",
+                source_url=url, platform=platform,
+                author_username=comment.get("author", "unknown"),
+                previous_hash=prev, classifier_tier=tier,
+            )
+            comment_ids.append(c_evidence.id)
+
+        return {
+            "evidence_id": main_evidence.id,
+            "comment_evidence_ids": comment_ids,
+            "case_id": req.case_id,
+            "classification": classification,
+            "platform": platform,
+            "persisted": True,
+            "message": f"Content from {platform} classified and saved ({1 + len(comment_ids)} items)."
+        }
+
+    # Ephemeral result
     evidence = EvidenceItem(
-        id=str(uuid.uuid4()),
-        url=req.url,
-        platform=platform,
-        captured_at=captured_at,
-        author_username=scraped.author_username,
+        id=str(uuid.uuid4()), url=url, platform=platform,
+        captured_at=captured_at, author_username=scraped.author_username,
         author_display_name=scraped.author_display_name,
-        content_text=scraped.content_text,
-        content_hash=content_hash,
-        archived_url=archived_url,
-        classification=classification,
+        content_text=scraped.content_text, content_hash=content_hash,
+        archived_url=archived_url, classification=classification,
     )
 
-    # Also classify comments if present
     comment_evidence = []
-    for comment in scraped.comments[:20]:  # Cap at 20 comments
+    for comment in scraped.comments[:20]:
         if not comment.get("text"):
             continue
-        c_hash = hash_content(comment["text"])
         c_classification = classify(comment["text"])
         comment_evidence.append(EvidenceItem(
-            id=str(uuid.uuid4()),
-            url=req.url,
-            platform=platform,
-            captured_at=captured_at,
-            author_username=comment.get("author", "unknown"),
-            content_text=comment["text"],
-            content_hash=c_hash,
+            id=str(uuid.uuid4()), url=url, platform=platform,
+            captured_at=captured_at, author_username=comment.get("author", "unknown"),
+            content_text=comment["text"], content_hash=hash_content(comment["text"]),
             classification=c_classification,
         ))
 
@@ -127,24 +199,18 @@ def analyze_url(req: AnalyzeUrlRequest):
         "comments": comment_evidence,
         "classification": classification,
         "platform": platform,
-        "scraped": {
-            "author_username": scraped.author_username,
-            "author_display_name": scraped.author_display_name,
-            "posted_at": scraped.posted_at,
-            "comment_count": len(scraped.comments),
-            "media_count": len(scraped.media_urls),
-        },
-        "message": f"Content scraped from {platform} and classified."
+        "persisted": False,
+        "message": f"Content from {platform} classified (not saved — provide case_id to persist)."
     }
 
 
 @router.post("/case", response_model=AnalyzeCaseResponse)
 def analyze_case(req: AnalyzeCaseRequest):
+    """Analyze a batch of evidence items for patterns (stateless)."""
     pattern_flags = detect_patterns(req.evidence_items)
     overall_severity = compute_overall_severity(req.evidence_items)
-
     return AnalyzeCaseResponse(
         pattern_flags=pattern_flags,
         overall_severity=overall_severity,
-        evidence_count=len(req.evidence_items)
+        evidence_count=len(req.evidence_items),
     )

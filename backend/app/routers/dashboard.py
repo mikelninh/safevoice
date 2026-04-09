@@ -3,10 +3,12 @@ Anonymized data dashboard — aggregate statistics for BKA, researchers, and pub
 All data is fully anonymized: no PII, no individual case details.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from collections import Counter
-from app.data.mock_data import get_all_cases
+from sqlalchemy.orm import Session
+from app.database import get_db, Case as DBCase
+from app.services.db_helpers import case_to_pydantic
 from app.models.evidence import Severity, Category
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -25,12 +27,13 @@ class DashboardStats(BaseModel):
 
 
 @router.get("/stats", response_model=DashboardStats)
-def get_dashboard_stats():
+def get_dashboard_stats(db: Session = Depends(get_db)):
     """
     Get fully anonymized aggregate statistics.
     No PII or individual case details are exposed.
     """
-    cases = get_all_cases()
+    db_cases = db.query(DBCase).all()
+    cases = [case_to_pydantic(c) for c in db_cases]
 
     total_cases = len(cases)
     all_evidence = []
@@ -85,9 +88,10 @@ def get_dashboard_stats():
 
 
 @router.get("/categories")
-def get_category_breakdown():
+def get_category_breakdown(db: Session = Depends(get_db)):
     """Category breakdown with severity cross-tabulation."""
-    cases = get_all_cases()
+    db_cases = db.query(DBCase).all()
+    cases = [case_to_pydantic(c) for c in db_cases]
     breakdown: dict[str, dict[str, int]] = {}
 
     for case in cases:
@@ -105,9 +109,10 @@ def get_category_breakdown():
 
 
 @router.get("/platforms")
-def get_platform_stats():
+def get_platform_stats(db: Session = Depends(get_db)):
     """Platform-level statistics."""
-    cases = get_all_cases()
+    db_cases = db.query(DBCase).all()
+    cases = [case_to_pydantic(c) for c in db_cases]
     platform_stats: dict[str, dict] = {}
 
     for case in cases:

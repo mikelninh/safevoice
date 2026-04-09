@@ -1,23 +1,19 @@
 """
 Chain verification API endpoints.
 Builds and verifies tamper-proof hash chains for case evidence.
+Now backed by the database (hash_chain_previous stored on each evidence item).
 """
 
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from sqlalchemy.orm import Session, joinedload
 
-from app.data.mock_data import get_case_by_id
-from app.services.chain import (
-    ChainLink,
-    build_chain,
-    verify_chain as verify_chain_service,
-)
+from app.database import get_db, Case as DBCase, EvidenceItem as DBEvidence
+from app.services.chain import ChainLink, build_chain, verify_chain as verify_chain_service
+from app.services.db_helpers import case_to_pydantic
 
 router = APIRouter(prefix="/chain", tags=["chain"])
-
-# In-memory store for built chains (keyed by case_id)
-_chain_store: dict[str, list[ChainLink]] = {}
 
 
 class BuildRequest(BaseModel):
@@ -76,15 +72,32 @@ def _schema_to_chain_links(schemas: list[ChainLinkSchema]) -> list[ChainLink]:
     ]
 
 
-@router.post("/build", response_model=BuildResponse)
-def build_chain_endpoint(req: BuildRequest):
-    """Build a hash chain for a case's evidence items."""
-    case = get_case_by_id(req.case_id)
+def _load_case(case_id: str, db: Session) -> DBCase:
+    case = (
+        db.query(DBCase)
+        .options(joinedload(DBCase.evidence_items))
+        .filter(DBCase.id == case_id)
+        .first()
+    )
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
+    return case
 
-    chain = build_chain(case.evidence_items)
-    _chain_store[req.case_id] = chain
+
+@router.post("/build", response_model=BuildResponse)
+def build_chain_endpoint(req: BuildRequest, db: Session = Depends(get_db)):
+    """Build a hash chain for a case's evidence items."""
+    db_case = _load_case(req.case_id, db)
+    pydantic_case = case_to_pydantic(db_case)
+
+    chain = build_chain(pydantic_case.evidence_items)
+
+    # Persist chain hashes back to DB
+    for link in chain:
+        ev = db.query(DBEvidence).filter_by(id=link.evidence_id).first()
+        if ev:
+            ev.hash_chain_previous = link.previous_hash
+    db.commit()
 
     return BuildResponse(
         case_id=req.case_id,
@@ -102,16 +115,11 @@ def verify_chain_endpoint(req: VerifyRequest):
 
 
 @router.get("/{case_id}", response_model=BuildResponse)
-def get_chain(case_id: str):
-    """Get existing chain for a case, or build one if it doesn't exist."""
-    if case_id in _chain_store:
-        chain = _chain_store[case_id]
-    else:
-        case = get_case_by_id(case_id)
-        if not case:
-            raise HTTPException(status_code=404, detail="Case not found")
-        chain = build_chain(case.evidence_items)
-        _chain_store[case_id] = chain
+def get_chain(case_id: str, db: Session = Depends(get_db)):
+    """Get existing chain for a case, or build one if needed."""
+    db_case = _load_case(case_id, db)
+    pydantic_case = case_to_pydantic(db_case)
+    chain = build_chain(pydantic_case.evidence_items)
 
     return BuildResponse(
         case_id=case_id,
