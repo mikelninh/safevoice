@@ -5,7 +5,14 @@ const BASE = '/api'
 export async function fetchCases(): Promise<Case[]> {
   const res = await fetch(`${BASE}/cases/`)
   if (!res.ok) throw new Error('Failed to fetch cases')
-  return res.json()
+  const data = await res.json()
+  // API returns CaseListOut (no evidence_items) — fill defaults for frontend compatibility
+  return data.map((c: Record<string, unknown>) => ({
+    evidence_items: [],
+    pattern_flags: [],
+    victim_context: '',
+    ...c,
+  }))
 }
 
 export async function fetchCase(id: string): Promise<Case> {
