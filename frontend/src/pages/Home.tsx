@@ -11,9 +11,15 @@ export default function Home({ lang }: Props) {
     <div className="min-h-screen">
       {/* Hero */}
       <section className="px-4 pt-12 pb-10 text-center max-w-2xl mx-auto">
-        <div className="inline-flex items-center gap-2 bg-indigo-900/50 border border-indigo-700 rounded-full px-4 py-1.5 text-indigo-300 text-sm mb-6">
-          <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></span>
-          {isDE ? 'Für Deutschland – DSGVO-konform – kostenlos' : 'For Germany – GDPR compliant – free'}
+        <div className="inline-flex items-center gap-2 bg-amber-900/40 border border-amber-700/60 rounded-full px-4 py-1.5 text-amber-200 text-sm mb-3">
+          <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+          {isDE
+            ? 'Beta · Pilot mit NGO-Partnern · kein Produktivbetrieb'
+            : 'Beta · NGO partner pilot · not yet production-ready'}
+        </div>
+        <div className="inline-flex items-center gap-2 bg-indigo-900/50 border border-indigo-700 rounded-full px-4 py-1.5 text-indigo-300 text-sm mb-6 ml-2">
+          <span className="w-2 h-2 bg-indigo-400 rounded-full"></span>
+          {isDE ? 'Für Deutschland · DSGVO-Ansatz · kostenlos' : 'For Germany · GDPR-by-design · free'}
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 leading-tight">
           {t(lang, 'home.hero.title')}
@@ -73,6 +79,46 @@ export default function Home({ lang }: Props) {
               <p className="text-slate-300 text-xs">{isDE ? item.de : item.en}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Beta status — honest about what works and what doesn't yet */}
+      <section className="px-4 pb-8 max-w-2xl mx-auto">
+        <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-5 text-sm">
+          <p className="text-amber-200 font-semibold mb-2">
+            {isDE ? '🧪 Was "Beta" hier bedeutet' : '🧪 What "beta" means here'}
+          </p>
+          <ul className="text-amber-100/80 space-y-1.5 list-disc list-outside ml-5">
+            <li>
+              {isDE
+                ? 'Der Klassifikator arbeitet zuverlässig (47 reale Test-Cases bestanden), aber falsch-positive Ergebnisse sind möglich — bitte vor Versand selbst prüfen.'
+                : 'The classifier is reliable (47 real-world tests passed), but false positives are possible — please review before sending.'}
+            </li>
+            <li>
+              {isDE
+                ? 'Datenschutzerklärung und Impressum sind Vorabversionen, noch nicht anwaltlich geprüft.'
+                : 'Privacy policy and imprint are drafts, not yet reviewed by a lawyer.'}
+            </li>
+            <li>
+              {isDE
+                ? 'Wir suchen NGO-Partner (z. B. HateAid) für die produktive Trägerschaft. Bis dahin bitte keine sensiblen Massendaten hochladen.'
+                : 'We are looking for an NGO partner (e.g. HateAid) to formally host the service. Until then please do not upload sensitive data at scale.'}
+            </li>
+            <li>
+              {isDE
+                ? 'Open Source — Quellcode auf '
+                : 'Open source — source code on '}
+              <a
+                href="https://github.com/mikelninh/safevoice"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-amber-50"
+              >
+                GitHub
+              </a>
+              {isDE ? '. Feedback willkommen.' : '. Feedback welcome.'}
+            </li>
+          </ul>
         </div>
       </section>
 

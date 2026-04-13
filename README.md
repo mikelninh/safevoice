@@ -1,8 +1,14 @@
 # SafeVoice
 
+> **🧪 Status: Closed Beta · NGO-Partner-Pilot · April 2026**
+> Funktionsfähig und im Test mit ersten NGO-Partnern. **Noch kein Produktivbetrieb** —
+> Datenschutzerklärung & Impressum sind Vorab-Versionen, nicht anwaltlich geprüft. Wir
+> suchen Trägerschaft (z. B. HateAid) bevor SafeVoice für Massenanwendung empfohlen
+> werden kann. Feedback und Pull Requests sehr willkommen.
+
 **Document digital harassment. Classify under German law. Generate court-ready reports. In 30 seconds.**
 
-Bilingual (DE/EN). Multilingual classifier (DE/EN/TR/AR). DSGVO-compliant. Free for victims.
+Bilingual (DE/EN). Multilingual classifier (DE/EN/TR/AR). DSGVO-by-design. Free for victims.
 
 ---
 
@@ -63,15 +69,17 @@ Three ways to get content in:
 - **Upload a screenshot** — OCR extracts the text from WhatsApp/DM screenshots
 
 ### 2. AI classifies it
-3-tier classifier with automatic fallback:
+Single-tier LLM classifier (OpenAI GPT-4o-mini with structured outputs via
+Pydantic `.parse()`). Detects 18 offense categories across 4 languages.
+Returns: severity, categories, applicable German laws, bilingual summary +
+recommended actions.
 
-| Tier | Engine | When |
-|------|--------|------|
-| 1 | OpenAI GPT-4o-mini | `OPENAI_API_KEY` set |
-| 2 | HuggingFace transformer | torch installed |
-| 3 | Regex patterns (DE/EN/TR/AR) | Always works, zero deps |
-
-Detects 18 offense categories across 4 languages. Returns: severity, categories, applicable German laws, bilingual summary + recommended actions.
+Earlier versions had a 3-tier fallback (LLM → transformer → regex). We
+removed it because (a) the LLM is dramatically more accurate on real evidence,
+(b) the regex tier produced too many false positives to send to police, and
+(c) running a transformer added 1.5 GB of dependencies for marginal gain.
+A regex-only fallback mode for organizations that cannot send data to OpenAI
+is on the roadmap.
 
 ### 3. Evidence is preserved
 - SHA-256 content hash for integrity
@@ -149,12 +157,11 @@ Full interactive docs: http://localhost:8000/docs
 | Frontend | React 18 + TypeScript + Vite + Tailwind CSS |
 | Backend | Python 3.13 + FastAPI |
 | Database | SQLAlchemy (SQLite dev / PostgreSQL prod) |
-| AI Tier 1 | OpenAI GPT-4o-mini |
-| AI Tier 2 | HuggingFace Transformers |
-| AI Tier 3 | Regex patterns (DE/EN/TR/AR) |
+| AI Classifier | OpenAI GPT-4o-mini (structured outputs) |
 | Evidence | SHA-256 hash chain + UTC timestamps |
-| Reports | ReportLab (PDF) |
-| Deploy | Docker + docker-compose |
+| Reports | ReportLab (PDF) + Python `email` (RFC 5322 .eml export) |
+| Auth | Magic-link (passwordless) |
+| Deploy | Docker · Railway (Postgres + FastAPI) |
 
 ---
 
