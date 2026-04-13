@@ -94,6 +94,11 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
     ? customEmail
     : selectedRecipient?.email ?? ''
 
+  // "Lokale Polizei / Onlinewache" has no single email address (each
+  // Bundesland runs its own portal), so we show an alternative flow instead
+  // of disabled email buttons: open the portal + copy-paste text.
+  const isOnlineWacheMode = recipientId === 'local'
+
   // Personalize the report body with victim data
   const personalizedBody = useMemo(() => {
     if (!reportBody) return ''
@@ -301,76 +306,151 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
         </div>
       )}
 
-      {/* PRIMARY ACTION — EML download (Apple Mail / Outlook / Thunderbird users) */}
-      <div className="space-y-2 pt-2">
-        <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">
-          <div className="flex items-start gap-2">
-            <span className="text-xl">✨</span>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-indigo-200">
-                {isDE ? 'Empfohlen: Fertige E-Mail (.eml)' : 'Recommended: Ready-to-send email (.eml)'}
-              </div>
-              <div className="text-xs text-indigo-300/80 mt-0.5">
-                {isDE
-                  ? 'Doppelklick auf die Datei öffnet deine Mail-App mit Empfänger, Betreff, Text und Anhängen — du musst nur noch senden.'
-                  : 'Double-click the file to open your mail app with recipient, subject, body, and attachments all ready — just hit send.'}
+      {/* PRIMARY ACTIONS — different flow for Onlinewache vs email recipients */}
+      {isOnlineWacheMode ? (
+        <div className="space-y-2 pt-2">
+          <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">
+            <div className="flex items-start gap-2">
+              <span className="text-xl">🌐</span>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-indigo-200">
+                  {isDE ? 'Onlinewache: 2-Schritt-Ablauf' : 'Onlinewache: 2-step flow'}
+                </div>
+                <div className="text-xs text-indigo-300/80 mt-0.5">
+                  {isDE
+                    ? 'Die Onlinewache jedes Bundeslands hat ein eigenes Formular — keine einheitliche E-Mail-Adresse. Deshalb: Text kopieren, Formular öffnen, einfügen.'
+                    : 'Every Bundesland\'s online police portal has its own form — no unified email. So: copy text, open portal, paste.'}
+                </div>
               </div>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                onClick={async () => { await copyFullReport(); setEmlDone(true) }}
+                disabled={!reportBody}
+                className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+              >
+                {emlDone
+                  ? isDE ? '✓ Text kopiert' : '✓ Text copied'
+                  : isDE ? '1. 📋 Text kopieren' : '1. 📋 Copy text'}
+              </button>
+              <a
+                href="https://www.onlinewache.polizei.de"
+                target="_blank"
+                rel="noreferrer"
+                onClick={async () => { await onDownloadPdf() }}
+                className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm text-center inline-flex items-center justify-center gap-1"
+              >
+                {isDE ? '2. 🌐 Onlinewache öffnen' : '2. 🌐 Open portal'}
+              </a>
+            </div>
+            <div className="text-[11px] text-indigo-300/70">
+              {isDE
+                ? 'Der zweite Klick lädt zusätzlich das PDF herunter — zum späteren Anhängen an die Antwort-Mail der Polizei.'
+                : 'The second click also downloads the PDF — to attach later to the police response.'}
+            </div>
           </div>
-          <button
-            onClick={handleEmlDownload}
-            disabled={!canSend || emlLoading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-          >
-            {emlLoading
-              ? isDE ? 'Wird erstellt…' : 'Building…'
-              : emlDone
-                ? isDE ? '✓ .eml heruntergeladen — Doppelklick öffnet Mail' : '✓ .eml downloaded — double-click to open'
-                : isDE ? '📨 E-Mail-Datei (.eml) herunterladen' : '📨 Download email file (.eml)'}
-          </button>
-          {emlError && (
-            <div className="text-xs text-red-300 bg-red-950/40 border border-red-900 rounded px-3 py-2 break-all font-mono">
-              {emlError}
+          {emlDone && (
+            <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 rounded-lg p-3 text-xs">
+              {isDE ? (
+                <>
+                  <div className="font-semibold mb-1">Text in Zwischenablage. Weiter so:</div>
+                  <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
+                    <li>Onlinewache öffnen (Button oben)</li>
+                    <li>Bundesland wählen</li>
+                    <li>Im Formular-Freitext-Feld einfügen (Cmd+V)</li>
+                    <li>Formular abschicken. PDF später anhängen, wenn du angeschrieben wirst.</li>
+                  </ol>
+                </>
+              ) : (
+                <>
+                  <div className="font-semibold mb-1">Text in clipboard. Next:</div>
+                  <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
+                    <li>Open Onlinewache (button above)</li>
+                    <li>Select your Bundesland</li>
+                    <li>Paste (Cmd+V) into the free-text field</li>
+                    <li>Submit. Attach PDF later when police reply.</li>
+                  </ol>
+                </>
+              )}
             </div>
           )}
-          <div className="text-[11px] text-indigo-400/70">
-            {isDE
-              ? 'Funktioniert mit: Apple Mail, Outlook, Thunderbird. Gmail-Web: bitte untere Option nutzen.'
-              : 'Works with: Apple Mail, Outlook, Thunderbird. For Gmail web: use the option below.'}
-          </div>
         </div>
-
-        {/* Secondary fallback: mailto + copy */}
-        <details className="text-xs text-slate-400">
-          <summary className="cursor-pointer py-2 select-none hover:text-slate-300">
-            {isDE ? 'Andere Optionen (Gmail, Text kopieren)' : 'Other options (Gmail, copy text)'}
-          </summary>
-          <div className="mt-2 pl-3 space-y-2 border-l border-slate-700">
-            <div>
-              <button
-                onClick={handleSend}
-                disabled={!canSend}
-                className="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 font-medium py-2.5 rounded-lg text-sm"
-              >
-                {sent
-                  ? isDE ? 'E-Mail geöffnet — PDF manuell anhängen' : 'Email opened — attach PDF manually'
-                  : isDE ? '📧 mailto: öffnen + PDF herunterladen' : '📧 Open mailto: + download PDF'}
-              </button>
-              <p className="text-[11px] text-slate-500 mt-1">
-                {isDE
-                  ? 'Öffnet die Mail-App mit Text. Anhänge musst du selbst per Drag & Drop einfügen.'
-                  : 'Opens mail app with body. You must drag & drop attachments yourself.'}
-              </p>
+      ) : (
+        <div className="space-y-2 pt-2">
+          <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">
+            <div className="flex items-start gap-2">
+              <span className="text-xl">✨</span>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-indigo-200">
+                  {isDE ? 'Empfohlen: Fertige E-Mail (.eml)' : 'Recommended: Ready-to-send email (.eml)'}
+                </div>
+                <div className="text-xs text-indigo-300/80 mt-0.5">
+                  {isDE
+                    ? 'Doppelklick auf die Datei öffnet deine Mail-App mit Empfänger, Betreff, Text und Anhängen — du musst nur noch senden.'
+                    : 'Double-click the file to open your mail app with recipient, subject, body, and attachments all ready — just hit send.'}
+                </div>
+              </div>
             </div>
+            {!actualEmail.trim() && recipientId === 'custom' && (
+              <div className="bg-amber-900/30 border border-amber-800 text-amber-200 rounded px-3 py-2 text-xs">
+                {isDE ? 'Bitte E-Mail-Adresse oben eingeben.' : 'Please enter an email address above.'}
+              </div>
+            )}
             <button
-              onClick={copyFullReport}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-lg text-sm border border-slate-700"
+              onClick={handleEmlDownload}
+              disabled={!canSend || emlLoading}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
-              {isDE ? '📋 Volltext kopieren (z.B. für Onlinewache)' : '📋 Copy full text (for online police forms)'}
+              {emlLoading
+                ? isDE ? 'Wird erstellt…' : 'Building…'
+                : emlDone
+                  ? isDE ? '✓ .eml heruntergeladen — Doppelklick öffnet Mail' : '✓ .eml downloaded — double-click to open'
+                  : isDE ? '📨 E-Mail-Datei (.eml) herunterladen' : '📨 Download email file (.eml)'}
             </button>
+            {emlError && (
+              <div className="text-xs text-red-300 bg-red-950/40 border border-red-900 rounded px-3 py-2 break-all font-mono">
+                {emlError}
+              </div>
+            )}
+            <div className="text-[11px] text-indigo-400/70">
+              {isDE
+                ? 'Funktioniert mit: Apple Mail, Outlook, Thunderbird. Gmail-Web: bitte untere Option nutzen.'
+                : 'Works with: Apple Mail, Outlook, Thunderbird. For Gmail web: use the option below.'}
+            </div>
           </div>
-        </details>
-      </div>
+
+          {/* Secondary fallback: mailto + copy */}
+          <details className="text-xs text-slate-400">
+            <summary className="cursor-pointer py-2 select-none hover:text-slate-300">
+              {isDE ? 'Andere Optionen (Gmail, Text kopieren)' : 'Other options (Gmail, copy text)'}
+            </summary>
+            <div className="mt-2 pl-3 space-y-2 border-l border-slate-700">
+              <div>
+                <button
+                  onClick={handleSend}
+                  disabled={!canSend}
+                  className="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 font-medium py-2.5 rounded-lg text-sm"
+                >
+                  {sent
+                    ? isDE ? 'E-Mail geöffnet — PDF manuell anhängen' : 'Email opened — attach PDF manually'
+                    : isDE ? '📧 mailto: öffnen + PDF herunterladen' : '📧 Open mailto: + download PDF'}
+                </button>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {isDE
+                    ? 'Öffnet die Mail-App mit Text. Anhänge musst du selbst per Drag & Drop einfügen.'
+                    : 'Opens mail app with body. You must drag & drop attachments yourself.'}
+                </p>
+              </div>
+              <button
+                onClick={copyFullReport}
+                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-lg text-sm border border-slate-700"
+              >
+                {isDE ? '📋 Volltext kopieren (z.B. für Onlinewache)' : '📋 Copy full text (for online police forms)'}
+              </button>
+            </div>
+          </details>
+        </div>
+      )}
 
       {emlDone && (
         <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 rounded-lg p-3 text-xs">
