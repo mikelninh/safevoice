@@ -178,6 +178,7 @@ def add_evidence(case_id: str, req: EvidenceCreate, db: Session = Depends(get_db
         archived_url=archived_url,
         previous_hash=previous_hash,
         classifier_tier=tier,
+        screenshot_base64=req.screenshot_base64,
     )
 
     # Build response

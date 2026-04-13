@@ -94,6 +94,7 @@ export async function ensureBackendCase(
       url?: string
       platform?: string
       author_username?: string
+      screenshot_base64?: string
     }>
   }
 ): Promise<string> {
@@ -127,11 +128,12 @@ export async function ensureBackendCase(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        content_type: 'text',
+        content_type: ev.screenshot_base64 ? 'screenshot' : 'text',
         text: ev.content_text,
         source_url: ev.url || undefined,
         author_username: ev.author_username ?? 'unknown',
         platform: ev.platform ?? undefined,
+        screenshot_base64: ev.screenshot_base64,
       }),
     })
     if (!evRes.ok) {
@@ -160,6 +162,20 @@ export async function resetServiceWorkerAndCaches(): Promise<void> {
   }
 }
 
+/**
+ * Read a File as a data URL ("data:image/png;base64,...") — resolves entirely
+ * client-side so we keep the bytes available for later PDF embedding without
+ * a second round-trip.
+ */
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('Could not read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
 export async function uploadScreenshot(
   file: File,
   onProgress?: (pct: number) => void
@@ -174,7 +190,22 @@ export async function uploadScreenshot(
     whatsapp_indicators: string[]
   }
 }> {
-  return new Promise((resolve, reject) => {
+  // Capture the base64 bytes client-side in parallel with the upload so we can
+  // attach them to the evidence record for PDF embedding later. No second
+  // round-trip needed — the bytes never leave the browser unencrypted.
+  const dataUrlPromise = fileToDataUrl(file)
+
+  const response = await new Promise<{
+    evidence: EvidenceItem
+    classification: ClassificationResult
+    ocr_metadata: {
+      text_extracted: boolean
+      is_whatsapp: boolean
+      timestamps_found: string[]
+      has_read_receipts: boolean
+      whatsapp_indicators: string[]
+    }
+  }>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', `${BASE}/upload/screenshot`)
 
@@ -200,6 +231,13 @@ export async function uploadScreenshot(
     formData.append('file', file)
     xhr.send(formData)
   })
+
+  // Attach the data URL so downstream code (localStorage persistence,
+  // ensureBackendCase sync, PDF embedding) can carry the screenshot bytes.
+  const screenshotDataUrl = await dataUrlPromise
+  response.evidence.screenshot_base64 = screenshotDataUrl
+
+  return response
 }
 
 export async function downloadPdf(

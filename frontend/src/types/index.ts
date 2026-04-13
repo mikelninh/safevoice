@@ -51,6 +51,8 @@ export interface EvidenceItem {
   archived_url?: string
   content_hash: string
   classification?: ClassificationResult
+  /** Screenshot as data URL (e.g. "data:image/png;base64,...") — embedded in legal PDFs. */
+  screenshot_base64?: string
 }
 
 export interface PatternFlag {

@@ -13,8 +13,11 @@ Each PDF includes evidence trail, classifications, and a legal disclosure.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import logging
+import re
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -28,6 +31,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
     PageBreak, KeepTogether, Image,
 )
+from reportlab.lib.utils import ImageReader
 
 from app.database import Case, Org, Classification, EvidenceItem
 from app.services import org_service
@@ -143,8 +147,46 @@ def _case_summary_block(case: Case, org: Org | None) -> list:
     return elements
 
 
+def _extract_screenshot(ev: EvidenceItem) -> tuple[bytes, str] | None:
+    """
+    Return (image_bytes, mime_type) if the evidence carries an embedded
+    screenshot, or None. We look in two places:
+      1. metadata_json['screenshot_base64'] — data URL or raw base64
+      2. raw_content starting with 'data:image/' — data URL directly
+    """
+    # Try metadata_json first
+    if ev.metadata_json:
+        try:
+            meta = json.loads(ev.metadata_json)
+            b64 = meta.get("screenshot_base64")
+            if b64:
+                return _decode_data_url(b64)
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+    # Fallback: raw_content as data URL (some upload flows stash it there)
+    if ev.raw_content and ev.raw_content.startswith("data:image/"):
+        return _decode_data_url(ev.raw_content)
+
+    return None
+
+
+def _decode_data_url(s: str) -> tuple[bytes, str] | None:
+    """Decode 'data:image/png;base64,....' or a bare base64 string."""
+    m = re.match(r"^data:(image/[a-zA-Z+.-]+);base64,(.*)$", s, re.DOTALL)
+    if m:
+        mime, b64 = m.group(1), m.group(2)
+    else:
+        # Bare base64 — assume PNG
+        mime, b64 = "image/png", s
+    try:
+        return base64.b64decode(b64, validate=False), mime
+    except (ValueError, base64.binascii.Error):
+        return None
+
+
 def _evidence_block(ev: EvidenceItem, idx: int) -> list:
-    """One evidence item — text, classification, hash."""
+    """One evidence item — text, classification, hash, embedded screenshot if present."""
     elements = [
         Paragraph(f"Beweisstück {idx + 1}", _H3),
     ]
@@ -175,11 +217,43 @@ def _evidence_block(ev: EvidenceItem, idx: int) -> list:
     elements.append(t)
     elements.append(Spacer(1, 0.2 * cm))
 
-    # Content
-    text = (ev.raw_content or "")[:2000]  # cap length for PDF
-    text_escaped = text.replace("<", "&lt;").replace(">", "&gt;")
-    elements.append(Paragraph(f"<i>„{text_escaped}“</i>", _BODY))
-    elements.append(Spacer(1, 0.2 * cm))
+    # Content — text body (skip if content is itself an embedded image)
+    raw = ev.raw_content or ""
+    if not raw.startswith("data:image/"):
+        text = raw[:2000]  # cap length for PDF
+        text_escaped = text.replace("<", "&lt;").replace(">", "&gt;")
+        elements.append(Paragraph(f"<i>„{text_escaped}“</i>", _BODY))
+        elements.append(Spacer(1, 0.2 * cm))
+
+    # Embedded screenshot (if present in metadata_json or as data URL in raw_content)
+    screenshot = _extract_screenshot(ev)
+    if screenshot:
+        img_bytes, mime = screenshot
+        try:
+            img_reader = ImageReader(BytesIO(img_bytes))
+            orig_w, orig_h = img_reader.getSize()
+            # Scale to max 15 cm wide, preserve aspect ratio
+            max_w = 15 * cm
+            max_h = 18 * cm
+            ratio = min(max_w / orig_w, max_h / orig_h, 1.0)
+            w = orig_w * ratio
+            h = orig_h * ratio
+            img_hash = hashlib.sha256(img_bytes).hexdigest()
+            elements.append(Spacer(1, 0.2 * cm))
+            elements.append(Paragraph(
+                f"<b>Bildbeleg</b> <font size='7' color='#777777'>({mime}, "
+                f"{len(img_bytes) // 1024} KB, SHA-256: {img_hash[:12]}…)</font>",
+                _H3,
+            ))
+            elements.append(Spacer(1, 0.15 * cm))
+            elements.append(Image(BytesIO(img_bytes), width=w, height=h))
+            elements.append(Spacer(1, 0.3 * cm))
+        except Exception as e:
+            logger.warning("Could not embed screenshot in PDF: %s", e)
+            elements.append(Paragraph(
+                f"<i>[Screenshot liegt vor, konnte aber nicht gerendert werden: {e}]</i>",
+                _SMALL,
+            ))
 
     # Classification
     cl: Classification | None = ev.classification

@@ -111,6 +111,10 @@ class EvidenceCreate(BaseModel):
     source_url: Optional[str] = None
     author_username: str = "unknown"
     platform: Optional[str] = None
+    # Optional embedded screenshot as data URL ("data:image/png;base64,...") or raw base64.
+    # When present, gets stored in metadata_json and embedded into legal PDFs.
+    # Max ~10 MB recommended — larger images are still accepted but slow the PDF.
+    screenshot_base64: Optional[str] = None
 
 
 class AnalyzeTextRequest(BaseModel):

@@ -87,13 +87,27 @@ def add_evidence_with_classification(
     extracted_text: str | None = None,
     previous_hash: str | None = None,
     classifier_tier: int = 3,
+    screenshot_base64: str | None = None,
 ) -> DBEvidence:
     """
     Create an EvidenceItem + linked Classification in the database.
     Maps classifier output categories/laws to DB reference data.
+
+    If screenshot_base64 is provided, it's stored in metadata_json and will
+    be embedded in legal PDFs.
     """
+    import json as _json
+
     content_hash = hash_content(text)
     now = capture_timestamp()
+
+    # Build metadata blob. Screenshots live here (not a dedicated column) to
+    # avoid a DB migration for the MVP. Future: move to object storage.
+    metadata: dict = {"author_username": author_username}
+    if screenshot_base64:
+        metadata["screenshot_base64"] = screenshot_base64
+        metadata["screenshot_size_bytes"] = len(screenshot_base64) * 3 // 4
+    metadata_json = _json.dumps(metadata)
 
     # Create evidence item
     evidence = DBEvidence(
@@ -108,6 +122,7 @@ def add_evidence_with_classification(
         source_url=source_url,
         archived_url=archived_url,
         timestamp_utc=now,
+        metadata_json=metadata_json,
     )
     db.add(evidence)
     db.flush()  # get evidence.id before creating classification
