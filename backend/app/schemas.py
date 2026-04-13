@@ -211,6 +211,9 @@ class EmlBuildRequest(BaseModel):
     victim_email: Optional[str] = None
     victim_address: Optional[str] = None
     victim_phone: Optional[str] = None
-    # Optional overrides — default to the police-report template text
+    # Which report template to use. Default is 'police' (Strafanzeige).
+    # Set to 'netzdg' when sending to platforms (Meta/X/TikTok takedown).
+    report_type: Optional[str] = "police"  # 'general' | 'netzdg' | 'police'
+    # Optional overrides — default to the chosen report_type's template
     subject: Optional[str] = None
     body: Optional[str] = None

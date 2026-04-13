@@ -88,9 +88,13 @@ def build_eml_endpoint(
 
     org = db.query(Org).filter(Org.id == db_case.org_id).first() if db_case.org_id else None
 
-    # Get the police report as the default body/subject
+    # Use the requested report type (default 'police'). Recipient-template
+    # mismatches (e.g. NetzDG body sent to police) are now caller-controlled.
+    report_type = (req.report_type or "police").lower()
+    if report_type not in {"general", "netzdg", "police"}:
+        report_type = "police"
     pydantic_case = case_to_pydantic(db_case)
-    report = generate_report(pydantic_case, report_type="police", lang="de")
+    report = generate_report(pydantic_case, report_type=report_type, lang="de")
 
     # Personalize body if victim data provided
     default_body = report.get("body", "")

@@ -15,7 +15,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import type { Lang } from '../i18n'
-import { downloadEml } from '../services/api'
+import { downloadEml, fetchReport } from '../services/api'
 import {
   POLICE_DIRECTORY,
   plzToBundesland,
@@ -151,18 +151,70 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
   // open the portal + copy-paste text.
   const isOnlineWacheMode = recipientId === 'local' || !!onlinewacheMatch
 
-  // Personalize the report body with victim data
+  /**
+   * Derive the right report template from the chosen recipient.
+   * Polizei/ZACs/Onlinewache → Strafanzeige (police body — "Ich erstatte Strafanzeige…")
+   * Platforms (future) → NetzDG-Meldung (netzdg body — "auf Ihrer Plattform…")
+   * HateAid / custom → police (best default — beratung@hateaid.org helps with filing)
+   *
+   * This fixes the bug where someone selecting Landespolizei was sending
+   * the NetzDG platform-takedown text. Wrong recipient, wrong template.
+   */
+  const intendedReportType = useMemo<'police' | 'netzdg' | 'general'>(() => {
+    if (recipientId.startsWith('platform-')) return 'netzdg'
+    // Default everything else to police — that's what victims actually file
+    return 'police'
+  }, [recipientId])
+
+  const TEMPLATE_LABELS_DE: Record<'police' | 'netzdg' | 'general', string> = {
+    police: 'Strafanzeige (für Polizei)',
+    netzdg: 'NetzDG-Meldung (für Plattform)',
+    general: 'Allgemeiner Bericht',
+  }
+  const TEMPLATE_LABELS_EN: Record<'police' | 'netzdg' | 'general', string> = {
+    police: 'Criminal complaint (for police)',
+    netzdg: 'NetzDG takedown notice (for platform)',
+    general: 'General report',
+  }
+  const intendedTemplateLabel = isDE
+    ? TEMPLATE_LABELS_DE[intendedReportType]
+    : TEMPLATE_LABELS_EN[intendedReportType]
+
+  // Fetch the right template body whenever recipient (and thus intendedReportType) changes.
+  // Cached per type so flipping back-and-forth doesn't re-fetch.
+  const [bodyByType, setBodyByType] = useState<Record<string, string>>({})
+  const [bodyLoading, setBodyLoading] = useState(false)
+  const [bodyError, setBodyError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (bodyByType[intendedReportType]) return  // already cached
+    setBodyLoading(true)
+    setBodyError(null)
+    fetchReport(caseId, intendedReportType, lang)
+      .then(r => {
+        setBodyByType(prev => ({ ...prev, [intendedReportType]: (r.body as string) ?? '' }))
+      })
+      .catch((e: Error) => setBodyError(e.message))
+      .finally(() => setBodyLoading(false))
+  }, [caseId, intendedReportType, lang, bodyByType])
+
+  // Use template-specific body (overrides what was passed via prop, which
+  // was tied to the Vorschau tab and could be the wrong template).
+  const effectiveReportBody = bodyByType[intendedReportType] ?? reportBody ?? ''
+
+  // Personalize the (template-correct) report body with victim data
   const personalizedBody = useMemo(() => {
-    if (!reportBody) return ''
+    if (!effectiveReportBody) return ''
+    const addressBlock = [victim.address, victim.plz].filter(Boolean).join(', ')
     const nameLine = victim.name
-      ? `${victim.name}${victim.address ? '\n' + victim.address : ''}${victim.phone ? '\nTel: ' + victim.phone : ''}${victim.email ? '\nE-Mail: ' + victim.email : ''}`
+      ? `${victim.name}${addressBlock ? '\n' + addressBlock : ''}${victim.phone ? '\nTel: ' + victim.phone : ''}${victim.email ? '\nE-Mail: ' + victim.email : ''}`
       : '[NAME DES OPFERS]'
-    return reportBody
+    return effectiveReportBody
       .replace('[NAME DES OPFERS]', nameLine)
       .replace('[VICTIM NAME]', nameLine)
       .replace('[UNTERSCHRIFT]', victim.name || '[UNTERSCHRIFT]')
       .replace('[SIGNATURE]', victim.name || '[SIGNATURE]')
-  }, [reportBody, victim])
+  }, [effectiveReportBody, victim])
 
   // mailto body: browsers limit URL to ~2000 chars. We truncate body and
   // tell the user the full content is in the attached PDF.
@@ -178,7 +230,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
   const subject = reportSubject || 'Strafanzeige'
   const mailtoUrl = `mailto:${encodeURIComponent(actualEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody)}`
 
-  const canSend = !!actualEmail.trim() && !!reportBody
+  const canSend = !!actualEmail.trim() && !!effectiveReportBody && !bodyLoading
   const missingName = !victim.name.trim()
 
   const handleSend = async () => {
@@ -204,11 +256,13 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
         recipient_email: actualEmail,
         victim_name: victim.name || undefined,
         victim_email: victim.email || undefined,
-        victim_address: victim.address || undefined,
+        victim_address: [victim.address, victim.plz].filter(Boolean).join(', ') || undefined,
         victim_phone: victim.phone || undefined,
-        // Pass the pre-computed body if the user stayed on the police tab;
-        // otherwise backend will build its own from the police template.
+        // Send the personalized body for the template that matches the
+        // recipient (police vs netzdg). This was the bug: previously we
+        // sent whatever Vorschau showed, which was often the wrong template.
         body: personalizedBody || undefined,
+        report_type: intendedReportType,
       })
       setEmlDone(true)
     } catch (e) {
@@ -337,6 +391,22 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
           </p>
         )}
 
+        {/* Show which template will be sent — fixes the bug where users
+            sent the NetzDG platform-takedown text to the police. */}
+        <div className="mt-3 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-xs flex items-center gap-2">
+          <span>📄</span>
+          <div className="flex-1">
+            <span className="text-slate-400">{isDE ? 'Vorlage:' : 'Template:'}</span>{' '}
+            <span className="text-slate-100 font-medium">{intendedTemplateLabel}</span>
+            {bodyLoading && (
+              <span className="text-slate-500 ml-2">{isDE ? '(wird geladen…)' : '(loading…)'}</span>
+            )}
+            {bodyError && (
+              <span className="text-red-400 ml-2">{bodyError.slice(0, 60)}</span>
+            )}
+          </div>
+        </div>
+
         {recipientId === 'custom' && (
           <input
             type="email"
@@ -430,7 +500,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 onClick={async () => { await copyFullReport(); setEmlDone(true) }}
-                disabled={!reportBody}
+                disabled={!effectiveReportBody}
                 className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
               >
                 {emlDone

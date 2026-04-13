@@ -271,6 +271,8 @@ export interface EmlVictimData {
   victim_email?: string
   victim_address?: string
   victim_phone?: string
+  /** Which template to use — controls "Strafanzeige" (police) vs "NetzDG-Meldung" (platform). */
+  report_type?: 'general' | 'netzdg' | 'police'
   subject?: string
   body?: string
 }
