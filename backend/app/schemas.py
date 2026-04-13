@@ -202,3 +202,15 @@ class BulkImportResult(BaseModel):
     failed: int
     evidence_ids: list[str]
     errors: list[str] = []
+
+
+class EmlBuildRequest(BaseModel):
+    """Request to build a downloadable .eml file for a case."""
+    recipient_email: str
+    victim_name: Optional[str] = None
+    victim_email: Optional[str] = None
+    victim_address: Optional[str] = None
+    victim_phone: Optional[str] = None
+    # Optional overrides — default to the police-report template text
+    subject: Optional[str] = None
+    body: Optional[str] = None

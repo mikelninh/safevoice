@@ -265,6 +265,37 @@ export async function downloadLegalPdf(caseId: string): Promise<void> {
   triggerDownload(blob, `safevoice_legal_${caseId}.pdf`)
 }
 
+export interface EmlVictimData {
+  recipient_email: string
+  victim_name?: string
+  victim_email?: string
+  victim_address?: string
+  victim_phone?: string
+  subject?: string
+  body?: string
+}
+
+/**
+ * Build a downloadable .eml file for this case. Double-clicking the file
+ * opens Apple Mail / Outlook / Thunderbird with recipient, subject, body,
+ * and attachments (PDF + hash-chain CSV) all pre-filled — user just hits
+ * Send. More complete than mailto:, lighter than server-side SMTP.
+ */
+export async function downloadEml(caseId: string, data: EmlVictimData): Promise<void> {
+  const res = await fetch(`${BASE}/reports/${caseId}/eml`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`${res.status} ${res.statusText} — ${body.slice(0, 300) || 'no body'}`)
+  }
+  const blob = await res.blob()
+  triggerDownload(blob, `safevoice-strafanzeige-${caseId.slice(0, 8)}.eml`)
+}
+
 /**
  * Trigger a file download from a Blob in a way that works across browsers.
  *

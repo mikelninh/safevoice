@@ -15,6 +15,7 @@
 
 import { useState, useMemo } from 'react'
 import type { Lang } from '../i18n'
+import { downloadEml } from '../services/api'
 
 interface VictimData {
   name: string
@@ -84,6 +85,9 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
   const [recipientId, setRecipientId] = useState<string>('zac-nrw')
   const [customEmail, setCustomEmail] = useState<string>('')
   const [sent, setSent] = useState(false)
+  const [emlLoading, setEmlLoading] = useState(false)
+  const [emlError, setEmlError] = useState<string | null>(null)
+  const [emlDone, setEmlDone] = useState(false)
 
   const selectedRecipient = DEFAULT_RECIPIENTS.find(r => r.id === recipientId) ?? DEFAULT_RECIPIENTS[0]
   const actualEmail = recipientId === 'custom'
@@ -132,6 +136,31 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
       window.location.href = mailtoUrl
     }, 200)
     setSent(true)
+  }
+
+  const handleEmlDownload = async () => {
+    setEmlError(null)
+    setEmlLoading(true)
+    setEmlDone(false)
+    try {
+      await downloadEml(caseId, {
+        recipient_email: actualEmail,
+        victim_name: victim.name || undefined,
+        victim_email: victim.email || undefined,
+        victim_address: victim.address || undefined,
+        victim_phone: victim.phone || undefined,
+        // Pass the pre-computed body if the user stayed on the police tab;
+        // otherwise backend will build its own from the police template.
+        body: personalizedBody || undefined,
+      })
+      setEmlDone(true)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[SendReport] EML download failed:', e)
+      setEmlError(msg)
+    } finally {
+      setEmlLoading(false)
+    }
   }
 
   const copyFullReport = async () => {
@@ -272,27 +301,103 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
         </div>
       )}
 
-      {/* Action */}
-      <div className="flex flex-col sm:flex-row gap-2 pt-2">
-        <button
-          onClick={handleSend}
-          disabled={!canSend}
-          className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
-        >
-          {sent
-            ? isDE ? 'E-Mail geöffnet — PDF anhängen' : 'Email opened — attach PDF'
-            : isDE ? '📧 E-Mail öffnen + PDF herunterladen' : '📧 Open email + download PDF'}
-        </button>
-        <button
-          onClick={copyFullReport}
-          className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium py-3 px-4 rounded-xl transition-colors text-sm"
-          title={isDE ? 'Volltext kopieren — für Onlinewache-Formular' : 'Copy full text — for online police forms'}
-        >
-          {isDE ? 'Text kopieren' : 'Copy text'}
-        </button>
+      {/* PRIMARY ACTION — EML download (Apple Mail / Outlook / Thunderbird users) */}
+      <div className="space-y-2 pt-2">
+        <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">
+          <div className="flex items-start gap-2">
+            <span className="text-xl">✨</span>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-indigo-200">
+                {isDE ? 'Empfohlen: Fertige E-Mail (.eml)' : 'Recommended: Ready-to-send email (.eml)'}
+              </div>
+              <div className="text-xs text-indigo-300/80 mt-0.5">
+                {isDE
+                  ? 'Doppelklick auf die Datei öffnet deine Mail-App mit Empfänger, Betreff, Text und Anhängen — du musst nur noch senden.'
+                  : 'Double-click the file to open your mail app with recipient, subject, body, and attachments all ready — just hit send.'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleEmlDownload}
+            disabled={!canSend || emlLoading}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            {emlLoading
+              ? isDE ? 'Wird erstellt…' : 'Building…'
+              : emlDone
+                ? isDE ? '✓ .eml heruntergeladen — Doppelklick öffnet Mail' : '✓ .eml downloaded — double-click to open'
+                : isDE ? '📨 E-Mail-Datei (.eml) herunterladen' : '📨 Download email file (.eml)'}
+          </button>
+          {emlError && (
+            <div className="text-xs text-red-300 bg-red-950/40 border border-red-900 rounded px-3 py-2 break-all font-mono">
+              {emlError}
+            </div>
+          )}
+          <div className="text-[11px] text-indigo-400/70">
+            {isDE
+              ? 'Funktioniert mit: Apple Mail, Outlook, Thunderbird. Gmail-Web: bitte untere Option nutzen.'
+              : 'Works with: Apple Mail, Outlook, Thunderbird. For Gmail web: use the option below.'}
+          </div>
+        </div>
+
+        {/* Secondary fallback: mailto + copy */}
+        <details className="text-xs text-slate-400">
+          <summary className="cursor-pointer py-2 select-none hover:text-slate-300">
+            {isDE ? 'Andere Optionen (Gmail, Text kopieren)' : 'Other options (Gmail, copy text)'}
+          </summary>
+          <div className="mt-2 pl-3 space-y-2 border-l border-slate-700">
+            <div>
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                className="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 font-medium py-2.5 rounded-lg text-sm"
+              >
+                {sent
+                  ? isDE ? 'E-Mail geöffnet — PDF manuell anhängen' : 'Email opened — attach PDF manually'
+                  : isDE ? '📧 mailto: öffnen + PDF herunterladen' : '📧 Open mailto: + download PDF'}
+              </button>
+              <p className="text-[11px] text-slate-500 mt-1">
+                {isDE
+                  ? 'Öffnet die Mail-App mit Text. Anhänge musst du selbst per Drag & Drop einfügen.'
+                  : 'Opens mail app with body. You must drag & drop attachments yourself.'}
+              </p>
+            </div>
+            <button
+              onClick={copyFullReport}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-lg text-sm border border-slate-700"
+            >
+              {isDE ? '📋 Volltext kopieren (z.B. für Onlinewache)' : '📋 Copy full text (for online police forms)'}
+            </button>
+          </div>
+        </details>
       </div>
 
-      {sent && (
+      {emlDone && (
+        <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 rounded-lg p-3 text-xs">
+          {isDE ? (
+            <>
+              <div className="font-semibold mb-1">Nächste Schritte:</div>
+              <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
+                <li>Finder / Explorer öffnen, zu Downloads gehen</li>
+                <li>Doppelklick auf die <code className="bg-black/40 px-1 rounded">.eml</code> Datei</li>
+                <li>Mail-App öffnet sich — PDF und Hash-Chain-CSV sind bereits angehängt</li>
+                <li>Prüfen, ggf. Lichtbildausweis hinzufügen, dann senden</li>
+              </ol>
+            </>
+          ) : (
+            <>
+              <div className="font-semibold mb-1">Next steps:</div>
+              <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
+                <li>Open Finder / Explorer, go to Downloads</li>
+                <li>Double-click the <code className="bg-black/40 px-1 rounded">.eml</code> file</li>
+                <li>Mail app opens — PDF and hash-chain CSV already attached</li>
+                <li>Review, optionally attach photo ID, hit Send</li>
+              </ol>
+            </>
+          )}
+        </div>
+      )}
+      {sent && !emlDone && (
         <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 rounded-lg p-3 text-xs">
           {isDE ? (
             <>

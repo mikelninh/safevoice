@@ -13,6 +13,8 @@ from app.services.pdf_generator import generate_pdf
 from app.services.bafin_report import generate_bafin_report
 from app.services.court_export import generate_court_package
 from app.services.legal_pdf import generate_legal_pdf
+from app.services.eml_builder import build_eml
+from app.schemas import EmlBuildRequest
 from sqlalchemy.orm import joinedload
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -48,6 +50,82 @@ def get_legal_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/{case_id}/eml")
+def build_eml_endpoint(
+    case_id: str,
+    req: EmlBuildRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Build a downloadable .eml file for this case.
+
+    Unlike mailto: (URL-length-limited, no attachments), an .eml file
+    contains the full pre-filled email including:
+      - From: the victim (so there's no spoofing)
+      - To: the authority (ZAC / Polizei / HateAid / etc.)
+      - Subject + body: personalized with victim data
+      - Legal PDF attached (with embedded screenshots)
+      - Hash-chain CSV attached (for independent verification)
+
+    User downloads the .eml → double-click opens Apple Mail / Outlook /
+    Thunderbird with everything ready, they just hit Send.
+    """
+    db_case = (
+        db.query(DBCase)
+        .options(
+            joinedload(DBCase.evidence_items)
+            .joinedload(DBEvidence.classification),
+        )
+        .filter(DBCase.id == case_id)
+        .first()
+    )
+    if not db_case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    org = db.query(Org).filter(Org.id == db_case.org_id).first() if db_case.org_id else None
+
+    # Get the police report as the default body/subject
+    pydantic_case = case_to_pydantic(db_case)
+    report = generate_report(pydantic_case, report_type="police", lang="de")
+
+    # Personalize body if victim data provided
+    default_body = report.get("body", "")
+    if req.victim_name:
+        sender_block = req.victim_name
+        if req.victim_address:
+            sender_block += f"\n{req.victim_address}"
+        if req.victim_phone:
+            sender_block += f"\nTel: {req.victim_phone}"
+        if req.victim_email:
+            sender_block += f"\nE-Mail: {req.victim_email}"
+        default_body = default_body.replace("[NAME DES OPFERS]", sender_block)
+        default_body = default_body.replace("[UNTERSCHRIFT]", req.victim_name)
+
+    body = req.body or default_body
+    subject = req.subject or report.get("subject", f"Strafanzeige — Fall {case_id[:8]}")
+
+    pdf_bytes = generate_legal_pdf(db_case, org=org)
+
+    eml_bytes = build_eml(
+        case=db_case,
+        org=org,
+        recipient_email=req.recipient_email,
+        subject=subject,
+        body=body,
+        victim_email=req.victim_email,
+        victim_name=req.victim_name,
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"safevoice-bericht-{case_id[:8]}.pdf",
+    )
+
+    filename = f"safevoice-strafanzeige-{case_id[:8]}.eml"
+    return Response(
+        content=eml_bytes,
+        media_type="message/rfc822",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
