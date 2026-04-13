@@ -74,6 +74,76 @@ export async function fetchReport(
   return res.json()
 }
 
+/**
+ * Ensure a case exists on the backend. If the caseId is a local-only ID
+ * (e.g. "case-local-1234"), push the case + all its evidence to the backend
+ * and return the backend's server-generated ID. If the case already has a
+ * `backend_id`, that's returned immediately.
+ *
+ * This bridges the frontend's localStorage-first model with the backend's
+ * DB-backed report/PDF/org features.
+ */
+export async function ensureBackendCase(
+  localCase: {
+    id: string
+    backend_id?: string
+    title: string
+    victim_context?: string
+    evidence_items: Array<{
+      content_text: string
+      url?: string
+      platform?: string
+      author_username?: string
+    }>
+  }
+): Promise<string> {
+  // Fast path: already synced
+  if (localCase.backend_id) {
+    // Verify it still exists server-side
+    const check = await fetch(`${BASE}/cases/${localCase.backend_id}`, { cache: 'no-store' })
+    if (check.ok) return localCase.backend_id
+    // Fall through to re-create if server-side case was deleted
+  }
+
+  // Create case on backend
+  const createRes = await fetch(`${BASE}/cases/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: localCase.title,
+      victim_context: localCase.victim_context,
+    }),
+  })
+  if (!createRes.ok) {
+    const body = await createRes.text().catch(() => '')
+    throw new Error(`Case-Sync: POST /cases failed (${createRes.status}): ${body.slice(0, 200)}`)
+  }
+  const created = await createRes.json()
+  const backendId: string = created.id
+
+  // Push each evidence item (re-classify server-side for fresh hash chain)
+  for (const ev of localCase.evidence_items) {
+    const evRes = await fetch(`${BASE}/cases/${backendId}/evidence`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content_type: 'text',
+        text: ev.content_text,
+        source_url: ev.url || undefined,
+        author_username: ev.author_username ?? 'unknown',
+        platform: ev.platform ?? undefined,
+      }),
+    })
+    if (!evRes.ok) {
+      const body = await evRes.text().catch(() => '')
+      // Continue — partial sync is better than no sync.
+      console.warn('[ensureBackendCase] evidence sync failed:', evRes.status, body.slice(0, 200))
+    }
+  }
+
+  return backendId
+}
+
 /** Unregister any Service Worker + clear Cache API — use when users hit stale cache. */
 export async function resetServiceWorkerAndCaches(): Promise<void> {
   try {

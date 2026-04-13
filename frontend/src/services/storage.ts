@@ -109,6 +109,18 @@ export function migrateLegacyEvidence(): void {
   }
 }
 
+/**
+ * Update the stored case with a server-assigned backend_id so subsequent
+ * report / PDF / share requests hit the synced case.
+ */
+export function setBackendId(localCaseId: string, backendId: string): void {
+  const cases = readCases()
+  const idx = cases.findIndex(c => c.id === localCaseId)
+  if (idx === -1) return
+  cases[idx].backend_id = backendId
+  writeCases(cases)
+}
+
 function computeSeverity(items: EvidenceItem[]): Severity {
   const order: Severity[] = ['low', 'medium', 'high', 'critical']
   let max: Severity = 'low'

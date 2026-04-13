@@ -1,14 +1,35 @@
 import { useState, useEffect } from 'react'
-import { fetchReport, downloadPdf, resetServiceWorkerAndCaches } from '../services/api'
+import { fetchReport, downloadPdf, ensureBackendCase, resetServiceWorkerAndCaches } from '../services/api'
 import { t, type Lang } from '../i18n'
+import { getLocalCase, setBackendId } from '../services/storage'
 
 interface Props {
-  caseId: string
+  caseId: string  // local case ID (localStorage) OR backend ID
   lang: Lang
   onClose: () => void
 }
 
 type ReportType = 'general' | 'netzdg' | 'police'
+
+/**
+ * Resolve the frontend case ID to a backend case ID.
+ *
+ * Cases are created in localStorage first (privacy-first MVP design). The
+ * backend's report/PDF endpoints need the case to exist server-side. This
+ * does that sync lazily on first report-request.
+ */
+async function resolveBackendCaseId(caseId: string): Promise<string> {
+  const localCase = getLocalCase(caseId)
+  if (!localCase) {
+    // Might already be a backend ID (e.g. deep link from backend-created case)
+    return caseId
+  }
+  const backendId = await ensureBackendCase(localCase)
+  if (backendId !== localCase.backend_id) {
+    setBackendId(caseId, backendId)
+  }
+  return backendId
+}
 
 export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [reportType, setReportType] = useState<ReportType>('netzdg')
@@ -16,26 +37,44 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [backendId, setResolvedBackendId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const isDE = lang === 'de'
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     setError(null)
     setReport(null)
-    fetchReport(caseId, reportType, lang)
-      .then(setReport)
+
+    // Step 1: ensure case exists on backend, then fetch the report.
+    resolveBackendCaseId(caseId)
+      .then(async (resolvedId) => {
+        if (cancelled) return
+        setResolvedBackendId(resolvedId)
+        const r = await fetchReport(resolvedId, reportType, lang)
+        if (!cancelled) setReport(r)
+      })
       .catch((e: Error) => {
-        console.error('[ReportModal] fetchReport failed:', e)
+        if (cancelled) return
+        console.error('[ReportModal] fetch failed:', e)
         setError(e?.message ?? 'Unknown error')
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [caseId, reportType, lang])
 
   const handleDownload = async () => {
     setDownloadError(null)
     try {
-      await downloadPdf(caseId, reportType, lang)
+      const resolved = backendId ?? (await resolveBackendCaseId(caseId))
+      if (!backendId) setResolvedBackendId(resolved)
+      await downloadPdf(resolved, reportType, lang)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[ReportModal] downloadPdf failed:', e)

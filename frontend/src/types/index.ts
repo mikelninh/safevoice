@@ -71,4 +71,6 @@ export interface Case {
   overall_severity: Severity
   status: string
   title: string
+  /** Backend (server-side) case ID, populated after sync. */
+  backend_id?: string
 }
