@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { fetchReport, downloadPdf, ensureBackendCase, resetServiceWorkerAndCaches } from '../services/api'
 import { t, type Lang } from '../i18n'
 import { getLocalCase, setBackendId } from '../services/storage'
+import SendReport from './SendReport'
 
 interface Props {
   caseId: string  // local case ID (localStorage) OR backend ID
@@ -90,6 +91,8 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const [mode, setMode] = useState<'preview' | 'send'>('preview')
+
   const tabs: { key: ReportType; label: string }[] = [
     { key: 'netzdg', label: t(lang, 'report.netzdg') },
     { key: 'police', label: t(lang, 'report.police') },
@@ -102,7 +105,9 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <h2 className="text-white font-bold">
-            {isDE ? 'Bericht exportieren' : 'Export report'}
+            {mode === 'send'
+              ? isDE ? 'Anzeige einreichen' : 'Submit complaint'
+              : isDE ? 'Bericht exportieren' : 'Export report'}
           </h2>
           <button
             onClick={onClose}
@@ -112,26 +117,61 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-slate-700">
-          {tabs.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setReportType(tab.key)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                reportType === tab.key
-                  ? 'text-indigo-400 border-b-2 border-indigo-500'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Mode switcher: Vorschau vs Senden */}
+        <div className="flex border-b border-slate-700 bg-slate-950/50">
+          <button
+            onClick={() => setMode('preview')}
+            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              mode === 'preview'
+                ? 'text-white bg-slate-800'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {isDE ? 'Vorschau' : 'Preview'}
+          </button>
+          <button
+            onClick={() => setMode('send')}
+            disabled={!report}
+            className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-40 ${
+              mode === 'send'
+                ? 'text-white bg-indigo-600'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {isDE ? '📧 Senden' : '📧 Send'}
+          </button>
         </div>
+
+        {/* Report type tabs — only in preview mode */}
+        {mode === 'preview' && (
+          <div className="flex border-b border-slate-700">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setReportType(tab.key)}
+                className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                  reportType === tab.key
+                    ? 'text-indigo-400 border-b-2 border-indigo-500'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
-          {loading ? (
+          {mode === 'send' && report && backendId ? (
+            <SendReport
+              caseId={backendId}
+              reportBody={(report.body as string) ?? null}
+              reportSubject={(report.subject as string) ?? null}
+              lang={lang}
+              onDownloadPdf={handleDownload}
+            />
+          ) : loading ? (
             <div className="text-slate-400 text-center py-12">
               {isDE ? 'Bericht wird generiert...' : 'Generating report...'}
             </div>
@@ -251,29 +291,41 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-700 flex gap-3">
-          <button
-            onClick={handleCopy}
-            disabled={!report}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
-          >
-            {copied ? t(lang, 'report.copied') : t(lang, 'report.copy')}
-          </button>
-          <button
-            onClick={handleDownload}
-            disabled={!report || loading}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors border border-slate-600"
-          >
-            {isDE ? '⬇ PDF Export' : '⬇ PDF Export'}
-          </button>
-          <button
-            onClick={onClose}
-            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors"
-          >
-            {isDE ? 'Schließen' : 'Close'}
-          </button>
-        </div>
+        {/* Footer — hidden in send mode (SendReport has its own buttons) */}
+        {mode === 'preview' && (
+          <div className="p-4 border-t border-slate-700 flex gap-3">
+            <button
+              onClick={handleCopy}
+              disabled={!report}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
+            >
+              {copied ? t(lang, 'report.copied') : t(lang, 'report.copy')}
+            </button>
+            <button
+              onClick={handleDownload}
+              disabled={!report || loading}
+              className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors border border-slate-600"
+            >
+              {isDE ? '⬇ PDF Export' : '⬇ PDF Export'}
+            </button>
+            <button
+              onClick={onClose}
+              className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors"
+            >
+              {isDE ? 'Schließen' : 'Close'}
+            </button>
+          </div>
+        )}
+        {mode === 'send' && (
+          <div className="p-4 border-t border-slate-700 flex gap-3 justify-end">
+            <button
+              onClick={onClose}
+              className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors text-sm"
+            >
+              {isDE ? 'Schließen' : 'Close'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
