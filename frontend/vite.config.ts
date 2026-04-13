@@ -7,6 +7,21 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Do NOT cache /api responses — reports, classifications, and PDFs must be fresh.
+      // Also ensure the new service worker takes over immediately so users don't
+      // see a stale JS bundle after a deploy.
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallbackDenylist: [/^\/api\//, /^\/reports\//, /^\/health$/, /^\/orgs/],
+        runtimeCaching: [
+          {
+            urlPattern: /^\/api\/.*/i,
+            handler: 'NetworkOnly',
+            options: { cacheName: 'api-no-cache' },
+          },
+        ],
+      },
       manifest: {
         name: 'SafeVoice',
         short_name: 'SafeVoice',

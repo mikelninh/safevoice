@@ -14,15 +14,34 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [reportType, setReportType] = useState<ReportType>('netzdg')
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const isDE = lang === 'de'
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
+    setReport(null)
     fetchReport(caseId, reportType, lang)
       .then(setReport)
+      .catch((e: Error) => {
+        console.error('[ReportModal] fetchReport failed:', e)
+        setError(e?.message ?? 'Unknown error')
+      })
       .finally(() => setLoading(false))
   }, [caseId, reportType, lang])
+
+  const handleDownload = async () => {
+    setDownloadError(null)
+    try {
+      await downloadPdf(caseId, reportType, lang)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[ReportModal] downloadPdf failed:', e)
+      setDownloadError(msg)
+    }
+  }
 
   const handleCopy = () => {
     if (!report) return
@@ -76,6 +95,18 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
           {loading ? (
             <div className="text-slate-400 text-center py-12">
               {isDE ? 'Bericht wird generiert...' : 'Generating report...'}
+            </div>
+          ) : error ? (
+            <div className="bg-red-900/40 border border-red-800 text-red-200 rounded-lg p-4 text-sm">
+              <div className="font-semibold mb-1">
+                {isDE ? 'Bericht konnte nicht geladen werden' : 'Report could not be loaded'}
+              </div>
+              <div className="text-xs font-mono opacity-80">{error}</div>
+              <div className="text-xs mt-2 opacity-70">
+                {isDE
+                  ? 'Tipp: Cmd+Shift+R für Hard-Reload, falls Service Worker cached.'
+                  : 'Tip: Cmd+Shift+R for hard reload in case of stale Service Worker cache.'}
+              </div>
             </div>
           ) : report ? (
             <div className="space-y-4">
@@ -134,8 +165,32 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
                   </ul>
                 </div>
               )}
+
+              {/*
+                Fallback for report types without body/subject (e.g. "general"
+                report has title + evidence[] + recommended_actions but no body).
+                Without this, those reports appeared as an empty modal.
+              */}
+              {!report.subject && !report.body && !report.recommended_actions && (
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                    {isDE ? 'Bericht-Rohdaten' : 'Report data'}
+                  </div>
+                  <pre className="bg-slate-800 rounded-lg p-4 text-slate-300 text-xs whitespace-pre-wrap font-mono overflow-x-auto">
+                    {JSON.stringify(report, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           ) : null}
+          {downloadError && (
+            <div className="mt-4 bg-red-900/40 border border-red-800 text-red-200 rounded-lg p-3 text-xs">
+              <div className="font-semibold mb-1">
+                {isDE ? 'PDF-Download fehlgeschlagen' : 'PDF download failed'}
+              </div>
+              <div className="font-mono opacity-80">{downloadError}</div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -148,9 +203,9 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
             {copied ? t(lang, 'report.copied') : t(lang, 'report.copy')}
           </button>
           <button
-            onClick={() => downloadPdf(caseId, reportType, lang)}
-            disabled={!report}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors border border-slate-600"
+            onClick={handleDownload}
+            disabled={!report || loading}
+            className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors border border-slate-600"
           >
             {isDE ? '⬇ PDF Export' : '⬇ PDF Export'}
           </button>
