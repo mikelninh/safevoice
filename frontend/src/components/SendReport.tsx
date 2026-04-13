@@ -13,15 +13,22 @@
  * manuell angehängt werden. Deswegen der Toast nach Klick.
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { Lang } from '../i18n'
 import { downloadEml } from '../services/api'
+import {
+  POLICE_DIRECTORY,
+  plzToBundesland,
+  getLandPolice,
+  type Bundesland,
+} from '../data/police-directory'
 
 interface VictimData {
   name: string
   address: string
   email: string
   phone: string
+  plz: string
 }
 
 interface Props {
@@ -81,23 +88,68 @@ const PLATFORM_ABUSE_EMAILS: Record<string, string> = {
 
 export default function SendReport({ caseId, reportBody, reportSubject, lang, onDownloadPdf }: Props) {
   const isDE = lang === 'de'
-  const [victim, setVictim] = useState<VictimData>({ name: '', address: '', email: '', phone: '' })
+  const [victim, setVictim] = useState<VictimData>({ name: '', address: '', email: '', phone: '', plz: '' })
   const [recipientId, setRecipientId] = useState<string>('zac-nrw')
+  const [detectedBL, setDetectedBL] = useState<Bundesland | null>(null)
+  const [plzSuggestionAccepted, setPlzSuggestionAccepted] = useState(false)
+
+  // Detect Bundesland from PLZ as user types (debounced-lite: only on 5 digits)
+  useEffect(() => {
+    if (/^\d{5}$/.test(victim.plz.trim())) {
+      const bl = plzToBundesland(victim.plz.trim())
+      setDetectedBL(bl)
+      if (bl && !plzSuggestionAccepted) {
+        // Don't auto-overwrite if user has actively chosen something else
+        setRecipientId(`landespolizei-${bl}`)
+      }
+    } else {
+      setDetectedBL(null)
+    }
+  }, [victim.plz, plzSuggestionAccepted])
   const [customEmail, setCustomEmail] = useState<string>('')
   const [sent, setSent] = useState(false)
   const [emlLoading, setEmlLoading] = useState(false)
   const [emlError, setEmlError] = useState<string | null>(null)
   const [emlDone, setEmlDone] = useState(false)
 
-  const selectedRecipient = DEFAULT_RECIPIENTS.find(r => r.id === recipientId) ?? DEFAULT_RECIPIENTS[0]
+  // Resolve the selected recipient. Three sources:
+  //   1. One of the hand-picked DEFAULT_RECIPIENTS (ZACs, HateAid, custom)
+  //   2. A Bundesland landespolizei entry (id = "landespolizei-<CODE>")
+  //   3. A Bundesland onlinewache entry (id = "onlinewache-<CODE>")
+  const landespolizeiMatch = recipientId.match(/^landespolizei-([A-Z]{2})$/)
+  const onlinewacheMatch = recipientId.match(/^onlinewache-([A-Z]{2})$/)
+
+  const selectedRecipient: { label: string; email: string; note: string; onlinewacheUrl?: string } =
+    landespolizeiMatch
+      ? (() => {
+          const p = getLandPolice(landespolizeiMatch[1] as Bundesland)!
+          return {
+            label: `Landespolizei ${p.name}`,
+            email: p.centralEmail,
+            note: `Zentrale Poststelle der Landespolizei ${p.name}. Bitte vor Senden verifizieren.`,
+            onlinewacheUrl: p.onlinewacheUrl,
+          }
+        })()
+      : onlinewacheMatch
+        ? (() => {
+            const p = getLandPolice(onlinewacheMatch[1] as Bundesland)!
+            return {
+              label: `Onlinewache ${p.name}`,
+              email: '',
+              note: `Online-Formular statt E-Mail. Text kopieren, im Formular einfügen.`,
+              onlinewacheUrl: p.onlinewacheUrl,
+            }
+          })()
+        : DEFAULT_RECIPIENTS.find(r => r.id === recipientId) ?? DEFAULT_RECIPIENTS[0]!
+
   const actualEmail = recipientId === 'custom'
     ? customEmail
     : selectedRecipient?.email ?? ''
 
-  // "Lokale Polizei / Onlinewache" has no single email address (each
-  // Bundesland runs its own portal), so we show an alternative flow instead
-  // of disabled email buttons: open the portal + copy-paste text.
-  const isOnlineWacheMode = recipientId === 'local'
+  // "Onlinewache" modes have no single email (either generic "local" or
+  // the per-Bundesland onlinewache), so we show an alternative flow:
+  // open the portal + copy-paste text.
+  const isOnlineWacheMode = recipientId === 'local' || !!onlinewacheMatch
 
   // Personalize the report body with victim data
   const personalizedBody = useMemo(() => {
@@ -202,10 +254,19 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
           />
           <input
             type="text"
-            placeholder={isDE ? 'Anschrift (Straße, PLZ, Ort)' : 'Address'}
+            placeholder={isDE ? 'Straße und Hausnummer' : 'Street and number'}
             value={victim.address}
             onChange={(e) => setVictim(v => ({ ...v, address: e.target.value }))}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 sm:col-span-2"
+          />
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={5}
+            placeholder={isDE ? 'PLZ (5-stellig)' : 'Postal code (5 digits)'}
+            value={victim.plz}
+            onChange={(e) => { setVictim(v => ({ ...v, plz: e.target.value.replace(/\D/g, '') })); setPlzSuggestionAccepted(false) }}
+            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
           />
           <input
             type="tel"
@@ -222,16 +283,60 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
         <h3 className="text-sm font-semibold text-slate-200 mb-2">
           {isDE ? '2. Empfänger' : '2. Recipient'}
         </h3>
+
+        {/* PLZ-based detection hint */}
+        {detectedBL && (
+          <div className="mb-2 bg-indigo-950/30 border border-indigo-800/50 rounded-lg px-3 py-2 text-xs text-indigo-200">
+            <span className="font-medium">📍 {getLandPolice(detectedBL)?.name}</span>
+            {' '}
+            <span className="text-indigo-300/80">
+              {isDE
+                ? `— basierend auf deiner PLZ. Landespolizei ${getLandPolice(detectedBL)?.name} ist vorausgewählt.`
+                : `— based on your postal code. Landespolizei ${getLandPolice(detectedBL)?.name} pre-selected.`}
+            </span>
+          </div>
+        )}
+
         <select
           value={recipientId}
-          onChange={(e) => setRecipientId(e.target.value)}
+          onChange={(e) => { setRecipientId(e.target.value); setPlzSuggestionAccepted(true) }}
           className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
         >
-          {DEFAULT_RECIPIENTS.map(r => (
-            <option key={r.id} value={r.id}>{r.label}</option>
-          ))}
+          <optgroup label={isDE ? 'Spezialisierte Zentralstellen (empfohlen für Online-Hass)' : 'Specialised units (recommended for online hate)'}>
+            {DEFAULT_RECIPIENTS.filter(r => r.id.startsWith('zac-') || r.id.startsWith('zcb-') || r.id.startsWith('zit-')).map(r => (
+              <option key={r.id} value={r.id}>{r.label}</option>
+            ))}
+          </optgroup>
+          <optgroup label={isDE ? 'Landespolizei (alle 16 Bundesländer)' : 'State police (all 16 Bundesländer)'}>
+            {POLICE_DIRECTORY.map(p => (
+              <option key={`landespolizei-${p.code}`} value={`landespolizei-${p.code}`}>
+                Landespolizei {p.name}{detectedBL === p.code ? ' ⭐' : ''}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label={isDE ? 'Onlinewache (Formular statt E-Mail)' : 'Online portal (form instead of email)'}>
+            {POLICE_DIRECTORY.map(p => (
+              <option key={`onlinewache-${p.code}`} value={`onlinewache-${p.code}`}>
+                Onlinewache {p.name}{detectedBL === p.code ? ' ⭐' : ''}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label={isDE ? 'Andere' : 'Other'}>
+            <option value="hateaid">HateAid (Beratung)</option>
+            <option value="local">Onlinewache (bundesweit generisch)</option>
+            <option value="custom">Andere E-Mail-Adresse</option>
+          </optgroup>
         </select>
+
         <p className="text-xs text-slate-400 mt-1">{selectedRecipient?.note}</p>
+
+        {/* Show the email we'll use so user can verify */}
+        {actualEmail && (
+          <p className="text-[11px] text-slate-500 mt-1 font-mono">
+            → {actualEmail}
+          </p>
+        )}
+
         {recipientId === 'custom' && (
           <input
             type="email"
@@ -241,15 +346,14 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
             className="mt-2 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
           />
         )}
-        {recipientId === 'local' && (
-          <a
-            href="https://www.onlinewache.polizei.de"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-2 inline-block text-xs text-indigo-400 hover:text-indigo-300 underline"
-          >
-            {isDE ? '→ Onlinewache öffnen (bundesweit)' : '→ Open online police portal'}
-          </a>
+
+        {/* Verification hint for Landespolizei emails */}
+        {recipientId.startsWith('landespolizei-') && (
+          <p className="text-[11px] text-amber-400/80 mt-2 leading-relaxed">
+            {isDE
+              ? '⚠ Zentrale Poststelle der Landespolizei. Diese Adressen wurden recherchiert, bitte vor Senden kurz verifizieren. Spezialisierte Cybercrime-Stellen (wenn oben gelistet) sind für Online-Hass meist die bessere Wahl.'
+              : '⚠ Central police office email. These were researched but please verify before sending. Specialised cybercrime units (if listed above) are usually a better choice for online hate.'}
+          </p>
         )}
       </section>
 
@@ -334,7 +438,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
                   : isDE ? '1. 📋 Text kopieren' : '1. 📋 Copy text'}
               </button>
               <a
-                href="https://www.onlinewache.polizei.de"
+                href={selectedRecipient.onlinewacheUrl || 'https://www.onlinewache.polizei.de'}
                 target="_blank"
                 rel="noreferrer"
                 onClick={async () => { await onDownloadPdf() }}
