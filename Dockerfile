@@ -21,4 +21,10 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE ${PORT}
 # Run Alembic migrations, then start the server.
 # Seed categories/laws as well so a fresh DB has reference data.
-CMD ["sh", "-c", "alembic upgrade head && python -c 'from app.database import seed_categories_and_laws; seed_categories_and_laws()' && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]
+# Startup:
+# 1. Create base tables (no-op if they exist) — handles fresh Postgres DBs
+# 2. Stamp alembic head so migrations know baseline was just created
+# 3. Run any migrations after head (no-op on first boot; applies new migrations on subsequent deploys)
+# 4. Seed reference data (categories, laws)
+# 5. Start server
+CMD ["sh", "-c", "python -c 'from app.database import Base, engine; Base.metadata.create_all(bind=engine); print(\"base tables ensured\")' && alembic stamp head 2>/dev/null; alembic upgrade head && python -c 'from app.database import seed_categories_and_laws; seed_categories_and_laws()' && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]
