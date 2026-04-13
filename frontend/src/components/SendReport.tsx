@@ -39,7 +39,18 @@ interface Props {
   onDownloadPdf: () => Promise<void>
 }
 
-const DEFAULT_RECIPIENTS = [
+interface Recipient {
+  id: string
+  label: string
+  email: string
+  note: string
+  /** If the platform provides a form instead of (or in addition to) email,
+      put the URL here — UI will surface a "Formular öffnen" button. */
+  formUrl?: string
+}
+
+const DEFAULT_RECIPIENTS: Recipient[] = [
+  // ── Spezialisierte Cybercrime-Zentralstellen ──
   {
     id: 'zac-nrw',
     label: 'ZAC NRW (Staatsanwaltschaft Köln)',
@@ -58,17 +69,60 @@ const DEFAULT_RECIPIENTS = [
     email: 'poststelle@gsta-frankfurt.justiz.hessen.de',
     note: 'Zentralstelle Internet- und Computerkriminalität',
   },
+
+  // ── Plattformen (NetzDG-Meldungen / DSA Article 16 Notice) ──
+  // Honest stance: most platforms force users to use forms, not email.
+  // We surface forms where that's the case, with explicit Form-URL.
   {
-    id: 'local',
-    label: 'Lokale Polizei (Onlinewache)',
+    id: 'platform-meta',
+    label: 'Meta (Facebook / Instagram) — NetzDG-Formular',
     email: '',
-    note: 'Nutze die Onlinewache deines Bundeslands — onlinewache.polizei.de',
+    note: 'Meta akzeptiert NetzDG-Beschwerden ausschließlich über das offizielle Formular.',
+    formUrl: 'https://www.facebook.com/help/contact/2402814677039293',
   },
+  {
+    id: 'platform-x',
+    label: 'X (Twitter) — NetzDG-Formular',
+    email: '',
+    note: 'X verarbeitet NetzDG-Beschwerden über ein eigenes Web-Formular.',
+    formUrl: 'https://help.x.com/de/forms/netzdg',
+  },
+  {
+    id: 'platform-tiktok',
+    label: 'TikTok — Beschwerdeformular',
+    email: '',
+    note: 'TikTok verarbeitet rechtswidrige Inhalte über die In-App-/Web-Meldung.',
+    formUrl: 'https://www.tiktok.com/legal/report/feedback',
+  },
+  {
+    id: 'platform-youtube',
+    label: 'YouTube / Google — NetzDG-Formular',
+    email: '',
+    note: 'Google bietet ein eigenes NetzDG-Beschwerdeformular für YouTube.',
+    formUrl: 'https://support.google.com/youtube/contact/netzdg',
+  },
+  {
+    id: 'platform-reddit',
+    label: 'Reddit — Legal/Abuse-Formular',
+    email: '',
+    note: 'Reddit verarbeitet rechtliche Beschwerden über das Legal-Formular.',
+    formUrl: 'https://www.reddit.com/report',
+  },
+
+  // ── Beratung / Beistand ──
   {
     id: 'hateaid',
     label: 'HateAid (Beratung)',
     email: 'beratung@hateaid.org',
     note: 'Persönliche Beratung + Prozesskostenhilfe',
+  },
+
+  // ── Generischer Fallback ──
+  {
+    id: 'local',
+    label: 'Lokale Polizei (Onlinewache, generisch)',
+    email: '',
+    note: 'Generische Onlinewache-Übersicht. Wenn möglich PLZ oben eingeben für Bundesland-spezifischen Link.',
   },
   {
     id: 'custom',
@@ -77,14 +131,6 @@ const DEFAULT_RECIPIENTS = [
     note: 'Eigene Adresse eintragen (z.B. Anwalt)',
   },
 ]
-
-const PLATFORM_ABUSE_EMAILS: Record<string, string> = {
-  instagram: 'support@meta.com',
-  facebook: 'support@meta.com',
-  x: 'support@x.com',
-  twitter: 'support@x.com',
-  tiktok: 'legal@tiktok.com',
-}
 
 export default function SendReport({ caseId, reportBody, reportSubject, lang, onDownloadPdf }: Props) {
   const isDE = lang === 'de'
@@ -146,10 +192,13 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
     ? customEmail
     : selectedRecipient?.email ?? ''
 
-  // "Onlinewache" modes have no single email (either generic "local" or
-  // the per-Bundesland onlinewache), so we show an alternative flow:
-  // open the portal + copy-paste text.
-  const isOnlineWacheMode = recipientId === 'local' || !!onlinewacheMatch
+  // Form-based recipients (Onlinewache OR platform NetzDG forms) have no
+  // single email — they all need the same UX: copy text → open form →
+  // paste. Group them under one mode flag.
+  const isFormMode =
+    recipientId === 'local' ||
+    !!onlinewacheMatch ||
+    recipientId.startsWith('platform-')
 
   /**
    * Derive the right report template from the chosen recipient.
@@ -375,7 +424,12 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
               </option>
             ))}
           </optgroup>
-          <optgroup label={isDE ? 'Andere' : 'Other'}>
+          <optgroup label={isDE ? 'Plattformen (NetzDG-Beschwerde)' : 'Platforms (NetzDG takedown)'}>
+            {DEFAULT_RECIPIENTS.filter(r => r.id.startsWith('platform-')).map(r => (
+              <option key={r.id} value={r.id}>{r.label}</option>
+            ))}
+          </optgroup>
+          <optgroup label={isDE ? 'Beratung & Andere' : 'Counseling & Other'}>
             <option value="hateaid">HateAid (Beratung)</option>
             <option value="local">Onlinewache (bundesweit generisch)</option>
             <option value="custom">Andere E-Mail-Adresse</option>
@@ -480,76 +534,101 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
         </div>
       )}
 
-      {/* PRIMARY ACTIONS — different flow for Onlinewache vs email recipients */}
-      {isOnlineWacheMode ? (
-        <div className="space-y-2 pt-2">
-          <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">
-            <div className="flex items-start gap-2">
-              <span className="text-xl">🌐</span>
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-indigo-200">
-                  {isDE ? 'Onlinewache: 2-Schritt-Ablauf' : 'Onlinewache: 2-step flow'}
-                </div>
-                <div className="text-xs text-indigo-300/80 mt-0.5">
-                  {isDE
-                    ? 'Die Onlinewache jedes Bundeslands hat ein eigenes Formular — keine einheitliche E-Mail-Adresse. Deshalb: Text kopieren, Formular öffnen, einfügen.'
-                    : 'Every Bundesland\'s online police portal has its own form — no unified email. So: copy text, open portal, paste.'}
+      {/* PRIMARY ACTIONS — different flow for form-based recipients (Onlinewache, Plattformen) vs email */}
+      {isFormMode ? (() => {
+        const isPlatform = recipientId.startsWith('platform-')
+        const formUrl =
+          (selectedRecipient as Recipient).formUrl
+          || (selectedRecipient as { onlinewacheUrl?: string }).onlinewacheUrl
+          || 'https://www.onlinewache.polizei.de'
+        return (
+          <div className="space-y-2 pt-2">
+            <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-xl">{isPlatform ? '🛡️' : '🌐'}</span>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-indigo-200">
+                    {isPlatform
+                      ? isDE ? 'Plattform-Beschwerde: 2-Schritt-Ablauf' : 'Platform takedown: 2-step flow'
+                      : isDE ? 'Onlinewache: 2-Schritt-Ablauf' : 'Onlinewache: 2-step flow'}
+                  </div>
+                  <div className="text-xs text-indigo-300/80 mt-0.5">
+                    {isPlatform
+                      ? isDE
+                        ? 'Diese Plattform akzeptiert keine NetzDG-E-Mails — nur das offizielle Formular. Text kopieren, Formular öffnen, einfügen.'
+                        : 'This platform does not accept NetzDG complaints by email — only via their official form. Copy, open form, paste.'
+                      : isDE
+                        ? 'Die Onlinewache jedes Bundeslands hat ein eigenes Formular — keine einheitliche E-Mail-Adresse. Text kopieren, Formular öffnen, einfügen.'
+                        : 'Every Bundesland\'s online police portal has its own form — no unified email. Copy, open form, paste.'}
+                  </div>
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  onClick={async () => { await copyFullReport(); setEmlDone(true) }}
+                  disabled={!effectiveReportBody}
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+                >
+                  {emlDone
+                    ? isDE ? '✓ Text kopiert' : '✓ Text copied'
+                    : isDE ? '1. 📋 Text kopieren' : '1. 📋 Copy text'}
+                </button>
+                <a
+                  href={formUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={async () => { await onDownloadPdf() }}
+                  className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm text-center inline-flex items-center justify-center gap-1"
+                >
+                  {isPlatform
+                    ? isDE ? '2. 🛡️ Plattform-Formular öffnen' : '2. 🛡️ Open platform form'
+                    : isDE ? '2. 🌐 Onlinewache öffnen' : '2. 🌐 Open portal'}
+                </a>
+              </div>
+              <div className="text-[11px] text-indigo-300/70">
+                {isPlatform
+                  ? isDE
+                    ? 'Der zweite Klick lädt zusätzlich das PDF herunter — viele Plattform-Formulare erlauben PDF-Upload als Beweis.'
+                    : 'The second click also downloads the PDF — many platform forms accept PDF as evidence upload.'
+                  : isDE
+                    ? 'Der zweite Klick lädt zusätzlich das PDF herunter — zum späteren Anhängen an die Antwort-Mail der Polizei.'
+                    : 'The second click also downloads the PDF — to attach later to the police response.'}
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                onClick={async () => { await copyFullReport(); setEmlDone(true) }}
-                disabled={!effectiveReportBody}
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
-              >
-                {emlDone
-                  ? isDE ? '✓ Text kopiert' : '✓ Text copied'
-                  : isDE ? '1. 📋 Text kopieren' : '1. 📋 Copy text'}
-              </button>
-              <a
-                href={selectedRecipient.onlinewacheUrl || 'https://www.onlinewache.polizei.de'}
-                target="_blank"
-                rel="noreferrer"
-                onClick={async () => { await onDownloadPdf() }}
-                className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm text-center inline-flex items-center justify-center gap-1"
-              >
-                {isDE ? '2. 🌐 Onlinewache öffnen' : '2. 🌐 Open portal'}
-              </a>
-            </div>
-            <div className="text-[11px] text-indigo-300/70">
-              {isDE
-                ? 'Der zweite Klick lädt zusätzlich das PDF herunter — zum späteren Anhängen an die Antwort-Mail der Polizei.'
-                : 'The second click also downloads the PDF — to attach later to the police response.'}
-            </div>
+            {emlDone && (
+              <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 rounded-lg p-3 text-xs">
+                {isDE ? (
+                  <>
+                    <div className="font-semibold mb-1">Text in Zwischenablage. Weiter so:</div>
+                    <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
+                      <li>{isPlatform ? 'Plattform-Formular öffnen (Button oben)' : 'Onlinewache öffnen (Button oben)'}</li>
+                      {isPlatform
+                        ? <li>Im Beschwerde-Formular „Sonstiges" / „Begründung" wählen</li>
+                        : <li>Bundesland wählen</li>}
+                      <li>Text einfügen (Cmd+V)</li>
+                      <li>{isPlatform
+                        ? 'PDF als Anhang hochladen (falls möglich) und absenden.'
+                        : 'Formular abschicken. PDF später anhängen, wenn du angeschrieben wirst.'}</li>
+                    </ol>
+                  </>
+                ) : (
+                  <>
+                    <div className="font-semibold mb-1">Text in clipboard. Next:</div>
+                    <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
+                      <li>{isPlatform ? 'Open the platform form (button above)' : 'Open Onlinewache (button above)'}</li>
+                      <li>{isPlatform ? 'Select "Other" / "Reason" in the form' : 'Select your Bundesland'}</li>
+                      <li>Paste text (Cmd+V)</li>
+                      <li>{isPlatform
+                        ? 'Upload PDF as attachment (if supported) and submit.'
+                        : 'Submit. Attach PDF later when police reply.'}</li>
+                    </ol>
+                  </>
+                )}
+              </div>
+            )}
           </div>
-          {emlDone && (
-            <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 rounded-lg p-3 text-xs">
-              {isDE ? (
-                <>
-                  <div className="font-semibold mb-1">Text in Zwischenablage. Weiter so:</div>
-                  <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
-                    <li>Onlinewache öffnen (Button oben)</li>
-                    <li>Bundesland wählen</li>
-                    <li>Im Formular-Freitext-Feld einfügen (Cmd+V)</li>
-                    <li>Formular abschicken. PDF später anhängen, wenn du angeschrieben wirst.</li>
-                  </ol>
-                </>
-              ) : (
-                <>
-                  <div className="font-semibold mb-1">Text in clipboard. Next:</div>
-                  <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
-                    <li>Open Onlinewache (button above)</li>
-                    <li>Select your Bundesland</li>
-                    <li>Paste (Cmd+V) into the free-text field</li>
-                    <li>Submit. Attach PDF later when police reply.</li>
-                  </ol>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      ) : (
+        )
+      })() : (
         <div className="space-y-2 pt-2">
           <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">
             <div className="flex items-start gap-2">
