@@ -13,7 +13,7 @@ from app.schemas import (
 from app.services.db_helpers import (
     create_case, add_evidence_with_classification, get_last_hash,
 )
-from app.services.classifier import classify
+from app.services.classifier import classify, ClassifierUnavailableError
 from app.services.evidence import archive_url_sync
 from app.services.scraper import scrape_url_sync, detect_platform
 
@@ -150,13 +150,14 @@ def add_evidence(case_id: str, req: EvidenceCreate, db: Session = Depends(get_db
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    # Determine classifier tier
-    from app.services.classifier_llm import is_available as llm_ok
-    from app.services.classifier_transformer import is_available as transformer_ok
-    tier = 1 if llm_ok() else (2 if transformer_ok() else 3)
+    # Single-tier LLM classifier
+    tier = 1
 
     # Classify the text
-    classification_result = classify(req.text)
+    try:
+        classification_result = classify(req.text)
+    except ClassifierUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
     # Get previous hash for chain
     previous_hash = get_last_hash(db, case_id)

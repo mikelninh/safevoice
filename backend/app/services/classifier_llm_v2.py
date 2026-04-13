@@ -1,0 +1,221 @@
+"""
+LLM-based classifier v2 — OpenAI Structured Outputs with Pydantic (SDK 1.40+).
+
+Uses `client.chat.completions.parse()` + Pydantic model, which:
+- Auto-validates against the schema server-side
+- Returns a typed Pydantic object (no manual JSON parsing)
+- Rejects malformed outputs before we see them
+
+This is the modern best-practice replacement for classifier_llm.py's raw JSON schema approach.
+
+Drop-in compatible: exports `is_available()` and `classify_with_llm()` with the same signatures.
+"""
+
+from __future__ import annotations
+
+import os
+import logging
+from enum import Enum
+
+try:
+    from openai import OpenAI
+    _openai_installed = True
+except ImportError:
+    _openai_installed = False
+
+from pydantic import BaseModel, Field, ConfigDict
+
+from app.models.evidence import (
+    ClassificationResult, Severity, Category, GermanLaw
+)
+from app.data.mock_data import (
+    LAW_185, LAW_186, LAW_187, LAW_241, LAW_126A, LAW_130, LAW_201A, LAW_238,
+    NETZ_DG, LAW_263, LAW_263A, LAW_269
+)
+
+logger = logging.getLogger(__name__)
+
+
+# ── Schema classes for OpenAI structured output ──
+# These are a FLAT subset of the full ClassificationResult. The LLM returns
+# enum strings for categories/laws; we map them to domain objects after.
+
+class LLMSeverity(str, Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
+
+
+class LLMCategory(str, Enum):
+    """Exhaustive list of categories — matches Category enum values 1:1."""
+    harassment = "harassment"
+    threat = "threat"
+    death_threat = "death_threat"
+    defamation = "defamation"
+    verleumdung = "verleumdung"
+    misogyny = "misogyny"
+    body_shaming = "body_shaming"
+    sexual_harassment = "sexual_harassment"
+    volksverhetzung = "volksverhetzung"
+    stalking = "stalking"
+    intimate_images = "intimate_images"
+    scam = "scam"
+    phishing = "phishing"
+    investment_fraud = "investment_fraud"
+    romance_scam = "romance_scam"
+    impersonation = "impersonation"
+    false_facts = "false_facts"
+    coordinated_attack = "coordinated_attack"
+
+
+class LLMLaw(str, Enum):
+    """Exhaustive list of applicable laws."""
+    stgb_130 = "§ 130 StGB"
+    stgb_185 = "§ 185 StGB"
+    stgb_186 = "§ 186 StGB"
+    stgb_187 = "§ 187 StGB"
+    stgb_201a = "§ 201a StGB"
+    stgb_238 = "§ 238 StGB"
+    stgb_241 = "§ 241 StGB"
+    stgb_126a = "§ 126a StGB"
+    stgb_263 = "§ 263 StGB"
+    stgb_263a = "§ 263a StGB"
+    stgb_269 = "§ 269 StGB"
+    netzdg_3 = "NetzDG § 3"
+
+
+class LLMClassification(BaseModel):
+    """Pydantic model for the classifier's structured output. Schema-enforced by OpenAI."""
+    model_config = ConfigDict(extra="forbid")
+
+    severity: LLMSeverity
+    categories: list[LLMCategory] = Field(..., min_length=1)
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    requires_immediate_action: bool
+    summary: str
+    summary_de: str
+    applicable_laws: list[LLMLaw]
+    potential_consequences: str
+    potential_consequences_de: str
+
+
+# ── Maps from LLM enums to domain types ──
+
+_SEVERITY_MAP = {
+    LLMSeverity.low: Severity.LOW,
+    LLMSeverity.medium: Severity.MEDIUM,
+    LLMSeverity.high: Severity.HIGH,
+    LLMSeverity.critical: Severity.CRITICAL,
+}
+
+_CATEGORY_MAP = {llm: Category(llm.value) for llm in LLMCategory}
+
+_LAW_MAP: dict[LLMLaw, GermanLaw] = {
+    LLMLaw.stgb_130: LAW_130,
+    LLMLaw.stgb_185: LAW_185,
+    LLMLaw.stgb_186: LAW_186,
+    LLMLaw.stgb_187: LAW_187,
+    LLMLaw.stgb_201a: LAW_201A,
+    LLMLaw.stgb_238: LAW_238,
+    LLMLaw.stgb_241: LAW_241,
+    LLMLaw.stgb_126a: LAW_126A,
+    LLMLaw.stgb_263: LAW_263,
+    LLMLaw.stgb_263a: LAW_263A,
+    LLMLaw.stgb_269: LAW_269,
+    LLMLaw.netzdg_3: NETZ_DG,
+}
+
+
+SYSTEM_PROMPT = """Du bist SafeVoice — ein juristischer Klassifikator für digitale Gewalt in Deutschland.
+
+Du analysierst Texte aus sozialen Medien (Kommentare, DMs, Posts) und klassifizierst sie nach deutschem Strafrecht.
+
+WICHTIG:
+- Verstehe Tippfehler, Slang, absichtliche Verschleierung (z.B. "f0tze", "stirbt" statt "stirb")
+- Wenn unklar: im Zweifel FÜR das Opfer entscheiden (höhere Severity)
+- Eine Drohung ist eine Drohung, auch wenn sie indirekt formuliert ist
+- Beachte den Gesamtkontext, nicht einzelne Wörter
+
+Gib mindestens eine Kategorie an (im Zweifel: harassment).
+NetzDG § 3 gilt IMMER bei Social Media Inhalten — füge es zu applicable_laws hinzu.
+
+SEVERITY:
+- low: Grenzwertig, Verstoß gegen Nutzungsbedingungen möglich
+- medium: Wahrscheinlicher Rechtsverstoß
+- high: Klarer Rechtsverstoß, Anzeige empfohlen
+- critical: Schwere Straftat, sofortige Anzeige + Beweissicherung"""
+
+
+def is_available() -> bool:
+    """Returns True only if the OpenAI SDK is installed AND an API key is configured."""
+    return _openai_installed and bool(os.environ.get("OPENAI_API_KEY"))
+
+
+def classify_with_llm(text: str) -> ClassificationResult | None:
+    """
+    Classify text using OpenAI Structured Outputs with Pydantic schema enforcement.
+
+    Returns None on any error (missing key, SDK not installed, API error, refusal).
+    The orchestrator in `classifier.py::classify` falls through to tier 2/3 on None.
+    """
+    if not _openai_installed:
+        return None
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        client = OpenAI(api_key=api_key)
+        # .parse() is the modern structured-output method — schema-enforced server-side.
+        completion = client.chat.completions.parse(
+            model="gpt-4o-mini",
+            temperature=0,
+            max_tokens=1024,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
+            ],
+            response_format=LLMClassification,
+        )
+
+        # Check for refusal (OpenAI may decline to classify for safety reasons).
+        msg = completion.choices[0].message
+        if msg.refusal:
+            logger.warning(f"LLM refused classification: {msg.refusal}")
+            return None
+
+        # `.parsed` is a validated Pydantic instance — or None if OpenAI failed to conform.
+        llm_result = msg.parsed
+        if llm_result is None:
+            logger.warning("LLM returned no parsed result despite no refusal")
+            return None
+
+        return _to_domain(llm_result)
+
+    except Exception as e:
+        logger.warning(f"LLM classifier failed: {e}")
+        return None
+
+
+def _to_domain(llm: LLMClassification) -> ClassificationResult:
+    """Map validated LLM output to the internal ClassificationResult domain object."""
+    severity = _SEVERITY_MAP[llm.severity]
+    categories = [_CATEGORY_MAP[c] for c in llm.categories] or [Category.HARASSMENT]
+
+    applicable_laws = [_LAW_MAP[l] for l in llm.applicable_laws]
+    # Invariant: NetzDG § 3 applies to every piece of platform content.
+    if NETZ_DG not in applicable_laws:
+        applicable_laws.append(NETZ_DG)
+
+    return ClassificationResult(
+        severity=severity,
+        categories=categories,
+        confidence=llm.confidence,
+        requires_immediate_action=llm.requires_immediate_action,
+        summary=llm.summary,
+        summary_de=llm.summary_de,
+        applicable_laws=applicable_laws,
+        potential_consequences=llm.potential_consequences,
+        potential_consequences_de=llm.potential_consequences_de,
+    )

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.services.classifier import classify
+from app.services.classifier import classify, ClassifierUnavailableError
 from app.services.pattern_detector import detect_patterns, compute_overall_severity
 from app.services.evidence import hash_content, capture_timestamp, archive_url_sync
 from app.services.scraper import scrape_url_sync, detect_platform
@@ -35,7 +35,10 @@ class AnalyzeCaseResponse(BaseModel):
 @router.post("/text", response_model=ClassificationResult)
 def analyze_text(req: AnalyzeTextRequest):
     """Quick classification — no persistence, no case needed."""
-    return classify(req.text)
+    try:
+        return classify(req.text)
+    except ClassifierUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 @router.post("/ingest")
@@ -49,7 +52,10 @@ def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
     if not text.strip():
         raise HTTPException(status_code=400, detail="Text content is required")
 
-    classification = classify(text)
+    try:
+        classification = classify(text)
+    except ClassifierUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     content_hash = hash_content(text)
     captured_at = capture_timestamp()
 
@@ -59,9 +65,9 @@ def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
 
-        from app.services.classifier_llm import is_available as llm_ok
-        from app.services.classifier_transformer import is_available as transformer_ok
-        tier = 1 if llm_ok() else (2 if transformer_ok() else 3)
+        # Single-tier classifier — always tier 1 (LLM).
+        # Field kept in schema for future multi-model support.
+        tier = 1
 
         previous_hash = get_last_hash(db, req.case_id)
         evidence = add_evidence_with_classification(
@@ -125,7 +131,10 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
         )
 
     # Classify the main post
-    classification = classify(scraped.content_text)
+    try:
+        classification = classify(scraped.content_text)
+    except ClassifierUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     content_hash = hash_content(scraped.content_text)
     captured_at = capture_timestamp()
     archived_url = archive_url_sync(url)
@@ -136,9 +145,7 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
 
-        from app.services.classifier_llm import is_available as llm_ok
-        from app.services.classifier_transformer import is_available as transformer_ok
-        tier = 1 if llm_ok() else (2 if transformer_ok() else 3)
+        tier = 1  # Single-tier LLM classifier
 
         previous_hash = get_last_hash(db, req.case_id)
         main_evidence = add_evidence_with_classification(

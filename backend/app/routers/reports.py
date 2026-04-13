@@ -6,14 +6,50 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 
-from app.database import get_db, Case as DBCase, EvidenceItem as DBEvidence
+from app.database import get_db, Case as DBCase, EvidenceItem as DBEvidence, Org
 from app.services.db_helpers import case_to_pydantic
 from app.services.report_generator import generate_report
 from app.services.pdf_generator import generate_pdf
 from app.services.bafin_report import generate_bafin_report
 from app.services.court_export import generate_court_package
+from app.services.legal_pdf import generate_legal_pdf
+from sqlalchemy.orm import joinedload
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+@router.get("/{case_id}/legal-pdf")
+def get_legal_pdf(
+    case_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    NGO-grade legal PDF with org letterhead, chain-of-custody appendix, and
+    disclosure block. Suitable for Strafanzeige filing.
+
+    Uses the case's org (if any) for branding. Anonymous cases get default SafeVoice branding.
+    """
+    db_case = (
+        db.query(DBCase)
+        .options(
+            joinedload(DBCase.evidence_items)
+            .joinedload(DBEvidence.classification),
+        )
+        .filter(DBCase.id == case_id)
+        .first()
+    )
+    if not db_case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    org = db.query(Org).filter(Org.id == db_case.org_id).first() if db_case.org_id else None
+
+    pdf_bytes = generate_legal_pdf(db_case, org=org)
+    filename = f"safevoice-legal-{case_id[:8]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def _get_case_as_pydantic(case_id: str, db: Session):

@@ -89,7 +89,48 @@ class User(Base):
     deleted_at = Column(DateTime, nullable=True)  # GDPR soft delete
 
     # Relationships
-    cases = relationship("Case", back_populates="user")
+    cases = relationship("Case", back_populates="user", foreign_keys="Case.user_id")
+    org_memberships = relationship(
+        "OrgMember",
+        back_populates="user",
+        foreign_keys="OrgMember.user_id",  # disambiguate from invited_by
+    )
+
+
+class Org(Base):
+    """An organization (NGO, victim support service, etc.) that uses SafeVoice."""
+    __tablename__ = "orgs"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    slug = Column(String, unique=True, nullable=False)  # URL-safe: "hateaid", "weisser-ring"
+    display_name = Column(String, nullable=False)
+    contact_email = Column(String)
+    # Org-level settings (PDF letterhead URL, default language, branding color, etc.)
+    settings_json = Column(Text, default="{}")
+    status = Column(String, default="active")  # active / suspended / deleted
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    members = relationship("OrgMember", back_populates="org", cascade="all, delete-orphan")
+    cases = relationship("Case", back_populates="org")
+
+
+class OrgMember(Base):
+    """Many-to-many: users belong to orgs with a role."""
+    __tablename__ = "org_members"
+
+    user_id = Column(String, ForeignKey("users.id"), primary_key=True)
+    org_id = Column(String, ForeignKey("orgs.id"), primary_key=True)
+    # owner > admin > caseworker > viewer
+    role = Column(String, nullable=False, default="caseworker")
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    invited_by = Column(String, ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    user = relationship("User", back_populates="org_memberships", foreign_keys=[user_id])
+    org = relationship("Org", back_populates="members")
 
 
 class Case(Base):
@@ -97,16 +138,22 @@ class Case(Base):
 
     id = Column(String, primary_key=True, default=gen_uuid)
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
-    title = Column(String)  # AI_POPULATED
+    org_id = Column(String, ForeignKey("orgs.id"), nullable=True)  # Multi-tenant: optional org ownership
+    assigned_to = Column(String, ForeignKey("users.id"), nullable=True)  # Which caseworker owns this
+    visibility = Column(String, default="private")  # private (creator only) / org (all org members)
+
+    title = Column(String)  # AI_POPULATED initially, user-editable
     summary = Column(Text)  # AI_POPULATED
     summary_de = Column(Text)  # AI_POPULATED
-    status = Column(String, default="open")  # system_generated: open/in_progress/closed
+    status = Column(String, default="open")  # open / in_progress / closed
     overall_severity = Column(String, default="none")  # AI_POPULATED
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="cases")
+    user = relationship("User", back_populates="cases", foreign_keys=[user_id])
+    assignee = relationship("User", foreign_keys=[assigned_to])
+    org = relationship("Org", back_populates="cases")
     evidence_items = relationship("EvidenceItem", back_populates="case")
 
 

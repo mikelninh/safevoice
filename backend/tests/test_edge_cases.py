@@ -318,13 +318,14 @@ class TestAPIRobustness:
         assert "not found" in resp.json()["detail"].lower()
 
     def test_health_returns_correct_structure(self, client):
-        """GET /health must return status, service, and classifier_tier."""
+        """GET /health returns status, service, and single-tier classifier info."""
         resp = client.get("/health")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["status"] == "ok"
+        # status is "ok" when LLM configured, "degraded" otherwise
+        assert data["status"] in ("ok", "degraded")
         assert data["service"] == "SafeVoice API"
-        assert data["classifier_tier"] in ("claude_api", "openai", "transformer", "regex")
+        assert data["classifier"] in ("llm", "unavailable")
 
     def test_partners_submit_without_api_key(self, client):
         """POST /partners/cases/submit without X-API-Key must return 401."""
@@ -340,11 +341,16 @@ class TestAPIRobustness:
         assert "API-Key" in resp.json()["detail"]
 
     def test_large_payload_1mb(self, client):
-        """1MB text payload must not crash the server."""
+        """1MB text payload must not crash the server.
+
+        Under the single-tier LLM architecture, a 1MB payload exceeds token limits
+        and returns 503 (classifier unavailable for this input). This is correct —
+        we no longer silently fall through to a weak regex classification.
+        """
         big = "x" * (1024 * 1024)  # 1 MB
         resp = client.post("/analyze/text", json={"text": big})
-        # Must succeed or return a client error, never 500
-        assert resp.status_code in (200, 400, 413, 422)
+        # Must succeed or return a client/service error, never 500
+        assert resp.status_code in (200, 400, 413, 422, 503)
 
     def test_special_characters_in_url_parameters(self, client):
         """Special characters in URL path params must not crash."""

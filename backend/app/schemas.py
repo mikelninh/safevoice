@@ -127,3 +127,74 @@ class IngestRequest(BaseModel):
 class AnalyzeUrlRequest(BaseModel):
     url: str
     case_id: Optional[str] = None
+
+
+# ── Org / multi-tenant schemas ──
+
+class OrgCreate(BaseModel):
+    slug: str
+    display_name: str
+    contact_email: Optional[str] = None
+
+
+class OrgUpdate(BaseModel):
+    display_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    settings: Optional[dict] = None
+
+
+class OrgOut(BaseModel):
+    id: str
+    slug: str
+    display_name: str
+    contact_email: Optional[str] = None
+    status: str
+    created_at: Optional[datetime] = None
+    settings: dict = {}
+    member_count: int = 0
+    my_role: Optional[str] = None  # only populated when user is a member
+
+    model_config = {"from_attributes": True}
+
+
+class MemberInvite(BaseModel):
+    email: str
+    role: str = "caseworker"  # owner / admin / caseworker / viewer
+
+
+class MemberRoleUpdate(BaseModel):
+    role: str
+
+
+class MemberOut(BaseModel):
+    user_id: str
+    org_id: str
+    role: str
+    joined_at: Optional[datetime] = None
+    email: Optional[str] = None  # denormalized for convenience
+    display_name: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+# ── Bulk import ──
+
+class BulkImportItem(BaseModel):
+    """One row from a bulk import CSV."""
+    text: str
+    source_url: Optional[str] = None
+    author_username: str = "unknown"
+    platform: Optional[str] = None
+
+
+class BulkImportRequest(BaseModel):
+    case_id: str
+    items: list[BulkImportItem]
+
+
+class BulkImportResult(BaseModel):
+    case_id: str
+    imported: int
+    failed: int
+    evidence_ids: list[str]
+    errors: list[str] = []

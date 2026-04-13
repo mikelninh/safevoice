@@ -19,4 +19,6 @@ COPY --from=frontend-build /app/frontend/dist ./static
 ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
 EXPOSE ${PORT}
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]
+# Run Alembic migrations, then start the server.
+# Seed categories/laws as well so a fresh DB has reference data.
+CMD ["sh", "-c", "alembic upgrade head && python -c 'from app.database import seed_categories_and_laws; seed_categories_and_laws()' && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]

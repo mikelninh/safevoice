@@ -1,0 +1,574 @@
+"""
+DEPRECATED regex-based classifier.
+
+No longer wired into the production `classify()` path — that is now LLM-only
+(see `classifier.py` and `classifier_llm_v2.py`).
+
+Reasons for deprecation:
+- Under-classifies obfuscated German content (can't handle unseen variations)
+- Gives victims a false sense of certainty when the real classifier is down
+- A weak classification is more harmful than an honest error
+
+This module is kept for:
+- Existing tests that verify regex behavior (backward-compat during transition)
+- Pattern-library reference for future multi-modal work
+- Defensive use in offline environments if ever needed
+
+Do NOT import from this module in new code.
+"""
+
+import logging
+import re
+from app.models.evidence import (
+    ClassificationResult, Severity, Category, GermanLaw
+)
+from app.data.mock_data import (
+    LAW_185, LAW_186, LAW_187, LAW_241, LAW_126A, LAW_130,
+    LAW_201A, LAW_238, NETZ_DG, LAW_263, LAW_263A, LAW_269,
+)
+
+logger = logging.getLogger(__name__)
+
+
+# Signal dictionaries - extend these significantly in production
+DEATH_THREAT_SIGNALS = [
+    # English
+    r"\b(kill|murder|slaughter|hunt|eliminate)\s+(you|u|her|them|yourself)\b",
+    r"\bkill\s+your\s*self\b",
+    r"\b(kys|go\s+die|go\s+kill\s+yourself)\b",
+    r"\b(stirb|sterb|verreck|krepier|verrecke?)\b",
+    r"\bsoll?st\s+(sterben|verrecken|krepieren)\b",
+    r"\b(you|u|she)\s+(will|won't)\s+(die|survive|live)\b",
+    # German
+    r"\btod\b.*\b(dir|ihr|dich)\b",
+    r"\b(umbringen|töten|ermorden)\b",
+    r"\bbringe?\s+(dich|euch|sie|ihn)\s+um\b",
+    r"\bich\s+mach\s+(dich|euch)\s+(fertig|kalt|platt)\b",
+    r"\bwatch\s+(your|yourself)\b",
+    r"\bI\s+know\s+where\s+you\b",
+    r"\bich\s+weiß\s+wo\s+du\b",
+    r"\bpas\s+auf\s+dich\s+auf\b",
+    # Turkish
+    r"\b(seni\s+öldürürüm|seni\s+öldüreceğim|öldürürüm)\b",
+    r"\bgebertir[ie]m\b",
+    r"\bkanını\s+akıtırım\b",
+    r"\bseni\s+bitiririm\b",
+    # Arabic
+    r"(سأقتلك|راح\s*اقتلك|بقتلك)",
+    r"(سأذبحك|هقتلك|موتي)",
+]
+
+THREAT_SIGNALS = [
+    # English
+    r"\b(you'll|you will|you're going to)\s+(regret|pay|suffer)\b",
+    r"\bsomething\s+(will|might|could)\s+happen\b",
+    r"\b(watch|careful|beware)\b",
+    # German
+    r"\bdrohe\b",
+    r"\bpassiert\s+(dir|ihr)\s+(was|etwas)\b",
+    # Turkish
+    r"\b(pişman\s+olursun|pişman\s+ederim|göreceksin)\b",
+    r"\b(dikkat\s+et|başına\s+gelecekleri\s+gör)\b",
+    r"\bnerede\s+olduğunu\s+biliyorum\b",
+    # Arabic
+    r"(ستندم|راح\s*تندم|انتبه\s*لنفسك)",
+    r"(اعرف\s*وين\s*تسكن|بعرف\s*وينك)",
+]
+
+MISOGYNY_SIGNALS = [
+    # English
+    r"\b(women|woman|female|girl)\s+(should|must|need to)\s+(shut up|be quiet|stay home|stay in the kitchen)\b",
+    r"\b(bitch|whore|slut|cunt)\b",
+    # German
+    r"\bfrauen\s+(gehören|sollen|müssen|haben\s+kein(e)?|sind)\b",
+    r"\bfrauen\s+wie\s+du\b",
+    r"\bkein\s+(platz|recht)\s+für\s+(frauen|weiber)\b",
+    r"\b(weib|weiber|schlampe|hure|schlampen)\b",
+    r"\b(keine\s+meinung|keine\s+ahnung|nichts\s+zu\s+sagen)\s+(haben|verdient)\b",
+    r"\b(meinung\s+verdient|recht\s+auf\s+meinung)\b",
+    r"frauen\s+(können|können\s+nicht|dürfen\s+nicht)\b",
+    # Turkish
+    r"\b(kadınlar\s+(sussun|sus|konuşmasın))\b",
+    r"\b(kaltak|orospu|sürtük)\b",
+    r"\bkadının\s+(yeri|haddini)\b",
+    # Arabic
+    r"(شرموطة|عاهرة|قحبة)",
+    r"(المرأة\s*مكانها|اسكتي|النسوان)",
+]
+
+SEXUAL_HARASSMENT_SIGNALS = [
+    # English
+    r"\b(send|show)\s+(me|nudes|pics|photos)\b",
+    r"\bsex\s+(with|from)\s+(you|her)\b",
+    # German
+    r"\b(fick|fick dich|ficken)\b",
+    r"\b(schick|zeig)\s+(mir|bilder|fotos)\b",
+    # Turkish
+    r"\b(seni\s+sikerim|sik(erim|tir))\b",
+    r"\bfotoğraflarını\s+(at|gönder)\b",
+    # Arabic
+    r"(ابعتيلي\s*صور|نيك|كسمك)",
+]
+
+HARASSMENT_SIGNALS = [
+    # English
+    r"\b(idiot|moron|stupid|dumb|brain\s*dead|malnourished|loser)\b",
+    r"\b(shut\s+up|stfu|nobody\s+asked|nobody\s+cares)\b",
+    r"\b(delete\s+(this|yourself)|go\s+die|kys)\b",
+    # German
+    r"\b(idiot|dumm|blöd|vollidiot|depp)\b",
+    r"\bhalt\s+(die\s+)?klappe\b",
+    # Turkish
+    r"\b(aptal|salak|gerizekalı|mal|dangalak|ezik)\b",
+    r"\b(kapa\s+çeneni|defol|siktir)\b",
+    # Arabic
+    r"(غبي|حمار|أحمق|تافه|كلب)",
+    r"(اخرس|انقلع|طز\s*فيك)",
+]
+
+BODY_SHAMING_SIGNALS = [
+    # English
+    r"\b(fat|ugly|disgusting|gross|hideous)\b",
+    r"\b(lose\s+weight|diet|gym)\b",
+    r"\b(nobody\s+wants|no\s+one\s+wants)\s+(you|her)\b",
+    # German
+    r"\b(hässlich|fett|eklig|widerlich)\b",
+    # Turkish
+    r"\b(şişko|çirkin|iğrenç|obez)\b",
+    # Arabic
+    r"(سمينة|قبيحة|مقرفة|بشعة)",
+]
+
+FALSE_FACTS_SIGNALS = [
+    # English — general defamation / false claims
+    r"\b(everyone\s+knows|it'?s\s+a\s+fact\s+that)\b.*\b(you|she|he|they)\b",
+    r"\b(caught|exposed|proven)\s+(cheating|lying|stealing|fraud)\b",
+    r"\b(you|she|he)\s+(is|are|was)\s+a\s+(criminal|thief|liar|fraud|pedophile|rapist|junkie|nazi)\b",
+    r"\b(convicted|arrested|fired)\s+(for|because)\b",
+    r"\b(secretly|actually)\s+(a|an)\s+(prostitute|escort|drug\s+dealer|criminal)\b",
+    # German — Üble Nachrede / Verleumdung
+    r"\b(jeder\s+weiß|es\s+ist\s+bekannt|bewiesenermaßen)\b",
+    r"\b(vorbestraft|verurteilt|angezeigt)\b.*\b(wegen|für)\b",
+    r"\b(ist|war)\s+(ein[e]?\s+)?(betrüger(in)?|dieb(in)?|lügner(in)?|kriminell[e]?|verbrecher(in)?)\b",
+    r"\b(heimlich|in\s+wirklichkeit|tatsächlich)\s+(ein[e]?\s+)?(prostituierte|dealer|kriminell)\b",
+    r"\bwissenschaftlich\s+bewiesen\b",
+    r"\b(straftäter|sexualstraftäter|pädophil|vergewaltiger)\b",
+    # Turkish
+    r"\b(herkes\s+biliyor|kanıtlanmış)\b",
+    r"\b(hırsız|dolandırıcı|yalancı|suçlu)\b",
+    # Arabic
+    r"(الكل\s*يعرف|ثبت\s*أنه|حرامي|نصاب|كذاب)",
+]
+
+SCAM_SIGNALS = [
+    r"\b(guaranteed|garantiert)\s+(return|profit|rendite|gewinn)\b",
+    r"\b\d+\s*%\s*(monthly|monatlich|täglich|daily|weekly|wöchentlich)\s*(return|rendite|profit|gewinn)\b",
+    r"\b\d+\s*%\s*(monatliche|tägliche|wöchentliche)\s*(rendite|gewinn|profit)\b",
+    r"\b(send|transfer|überweise|schick|sende)\s+(bitcoin|btc|crypto|ethereum|eth|usdt|geld|money)\b",
+    r"\bwallet\s+(address|adresse)\b",
+    r"\b(verification|withdrawal)\s+fee\b",
+    r"\b(verifizierungsgebühr|auszahlungsgebühr|freischaltgebühr)\b",
+    r"\b(act\s+now|jetzt\s+handeln|limited\s+time|begrenzte\s+zeit)\b",
+    r"\b(investment\s+platform|investitionsplattform|trading\s+platform|handelsplattform)\b",
+    r"\bi\s+(help|helped)\s+\d+\s+(people|clients|customers|kunden)\s+(earn|make|profit)\b",
+    r"\b(double|verdoppeln)\s+(your\s+money|dein\s+geld)\b",
+    r"\b(schick|überweise|sende)\s+\d+\s*€?\s*(in|per|via)?\s*(bitcoin|btc|crypto|krypto)\b",
+    r"\bmonatliche\s+rendite\b",
+    r"\b(investier|investiere)\s+(jetzt|heute|sofort)\b",
+]
+
+PHISHING_SIGNALS = [
+    r"\b(click|klick(e)?)\s+(here|hier|this\s+link|diesen\s+link)\b",
+    r"\b(verify|verifizier(e)?)\s+(your|dein(e)?)\s+(account|konto|identity|identität)\b",
+    r"\b(account\s+(suspended|gesperrt|blocked|deaktiviert))\b",
+    r"\b(login|anmeld(e|en))\s+(required|erforderlich|needed)\b",
+    r"\b(update|aktualisier(e|en))\s+(your|dein(e)?)\s+(payment|zahlung|billing)\b",
+    r"http[s]?://(?!instagram\.com|facebook\.com|google\.com)\S+\.(ru|cn|xyz|top|click|tk)\b",
+]
+
+ROMANCE_SCAM_SIGNALS = [
+    r"\b(i\s+love\s+you|ich\s+liebe\s+dich)\b.*\b(money|geld|send|überweise)\b",
+    r"\b(stranded|stuck|gestrandet|festgehalten)\b.*\b(money|geld|help|hilfe)\b",
+    r"\b(military|soldat|soldier|deployed|im\s+einsatz)\b.*\b(money|geld|send)\b",
+    r"\b(gift\s+card|geschenkkarte|itunes|amazon\s+card)\b",
+    r"\bcan('t)?\s+(video|videocall|webcam)\b",
+]
+
+IMPERSONATION_SIGNALS = [
+    r"\b(official|offiziell|verified|verifiziert)\s+(account|konto|representative|mitarbeiter)\b",
+    r"\b(i\s+am|ich\s+bin)\s+(from|von|bei)\s+(instagram|facebook|google|amazon|microsoft|apple|paypal|bank)\b",
+    r"\b(support\s+team|kundendienst|customer\s+service)\b.*\b(urgent|dringend|immediately|sofort)\b",
+    r"\byour\s+account\s+will\s+be\s+(deleted|suspended|terminated|gesperrt|gelöscht)\b",
+]
+
+# §130 StGB — Volksverhetzung (Incitement to hatred)
+VOLKSVERHETZUNG_SIGNALS = [
+    # English — racist / ethnic / religious hate
+    r"\b(all|every|those)\s+(muslims?|jews?|blacks?|arabs?|turks?|immigrants?|refugees?|foreigners?)\s+(should|must|need\s+to|deserve\s+to)\s+(die|leave|go\s+back|be\s+killed|be\s+deported|burn)\b",
+    r"\b(gas|exterminate|eradicate|cleanse|purge)\s+(the\s+)?(muslims?|jews?|arabs?|turks?|immigrants?|refugees?|foreigners?)\b",
+    r"\b(white\s+power|white\s+supremacy|heil\s+hitler|sieg\s+heil|14\s*88|1488)\b",
+    r"\b(n[i!1]gg[aer]|k[i!1]ke|sp[i!1]c|ch[i!1]nk|sand\s*n[i!1]gg)\b",
+    r"\b(subhuman|untermenschen|untermensch)\b",
+    # German — Volksverhetzung patterns
+    r"\b(alle|diese)\s+(muslime|juden|araber|türken|ausländer|flüchtlinge|kanaken|neger)\s+(sollen|müssen|gehören)\s+(raus|weg|vergast|deportiert|getötet|aufgehängt)\b",
+    r"\b(deutschland\s+den\s+deutschen|ausländer\s+raus)\b",
+    r"\b(dreckige?r?|scheiß|verdammte?r?)\s+(ausländer|türken|araber|muslime|juden|kanaken|neger|zigeuner|asylanten)\b",
+    r"\b(kanake|kanaken|neger|zigeuner|kümmeltürke|kameltreiber)\b",
+    r"\b(vergasen|vergast|ab\s+ins\s+gas|in\s+die\s+gaskammer)\b",
+    r"\b(holocaust\s+(gab\s+es\s+nicht|ist\s+eine?\s+lüge|nie\s+passiert))\b",
+    r"\bvolksverhetzung\b",
+    # Turkish
+    r"\b(hepsi\s+(ölsün|defolsun|gitsin)|gavur|kâfir)\b",
+    r"\b(ermeni\s+dölü|yunan\s+dölü|kürt\s+dölü)\b",
+    # Arabic
+    r"(يهود\s*أولاد\s*القردة|الكفار|اقتلوا)",
+    r"(كل\s*ال(يهود|مسلمين|مسيحيين)\s*(يجب|لازم)\s*(يموتوا|يطلعوا))",
+]
+
+# §187 StGB — Verleumdung (Slander — knowingly false claims)
+VERLEUMDUNG_SIGNALS = [
+    # English — knowingly spreading false claims
+    r"\b(i('ll|'m\s+going\s+to)|we('ll|\s+will))\s+(tell|spread|post|share)\s+(everyone|everywhere|online)\s+(that|about)\b",
+    r"\b(i('ll|'m\s+going\s+to))\s+(ruin|destroy)\s+(your|her|his)\s+(reputation|career|life|name)\b",
+    r"\b(everyone\s+will\s+know|i'll\s+make\s+sure)\b",
+    r"\b(spread\s+(lies|rumors)|make\s+up\s+stories)\b",
+    # German
+    r"\b(ich\s+(werde|werd)\s+(allen|überall)\s+(erzählen|sagen|verbreiten))\b",
+    r"\b(ich\s+(zerstöre|ruiniere)\s+(deinen?\s+ruf|dein\s+leben|deine\s+karriere))\b",
+    r"\b(lügen\s+verbreiten|gerüchte\s+streuen)\b",
+    r"\b(alle\s+werden\s+erfahren|jeder\s+wird\s+wissen)\b",
+    r"\b(rufmord|verleumdung)\b",
+    # Turkish
+    r"\b(herkese\s+söylerim|yalanlar\s+yayarım|adını\s+batırırım)\b",
+    # Arabic
+    r"(بنشر\s*عنك|بفضحك|سمعتك\s*خربت|راح\s*افضحك)",
+]
+
+# §238 StGB — Stalking / Nachstellung
+STALKING_SIGNALS = [
+    # English — persistent unwanted contact / surveillance
+    r"\b(i('m|\s+am))\s+(watching|following|tracking|monitoring)\s+(you|your|her|him)\b",
+    r"\b(i\s+know\s+(your|where\s+you)\s+(address|live|work|school|go))\b",
+    r"\b(you\s+can('t|not)\s+(hide|escape|run|block\s+me|get\s+away))\b",
+    r"\b(i('ll|'m\s+going\s+to)|we('ll|\s+will))\s+(find|follow|track|stalk)\s+(you|her|him)\b",
+    r"\b(stop\s+ignoring|answer\s+me|respond|why\s+won'?t\s+you\s+(answer|respond|reply))\b.*\b(or\s+else|i('ll|\s+will))\b",
+    r"\b(blocked\s+me|ignoring\s+me)\b.*\b(i('ll|\s+will)|you('ll|\s+will))\b",
+    # German — Nachstellung
+    r"\b(ich\s+(beobachte|verfolge|überwache)\s+(dich|sie))\b",
+    r"\b(ich\s+weiß\s+wo\s+du\s+(wohnst|arbeitest|zur\s+schule\s+gehst))\b",
+    r"\b(du\s+kannst\s+(dich\s+nicht\s+verstecken|mir\s+nicht\s+entkommen|mich\s+nicht\s+blockieren))\b",
+    r"\b(ich\s+(finde|verfolge|suche)\s+dich)\b",
+    r"\b(warum\s+(antwortest|ignorierst|blockierst)\s+du\s+m(ich|ir))\b.*\b(sonst|ich\s+werde)\b",
+    r"\b(stalking|nachstellung)\b",
+    # Turkish
+    r"\b(seni\s+(izliyorum|takip\s+ediyorum|bulacağım))\b",
+    r"\b(nerede\s+(yaşadığını|çalıştığını)\s+biliyorum)\b",
+    r"\b(beni\s+engelleyemezsin|kaçamazsın)\b",
+    # Arabic
+    r"(بتابعك|بعرف\s*وين\s*بيتك|ما\s*بتقدر\s*تهرب)",
+    r"(ليش\s*ما\s*ترد|راح\s*القاك|بلاقيك)",
+]
+
+# §201a StGB — Intimate images / Deepfakes
+INTIMATE_IMAGES_SIGNALS = [
+    # English — non-consensual intimate images / revenge porn / deepfakes
+    r"\b(i('ll|'m\s+going\s+to)|we('ll|\s+will))\s+(leak|post|share|send|upload|spread)\s+(your|her|the)\s+(nudes|photos|pics|pictures|videos|images)\b",
+    r"\b(revenge\s+porn|nude\s+leak|leaked\s+nudes|leaked\s+photos)\b",
+    r"\b(everyone\s+will\s+see|i('ll|\s+will)\s+show\s+everyone)\b.*\b(nudes?|photos?|pics?|pictures?|videos?)\b",
+    r"\b(deepfake|deep\s+fake|face\s*swap)\b",
+    r"\b(i\s+(have|got)\s+(your|her)\s+(nudes?|photos?|videos?|pics?))\b",
+    r"\b(send\s+nudes?\s+or)\b",
+    # German — Bildaufnahmen / Rachepornos / Deepfakes
+    r"\b(ich\s+(veröffentliche|poste|teile|verschicke|verbreite)\s+(deine?|ihre?)\s+(nacktbilder|fotos|bilder|videos|aufnahmen|nudes))\b",
+    r"\b(racheporno|nacktbilder\s+leak|intimate\s+bilder)\b",
+    r"\b(alle\s+werden\s+(es\s+)?sehen|ich\s+zeig(e)?\s+(es\s+)?allen)\b.*\b(bilder|fotos|videos|nackt)\b",
+    r"\b(deepfake|deep\s+fake|gesichtstausch)\b",
+    r"\b(ich\s+hab(e)?\s+(deine?|ihre?)\s+(nacktbilder|fotos|bilder|videos|nudes))\b",
+    r"\b(schick\s+(mir\s+)?nudes?\s+oder|nacktbilder\s+oder)\b",
+    # Turkish
+    r"\b(çıplak\s+(fotoğraflarını|videolarını)\s+(yayınlarım|paylaşırım))\b",
+    r"\b(ifşa|intikam\s+pornosu)\b",
+    # Arabic
+    r"(بنشر\s*صورك|صور\s*عارية|فضيحة|ديبفيك)",
+    r"(عندي\s*صورك|راح\s*انشر\s*صورك)",
+]
+
+
+def _normalize_text(text: str) -> str:
+    """Normalize obfuscation: repeated letters, common substitutions."""
+    t = text.lower()
+    # Collapse repeated letters: fotzzze → fotze, killl → kill, stiiirb → stirb
+    t = re.sub(r'(.)\1{2,}', r'\1\1', t)  # keep max 2 (kill → kill, not kil)
+    # Common substitutions
+    t = t.replace('$', 's').replace('@', 'a').replace('0', 'o').replace('1', 'i').replace('3', 'e').replace('!', 'i')
+    return t
+
+
+def _match_signals(text: str, patterns: list[str]) -> bool:
+    text_lower = text.lower()
+    text_normalized = _normalize_text(text)
+    return any(re.search(p, text_lower) or re.search(p, text_normalized) for p in patterns)
+
+
+def classify_regex(text: str) -> ClassificationResult:
+    """Regex-based classifier — always available, zero deps."""
+    categories: list[Category] = []
+    applicable_laws: list[GermanLaw] = []
+    severity = Severity.LOW
+    requires_immediate_action = False
+
+    is_death_threat = _match_signals(text, DEATH_THREAT_SIGNALS)
+    is_threat = _match_signals(text, THREAT_SIGNALS)
+    is_misogyny = _match_signals(text, MISOGYNY_SIGNALS)
+    is_sexual = _match_signals(text, SEXUAL_HARASSMENT_SIGNALS)
+    is_harassment = _match_signals(text, HARASSMENT_SIGNALS)
+    is_body_shaming = _match_signals(text, BODY_SHAMING_SIGNALS)
+    is_false_facts = _match_signals(text, FALSE_FACTS_SIGNALS)
+    is_scam = _match_signals(text, SCAM_SIGNALS)
+    is_phishing = _match_signals(text, PHISHING_SIGNALS)
+    is_romance_scam = _match_signals(text, ROMANCE_SCAM_SIGNALS)
+    is_impersonation = _match_signals(text, IMPERSONATION_SIGNALS)
+    is_volksverhetzung = _match_signals(text, VOLKSVERHETZUNG_SIGNALS)
+    is_verleumdung = _match_signals(text, VERLEUMDUNG_SIGNALS)
+    is_stalking = _match_signals(text, STALKING_SIGNALS)
+    is_intimate_images = _match_signals(text, INTIMATE_IMAGES_SIGNALS)
+
+    # §130 Volksverhetzung — highest severity hate crime
+    if is_volksverhetzung:
+        categories.append(Category.VOLKSVERHETZUNG)
+        severity = Severity.CRITICAL
+        requires_immediate_action = True
+        applicable_laws.append(LAW_130)
+        applicable_laws.append(LAW_185)
+
+    if is_death_threat:
+        categories.append(Category.DEATH_THREAT)
+        categories.append(Category.THREAT)
+        severity = Severity.CRITICAL
+        requires_immediate_action = True
+        applicable_laws.extend([LAW_126A, LAW_241])
+
+    elif is_threat:
+        categories.append(Category.THREAT)
+        severity = Severity.HIGH
+        requires_immediate_action = True
+        applicable_laws.append(LAW_241)
+
+    # §201a Intimate images / deepfakes
+    if is_intimate_images:
+        categories.append(Category.INTIMATE_IMAGES)
+        severity = Severity.CRITICAL
+        requires_immediate_action = True
+        applicable_laws.append(LAW_201A)
+        if LAW_185 not in applicable_laws:
+            applicable_laws.append(LAW_185)
+
+    # §238 Stalking / Nachstellung
+    if is_stalking:
+        categories.append(Category.STALKING)
+        severity = max(severity, Severity.HIGH, key=lambda s: list(Severity).index(s))
+        requires_immediate_action = True
+        applicable_laws.append(LAW_238)
+
+    if is_misogyny:
+        categories.append(Category.MISOGYNY)
+        severity = max(severity, Severity.HIGH, key=lambda s: list(Severity).index(s))
+        applicable_laws.append(LAW_185)
+
+    if is_sexual:
+        categories.append(Category.SEXUAL_HARASSMENT)
+        severity = max(severity, Severity.HIGH, key=lambda s: list(Severity).index(s))
+        requires_immediate_action = True
+        if LAW_185 not in applicable_laws:
+            applicable_laws.append(LAW_185)
+
+    if is_harassment:
+        categories.append(Category.HARASSMENT)
+        if severity == Severity.LOW:
+            severity = Severity.MEDIUM
+        if LAW_185 not in applicable_laws:
+            applicable_laws.append(LAW_185)
+
+    if is_body_shaming:
+        categories.append(Category.BODY_SHAMING)
+        if severity == Severity.LOW:
+            severity = Severity.MEDIUM
+        if LAW_185 not in applicable_laws:
+            applicable_laws.append(LAW_185)
+
+    # §187 Verleumdung — knowingly false claims to destroy reputation
+    if is_verleumdung:
+        categories.append(Category.VERLEUMDUNG)
+        severity = max(severity, Severity.HIGH, key=lambda s: list(Severity).index(s))
+        applicable_laws.append(LAW_187)
+
+    # §186 Üble Nachrede — false facts
+    if is_false_facts:
+        categories.append(Category.FALSE_FACTS)
+        if severity == Severity.LOW:
+            severity = Severity.MEDIUM
+        if LAW_186 not in applicable_laws:
+            applicable_laws.append(LAW_186)
+
+    if is_scam:
+        categories.append(Category.SCAM)
+        categories.append(Category.INVESTMENT_FRAUD)
+        severity = Severity.CRITICAL
+        requires_immediate_action = True
+        applicable_laws.extend([LAW_263, LAW_263A])
+
+    if is_phishing:
+        categories.append(Category.PHISHING)
+        severity = Severity.CRITICAL
+        requires_immediate_action = True
+        if LAW_263A not in applicable_laws:
+            applicable_laws.extend([LAW_263, LAW_263A])
+
+    if is_romance_scam:
+        categories.append(Category.ROMANCE_SCAM)
+        categories.append(Category.SCAM)
+        severity = Severity.CRITICAL
+        requires_immediate_action = True
+        if LAW_263 not in applicable_laws:
+            applicable_laws.extend([LAW_263, LAW_263A])
+
+    if is_impersonation:
+        categories.append(Category.IMPERSONATION)
+        if severity not in [Severity.CRITICAL]:
+            severity = Severity.HIGH
+        if LAW_269 not in applicable_laws:
+            applicable_laws.extend([LAW_263, LAW_269])
+
+    if not categories:
+        categories.append(Category.HARASSMENT)
+        severity = Severity.LOW
+        applicable_laws.append(LAW_185)
+
+    # NetzDG always applies for Instagram content
+    applicable_laws.append(NETZ_DG)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    applicable_laws = [l for l in applicable_laws if not (l.paragraph in seen or seen.add(l.paragraph))]
+
+    summary_en, summary_de = _build_summaries(categories, severity)
+    consequences_en, consequences_de = _build_consequences(severity, applicable_laws)
+
+    confidence = _estimate_confidence(categories, text)
+
+    return ClassificationResult(
+        severity=severity,
+        categories=list(set(categories)),
+        confidence=confidence,
+        requires_immediate_action=requires_immediate_action,
+        summary=summary_en,
+        summary_de=summary_de,
+        applicable_laws=applicable_laws,
+        potential_consequences=consequences_en,
+        potential_consequences_de=consequences_de
+    )
+
+
+def _build_summaries(categories: list[Category], severity: Severity) -> tuple[str, str]:
+    parts_en = []
+    parts_de = []
+
+    if Category.DEATH_THREAT in categories:
+        parts_en.append("contains an explicit death threat")
+        parts_de.append("enthält eine explizite Todesdrohung")
+    elif Category.THREAT in categories:
+        parts_en.append("contains a credible threat")
+        parts_de.append("enthält eine glaubwürdige Drohung")
+
+    if Category.MISOGYNY in categories:
+        parts_en.append("is misogynistic in nature")
+        parts_de.append("ist misogyner Natur")
+
+    if Category.SEXUAL_HARASSMENT in categories:
+        parts_en.append("constitutes sexual harassment")
+        parts_de.append("stellt sexuelle Belästigung dar")
+
+    if Category.BODY_SHAMING in categories:
+        parts_en.append("contains body shaming")
+        parts_de.append("enthält Body-Shaming")
+
+    if Category.FALSE_FACTS in categories:
+        parts_en.append("spreads false factual claims")
+        parts_de.append("verbreitet falsche Tatsachenbehauptungen")
+
+    if Category.SCAM in categories or Category.INVESTMENT_FRAUD in categories:
+        parts_en.append("shows clear indicators of investment fraud / scam")
+        parts_de.append("zeigt deutliche Merkmale von Investitionsbetrug / Scam")
+
+    if Category.PHISHING in categories:
+        parts_en.append("is a phishing attempt designed to steal credentials or data")
+        parts_de.append("ist ein Phishing-Versuch zur Entwendung von Zugangsdaten oder Daten")
+
+    if Category.ROMANCE_SCAM in categories:
+        parts_en.append("shows classic romance scam / advance-fee fraud patterns")
+        parts_de.append("zeigt klassische Romance-Scam / Vorschussbetrug-Muster")
+
+    if Category.IMPERSONATION in categories:
+        parts_en.append("involves impersonation of a trusted entity")
+        parts_de.append("beinhaltet die Imitation einer vertrauenswürdigen Stelle")
+
+    if Category.VOLKSVERHETZUNG in categories:
+        parts_en.append("constitutes incitement to hatred (Volksverhetzung) — a serious criminal offense in Germany")
+        parts_de.append("stellt Volksverhetzung dar — eine schwere Straftat in Deutschland")
+
+    if Category.VERLEUMDUNG in categories:
+        parts_en.append("contains slander with intent to destroy the victim's reputation")
+        parts_de.append("enthält Verleumdung mit dem Ziel, den Ruf des Opfers zu zerstören")
+
+    if Category.STALKING in categories:
+        parts_en.append("shows patterns of stalking / persistent unwanted contact")
+        parts_de.append("zeigt Muster von Stalking / beharrlicher Nachstellung")
+
+    if Category.INTIMATE_IMAGES in categories:
+        parts_en.append("involves non-consensual intimate images or deepfakes")
+        parts_de.append("beinhaltet nicht einvernehmliche intime Bildaufnahmen oder Deepfakes")
+
+    if Category.HARASSMENT in categories and len(parts_en) == 0:
+        parts_en.append("constitutes personal harassment")
+        parts_de.append("stellt persönliche Belästigung dar")
+
+    base_en = "This content " + " and ".join(parts_en) + "."
+    base_de = "Dieser Inhalt " + " und ".join(parts_de) + "."
+
+    return base_en, base_de
+
+
+def _build_consequences(severity: Severity, laws: list[GermanLaw]) -> tuple[str, str]:
+    law_refs = ", ".join(l.paragraph for l in laws if l.paragraph != "NetzDG § 3")
+
+    if severity == Severity.CRITICAL:
+        en = f"URGENT: This may constitute a criminal offense under {law_refs}. File a police report (Strafanzeige) immediately. Under NetzDG, this must be removed within 24 hours."
+        de = f"DRINGEND: Dies kann eine Straftat nach {law_refs} darstellen. Erstatten Sie sofort Strafanzeige. Nach NetzDG muss dies innerhalb von 24 Stunden entfernt werden."
+    elif severity == Severity.HIGH:
+        en = f"This likely violates {law_refs}. A formal NetzDG report to Instagram is strongly recommended. Consider filing a police report."
+        de = f"Dies verstößt wahrscheinlich gegen {law_refs}. Eine formelle NetzDG-Meldung an Instagram wird dringend empfohlen. Erwägen Sie eine Strafanzeige."
+    elif severity == Severity.MEDIUM:
+        en = f"This may violate {law_refs}. A NetzDG report to Instagram is recommended. Document and preserve evidence."
+        de = f"Dies kann gegen {law_refs} verstoßen. Eine NetzDG-Meldung an Instagram wird empfohlen. Dokumentieren und sichern Sie Beweise."
+    else:
+        en = f"This content may be reportable under platform terms of service. Document and preserve evidence."
+        de = f"Dieser Inhalt kann nach den Nutzungsbedingungen der Plattform gemeldet werden. Dokumentieren und sichern Sie Beweise."
+
+    return en, de
+
+
+def _estimate_confidence(categories: list[Category], text: str) -> float:
+    base = 0.75
+    if len(text) > 50:
+        base += 0.05
+    if len(categories) > 1:
+        base += 0.05
+    if Category.DEATH_THREAT in categories or Category.THREAT in categories:
+        base += 0.1
+    if Category.SCAM in categories or Category.PHISHING in categories:
+        base += 0.1
+    if Category.VOLKSVERHETZUNG in categories:
+        base += 0.1
+    if Category.INTIMATE_IMAGES in categories or Category.STALKING in categories:
+        base += 0.05
+    return min(base, 0.99)

@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.routers import cases, analyze, reports, chain, upload, sla, partners, dashboard, auth, legal, policy
+from app.routers import cases, analyze, reports, chain, upload, sla, partners, dashboard, auth, legal, policy, orgs, bulk_import
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +93,8 @@ app.add_middleware(
 
 # Mount all routers at both / and /api/ so frontend works in dev (proxy) and production (direct)
 for r in [cases.router, analyze.router, reports.router, chain.router, upload.router,
-          sla.router, partners.router, dashboard.router, auth.router, legal.router, policy.router]:
+          sla.router, partners.router, dashboard.router, auth.router, legal.router, policy.router,
+          orgs.router, bulk_import.router]:
     app.include_router(r)
     app.include_router(r, prefix="/api")
 
@@ -113,17 +114,21 @@ def debug_env():
 
 @app.get("/health")
 def health():
-    from app.services.classifier_llm import is_available as llm_ok
-    from app.services.classifier_transformer import is_available as transformer_ok
+    from app.services.classifier import is_configured as classifier_configured
     from app.database import SessionLocal, Category, Law
     db = SessionLocal()
-    tier = "openai" if llm_ok() else ("transformer" if transformer_ok() else "regex")
     cats = db.query(Category).count()
     laws = db.query(Law).count()
     db.close()
     key = os.environ.get("OPENAI_API_KEY", "")
     key_info = f"{key[:5]}...{key[-4:]}" if len(key) > 10 else ("empty" if not key else "too_short")
-    return {"status": "ok", "service": "SafeVoice API", "classifier_tier": tier, "db": {"categories": cats, "laws": laws}, "openai_key": key_info}
+    return {
+        "status": "ok" if classifier_configured() else "degraded",
+        "service": "SafeVoice API",
+        "classifier": "llm" if classifier_configured() else "unavailable",
+        "db": {"categories": cats, "laws": laws},
+        "openai_key": key_info,
+    }
 
 
 # ---------------------------------------------------------------------------

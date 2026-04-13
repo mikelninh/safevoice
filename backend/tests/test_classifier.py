@@ -199,9 +199,10 @@ class TestAnalyzeEndpoint:
         assert "evidence" in data
         assert data["evidence"]["classification"]["severity"] in ["high", "critical"]
 
-    def test_health_shows_classifier_tier(self, client):
+    def test_health_shows_classifier_status(self, client):
         resp = client.get("/health")
         assert resp.status_code == 200
         data = resp.json()
-        assert "classifier_tier" in data
-        assert data["classifier_tier"] in ("claude_api", "openai", "transformer", "regex")
+        # Single-tier LLM classifier: `classifier` is "llm" or "unavailable"
+        assert "classifier" in data
+        assert data["classifier"] in ("llm", "unavailable")
