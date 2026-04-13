@@ -118,12 +118,44 @@ export async function downloadPdf(
   lang: 'de' | 'en'
 ): Promise<void> {
   const res = await fetch(`${BASE}/reports/${caseId}/pdf?report_type=${reportType}&lang=${lang}`)
-  if (!res.ok) throw new Error('Failed to generate PDF')
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`PDF generation failed (${res.status}): ${body.slice(0, 200)}`)
+  }
   const blob = await res.blob()
+  triggerDownload(blob, `safevoice_${caseId}_${reportType}_${lang}.pdf`)
+}
+
+/** Download the NGO-grade legal PDF (org letterhead + chain-of-custody appendix). */
+export async function downloadLegalPdf(caseId: string): Promise<void> {
+  const res = await fetch(`${BASE}/reports/${caseId}/legal-pdf`)
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Legal PDF generation failed (${res.status}): ${body.slice(0, 200)}`)
+  }
+  const blob = await res.blob()
+  triggerDownload(blob, `safevoice_legal_${caseId}.pdf`)
+}
+
+/**
+ * Trigger a file download from a Blob in a way that works across browsers.
+ *
+ * The previous implementation clicked an unattached <a> element, which works
+ * in Chrome/Firefox but silently fails in Safari + mobile browsers — the
+ * anchor must be in the DOM for .click() to dispatch a download.
+ */
+function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `safevoice_${caseId}_${reportType}_${lang}.pdf`
+  a.download = filename
+  a.rel = 'noopener'
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  // defer cleanup so Safari actually processes the click
+  setTimeout(() => {
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, 100)
 }
