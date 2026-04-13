@@ -65,9 +65,29 @@ export async function fetchReport(
   reportType: 'general' | 'netzdg' | 'police',
   lang: 'de' | 'en'
 ): Promise<Record<string, unknown>> {
-  const res = await fetch(`${BASE}/reports/${caseId}?report_type=${reportType}&lang=${lang}`)
-  if (!res.ok) throw new Error('Failed to generate report')
+  const url = `${BASE}/reports/${caseId}?report_type=${reportType}&lang=${lang}`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`${res.status} ${res.statusText} — ${body.slice(0, 300) || 'no body'}`)
+  }
   return res.json()
+}
+
+/** Unregister any Service Worker + clear Cache API — use when users hit stale cache. */
+export async function resetServiceWorkerAndCaches(): Promise<void> {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map(r => r.unregister()))
+    }
+    if ('caches' in window) {
+      const names = await caches.keys()
+      await Promise.all(names.map(n => caches.delete(n)))
+    }
+  } catch (e) {
+    console.error('[SW reset] failed:', e)
+  }
 }
 
 export async function uploadScreenshot(

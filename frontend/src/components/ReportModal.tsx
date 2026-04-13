@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchReport, downloadPdf } from '../services/api'
+import { fetchReport, downloadPdf, resetServiceWorkerAndCaches } from '../services/api'
 import { t, type Lang } from '../i18n'
 
 interface Props {
@@ -98,14 +98,33 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
             </div>
           ) : error ? (
             <div className="bg-red-900/40 border border-red-800 text-red-200 rounded-lg p-4 text-sm">
-              <div className="font-semibold mb-1">
+              <div className="font-semibold mb-2">
                 {isDE ? 'Bericht konnte nicht geladen werden' : 'Report could not be loaded'}
               </div>
-              <div className="text-xs font-mono opacity-80">{error}</div>
-              <div className="text-xs mt-2 opacity-70">
+              <div className="text-xs font-mono opacity-80 mb-3 p-2 bg-black/30 rounded break-all">
+                {error}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={async () => {
+                    await resetServiceWorkerAndCaches()
+                    window.location.reload()
+                  }}
+                  className="text-xs bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded"
+                >
+                  {isDE ? 'Service Worker zurücksetzen & neu laden' : 'Reset Service Worker & reload'}
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded"
+                >
+                  {isDE ? 'Seite neu laden' : 'Reload page'}
+                </button>
+              </div>
+              <div className="text-xs mt-3 opacity-60">
                 {isDE
-                  ? 'Tipp: Cmd+Shift+R für Hard-Reload, falls Service Worker cached.'
-                  : 'Tip: Cmd+Shift+R for hard reload in case of stale Service Worker cache.'}
+                  ? 'Tipp: Wenn Fehler persistiert, öffne DevTools (Cmd+Opt+I), Tab "Application" → "Service Workers" → "Unregister".'
+                  : 'Tip: If error persists, open DevTools, Application tab → Service Workers → Unregister.'}
               </div>
             </div>
           ) : report ? (
