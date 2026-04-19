@@ -33,11 +33,15 @@ docker-compose up --build    # app on :8000, Postgres on :5432
 
 ## Architecture
 
-**Backend** — Python/FastAPI (`backend/app/`), no database yet (in-memory models via Pydantic). The FastAPI app is at `app.main:app`.
+**Backend** — Python/FastAPI (`backend/app/`) with a real SQLAlchemy database (SQLite for dev at `safevoice.db`, Postgres-ready for production). Alembic migrations live in `alembic/versions/`. The FastAPI app is at `app.main:app`; categories + German laws are auto-seeded on startup.
 
-**3-tier classifier** (`services/classifier.py`): OpenAI GPT-4o-mini → HuggingFace transformer → regex fallback. Each tier returns `ClassificationResult` or `None` to trigger the next tier. The regex tier (`classify_regex`) is always available with zero external deps. Tier availability is checked via `is_available()` in each module.
+**Single-tier classifier** (`services/classifier.py`): OpenAI GPT-4o-mini via `classifier_llm_v2.py` with Pydantic-v2 structured outputs. If the LLM is unavailable (no key, API down), `classify()` raises `ClassifierUnavailableError` and the API returns **503** — **by design**. A previous 3-tier fallback (transformer + regex) was removed on 13 April 2026 because a weak fallback classification gave victims false confidence in a legal outcome. The `classifier_regex.py` and `classifier_transformer.py` modules remain only for backwards-compat imports in tests.
 
-**Core models** are all in `models/evidence.py`: `Severity`, `Category`, `GermanLaw`, `ClassificationResult`, `EvidenceItem`, `PatternFlag`, `Case`. These are Pydantic models (no ORM yet).
+**Core models** live in two places:
+- `app/database.py` — SQLAlchemy ORM tables backing all persistence (`User`, `Case`, `EvidenceItem`, `Classification`, `Category`, `Law`, `Org`, `OrgMember` + junction tables).
+- `app/models/*.py` — Pydantic models for API contracts and LLM output parsing (`evidence.py`, `user.py`, `partner.py`, `sla.py`). Do not confuse `partner.Organization` (Pydantic) with `database.Org` (ORM) — the first is an API shape, the second is what gets persisted.
+
+**Multi-tenancy** — `orgs` and `org_members` tables (added 12 April 2026) let NGO partners run their own intake flows. See `services/org_service.py` and `routers/orgs.py`.
 
 **Routers** — each router maps to an API domain:
 - `analyze.py` — `/analyze/text`, `/analyze/ingest`, `/analyze/url`, `/analyze/case`
@@ -51,14 +55,16 @@ docker-compose up --build    # app on :8000, Postgres on :5432
 
 ## Environment
 
-- `OPENAI_API_KEY` — enables Tier 1 LLM classifier. Without it, regex fallback is used.
-- `CORS_ORIGINS` — comma-separated allowed origins (defaults to localhost:5173,8000)
-- `RATE_LIMIT_RPM` — requests per minute (default 120, disabled when `TESTING` env var set)
-- `TESTING` — set to any value to disable rate limiting in tests
+- `OPENAI_API_KEY` — **required** for classification. Without it, `/analyze/*` endpoints return 503 (by design — see classifier rationale above).
+- `DATABASE_URL` — SQLAlchemy URL. Dev defaults to `sqlite:///./safevoice.db`. Production uses Postgres.
+- `CORS_ORIGINS` — comma-separated allowed origins (defaults to `localhost:5173,localhost:8000`).
+- `RATE_LIMIT_RPM` — requests per minute (default 120, disabled when `TESTING` env var is set).
+- `TESTING` — set to any value to disable rate limiting in tests.
+- `VITE_OPERATOR_NAME`, `VITE_OPERATOR_EMAIL`, `VITE_OPERATOR_ADDRESS`, `VITE_OPERATOR_CITY` — required on the **frontend** build to populate Impressum (§5 TMG). See `DEPLOY.md`.
 
 ## Schema
 
-Database schema is in `schema.dbml` (paste into dbdiagram.io to visualize). 8 tables: `users`, `cases`, `evidence_items`, `classifications`, `categories`, `laws`, plus junction tables `classification_categories` and `classification_laws`. No ORM or migrations exist yet — the app uses in-memory Pydantic models.
+Database schema lives both in `schema.dbml` (paste into dbdiagram.io to visualize) and as real SQLAlchemy models in `models/db.py`. Tables: `users`, `cases`, `evidence_items`, `classifications`, `categories`, `laws` + junction tables `classification_categories`, `classification_laws` + multi-tenancy tables `orgs`, `org_members`. Alembic migration history lives in `alembic/versions/` — apply with `alembic upgrade head` (the Docker entrypoint runs this automatically).
 
 ## Multilingual
 

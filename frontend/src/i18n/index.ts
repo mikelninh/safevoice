@@ -11,7 +11,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'nav.new': 'Neuer Fall',
     'nav.about': 'Über SafeVoice',
 
-    'home.hero.title': 'Deine Stimme zählt.',
+    'home.hero.title': 'Ein Werkzeug für das, was dir passiert ist.',
     'home.hero.subtitle': 'SafeVoice hilft dir, digitale Belästigung zu dokumentieren, rechtlich einzuordnen und Anzeige zu erstatten.',
     'home.hero.cta': 'Vorfall melden',
     'home.hero.cases': 'Meine Fälle ansehen',
@@ -35,7 +35,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'analyze.author.label': 'Benutzername des Täters / der Täterin',
     'analyze.author.placeholder': '@username',
     'analyze.submit': 'Analysieren',
-    'analyze.analyzing': 'Wird analysiert...',
+    'analyze.analyzing': 'Klassifikator läuft…',
 
     'severity.low': 'Niedrig',
     'severity.medium': 'Mittel',
@@ -81,7 +81,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'report.police': 'Strafanzeige',
     'report.general': 'Allgemeiner Bericht',
     'report.copy': 'Kopieren',
-    'report.copied': 'Kopiert!',
+    'report.copied': 'Kopiert',
 
     'pattern.coordinated_attack': 'Koordinierter Angriff',
     'pattern.escalation': 'Eskalation',
@@ -106,7 +106,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'nav.new': 'New Case',
     'nav.about': 'About SafeVoice',
 
-    'home.hero.title': 'Your voice matters.',
+    'home.hero.title': 'A tool for what happened to you.',
     'home.hero.subtitle': 'SafeVoice helps you document digital harassment, understand your legal options, and file reports.',
     'home.hero.cta': 'Report an incident',
     'home.hero.cases': 'View my cases',
@@ -130,7 +130,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'analyze.author.label': 'Perpetrator username',
     'analyze.author.placeholder': '@username',
     'analyze.submit': 'Analyze',
-    'analyze.analyzing': 'Analyzing...',
+    'analyze.analyzing': 'Classifier running…',
 
     'severity.low': 'Low',
     'severity.medium': 'Medium',
@@ -176,7 +176,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'report.police': 'Police Report',
     'report.general': 'General Report',
     'report.copy': 'Copy',
-    'report.copied': 'Copied!',
+    'report.copied': 'Copied',
 
     'pattern.coordinated_attack': 'Coordinated Attack',
     'pattern.escalation': 'Escalation',

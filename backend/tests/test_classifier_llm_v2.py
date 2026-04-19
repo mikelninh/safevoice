@@ -14,7 +14,7 @@ from unittest.mock import patch, MagicMock
 from app.models.evidence import Severity, Category
 from app.services.classifier_llm_v2 import (
     LLMClassification, LLMSeverity, LLMCategory, LLMLaw,
-    _to_domain, classify_with_llm, is_available,
+    _to_domain, classify_with_llm, is_available, build_user_message,
 )
 from app.data.mock_data import NETZ_DG, LAW_241
 
@@ -184,3 +184,34 @@ class TestClassifyWithLLM:
         mock_client.chat.completions.parse.side_effect = Exception("Network error")
 
         assert classify_with_llm("test") is None
+
+
+class TestBuildUserMessage:
+    """Dynamic prompt builder — exercises the richer-context path."""
+
+    def test_defaults_are_byte_for_byte_backward_compatible(self):
+        """Absent optional args, the legacy prompt text is preserved exactly."""
+        assert (
+            build_user_message("Hello world")
+            == "Klassifiziere diesen Inhalt:\n\nHello world"
+        )
+
+    def test_victim_context_is_injected(self):
+        msg = build_user_message(
+            "Ich finde dich überall",
+            victim_context="Ex-Partner nach Trennung",
+        )
+        assert "Kontext des Opfers: Ex-Partner nach Trennung" in msg
+        assert "Ich finde dich überall" in msg
+
+    def test_non_default_jurisdiction_appears(self):
+        msg = build_user_message("text", jurisdiction="AT")
+        assert "Jurisdiktion: AT" in msg
+
+    def test_non_default_user_lang_appears(self):
+        msg = build_user_message("text", user_lang="en")
+        assert "Bevorzugte Ausgabesprache: en" in msg
+
+    def test_victim_context_is_stripped(self):
+        msg = build_user_message("text", victim_context="  trailing space   ")
+        assert "Kontext des Opfers: trailing space" in msg

@@ -29,13 +29,13 @@ export default function Login({ lang, onLogin }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) throw new Error(`Auth-Server antwortete ${res.status}`)
       const data = await res.json()
       // MVP: token returned directly. Production: sent via email
       setMagicToken(data.magic_link_token)
       setStep('check')
     } catch {
-      setError(isDE ? 'Fehler beim Senden. Bitte versuche es erneut.' : 'Failed to send. Please try again.')
+      setError(isDE ? 'Login-Link konnte nicht gesendet werden. Auth-Server nicht erreichbar.' : 'Login link could not be sent. Auth server unreachable.')
       setStep('error')
     } finally {
       setLoading(false)
@@ -52,12 +52,12 @@ export default function Login({ lang, onLogin }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: magicToken }),
       })
-      if (!res.ok) throw new Error('Invalid')
+      if (!res.ok) throw new Error(`Token ungültig (${res.status})`)
       const data = await res.json()
       localStorage.setItem('sv_session', data.session_token)
       onLogin(data.session_token, data.user)
     } catch {
-      setError(isDE ? 'Link ungültig oder abgelaufen.' : 'Link invalid or expired.')
+      setError(isDE ? 'Login-Link ungültig oder abgelaufen. Bitte neuen Link anfordern.' : 'Login link invalid or expired. Please request a new one.')
       setStep('error')
     } finally {
       setLoading(false)
@@ -102,7 +102,7 @@ export default function Login({ lang, onLogin }: Props) {
             className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
           >
             {loading
-              ? (isDE ? 'Wird gesendet...' : 'Sending...')
+              ? (isDE ? 'Login-Link wird gesendet…' : 'Sending login link…')
               : (isDE ? 'Login-Link senden' : 'Send login link')}
           </button>
 
@@ -134,8 +134,8 @@ export default function Login({ lang, onLogin }: Props) {
             className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
           >
             {loading
-              ? (isDE ? 'Wird verifiziert...' : 'Verifying...')
-              : (isDE ? 'Jetzt anmelden (Demo)' : 'Sign in now (Demo)')}
+              ? (isDE ? 'Token wird verifiziert…' : 'Verifying token…')
+              : (isDE ? 'Anmelden (Demo)' : 'Sign in (Demo)')}
           </button>
 
           <button

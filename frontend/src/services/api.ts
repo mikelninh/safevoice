@@ -4,7 +4,7 @@ const BASE = '/api'
 
 export async function fetchCases(): Promise<Case[]> {
   const res = await fetch(`${BASE}/cases/`)
-  if (!res.ok) throw new Error('Failed to fetch cases')
+  if (!res.ok) throw new Error(`Fall-Liste nicht erreichbar (${res.status} ${res.statusText})`)
   const data = await res.json()
   // API returns CaseListOut (no evidence_items) — fill defaults for frontend compatibility
   return data.map((c: Record<string, unknown>) => ({
@@ -31,7 +31,7 @@ export async function analyzeText(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, author_username, url }),
   })
-  if (!res.ok) throw new Error('Analysis failed')
+  if (!res.ok) throw new Error(`Classifier antwortete ${res.status} ${res.statusText}`)
   return res.json()
 }
 
@@ -54,8 +54,8 @@ export async function scrapeUrl(url: string): Promise<{
     body: JSON.stringify({ url }),
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Scraping failed' }))
-    throw new Error(err.detail || 'Scraping failed')
+    const err = await res.json().catch(() => ({ detail: `Scraper antwortete ${res.status} (URL möglicherweise privat, gelöscht oder rate-limited)` }))
+    throw new Error(err.detail || `Scraper antwortete ${res.status}`)
   }
   return res.json()
 }
@@ -219,13 +219,13 @@ export async function uploadScreenshot(
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText))
       } else {
-        const err = JSON.parse(xhr.responseText).detail ?? 'Upload failed'
+        const err = JSON.parse(xhr.responseText).detail ?? `Upload-Server antwortete ${xhr.status}`
         reject(new Error(err))
       }
     })
 
-    xhr.addEventListener('error', () => reject(new Error('Upload failed')))
-    xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
+    xhr.addEventListener('error', () => reject(new Error('Upload-Server nicht erreichbar (Netzwerkfehler)')))
+    xhr.addEventListener('abort', () => reject(new Error('Upload vom Browser abgebrochen')))
 
     const formData = new FormData()
     formData.append('file', file)

@@ -48,7 +48,7 @@ export default function Dashboard({ lang }: Props) {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center text-slate-400">
-        {isDE ? 'Dashboard wird geladen...' : 'Loading dashboard...'}
+        {isDE ? 'Aggregat-Statistik wird geladen…' : 'Loading aggregate statistics…'}
       </div>
     )
   }

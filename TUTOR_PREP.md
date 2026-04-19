@@ -229,15 +229,27 @@ response = client.chat.completions.create(
 - `gpt-4o-mini` — good enough for classification, much cheaper than gpt-4o
 - `max_tokens=1024` — enough for the JSON response, prevents waste
 
-### 3-tier fallback:
+### Single-tier — design change, 13 April 2026
+
+The classifier previously had a 3-tier fallback chain: LLM → transformer → regex. It was removed after real-case testing:
+
 ```
 classify(text):
-    1. Try OpenAI GPT-4o-mini  → if API key set and call succeeds
-    2. Try HuggingFace model   → if torch installed, works offline
-    3. Use regex patterns      → always works, guaranteed fallback
-
-    → NEVER returns "unavailable"
+    1. If OPENAI_API_KEY is set → call GPT-4o-mini
+    2. On failure (no key, timeout, parse error) → raise ClassifierUnavailableError
+       → API layer returns 503 Service Unavailable
 ```
+
+**Why we removed the fallbacks:**
+
+| Tier | Why it was removed |
+|------|---|
+| Transformer (xlm-roberta) | Under-classified German legal specifics — it scores toxicity, not § StGB mapping. Reading a 0.6 "toxic" score as a § 241 threat was unsafe. |
+| Regex patterns | Dictionary-based; missed obfuscation ("k1ll u"), misspellings, and context-dependent threats. Gave false negatives AND false positives. |
+
+**The core principle:** *A weak classification is worse than no classification.* If a victim sees "severity: MEDIUM, § 185 StGB" and the real content is a death threat, we have caused harm — they may close the tab thinking it's minor. An honest 503 "please try again" forces them to retry (or come back when the API is up), and we never emit a legally misleading result.
+
+The `classifier_regex.py` and `classifier_transformer.py` files remain in the repo only for backward-compatibility with existing tests. They are not called by the production classify() pipeline.
 
 ---
 
@@ -301,6 +313,59 @@ USER                          BACKEND                         OPENAI
   │   + laws + summaries         │                               │
   │◄─────────────────────────────┤                               │
 ```
+
+---
+
+## 7. Multi-tenancy — organisations and members (added 12 April 2026)
+
+SafeVoice is being piloted with NGO partners (HateAid-style intake). That required a tenancy layer on top of the user/case model.
+
+### Tables added
+
+```
+orgs
+├── id (UUID, PK)
+├── name           — e.g. "HateAid Berlin"
+├── slug           — URL-safe ("hateaid-berlin")
+├── api_key_hash   — bcrypt(api_key) — partners authenticate with raw key
+├── contact_email  — legal/billing contact
+└── created_at
+
+org_members
+├── id (UUID, PK)
+├── org_id         — FK orgs.id
+├── user_id        — FK users.id
+├── role           — "owner" | "admin" | "intake_agent"
+└── created_at
+```
+
+### Why separate from users?
+
+- **Multiple people per org** — an NGO has caseworkers; each caseworker needs their own audit trail.
+- **One person, many orgs** — a lawyer can work with two NGOs.
+- **API keys at org level**, not user level — rotating an API key shouldn't log out a human.
+
+### How case access is scoped
+
+Personal cases (no `org_id` on the case row) remain visible only to the authoring user. Org cases (`org_id` set) are visible to any member of that org. The `authz.py` service enforces this on every case read/write.
+
+### Endpoints
+
+```
+POST   /orgs/              — create org (becomes owner)
+GET    /orgs/me            — orgs the current user belongs to
+POST   /orgs/{id}/members  — invite (owners/admins only)
+DELETE /orgs/{id}/members/{user_id}
+POST   /orgs/{id}/rotate-api-key
+```
+
+### Files
+
+- `app/database.py` — SQLAlchemy `Org`, `OrgMember` (plus `User`, `Case`, `EvidenceItem`, `Classification`, `Category`, `Law`)
+- `app/models/partner.py` — Pydantic API contracts for org endpoints (`Organization`, `OrgMember`, `OrgRole`)
+- `services/org_service.py` — membership logic, invite flow
+- `services/authz.py` — case visibility rules: owner > admin > caseworker > viewer
+- `routers/orgs.py` — CRUD endpoints
 
 ---
 

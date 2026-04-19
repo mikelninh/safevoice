@@ -37,7 +37,7 @@ export default function CaseDetail({ lang }: Props) {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center text-slate-400">
-        {isDE ? 'Wird geladen...' : 'Loading...'}
+        {isDE ? 'Fall wird geladen…' : 'Loading case…'}
       </div>
     )
   }

@@ -78,7 +78,7 @@ export default function OnlinewachePanel({ lang, reportText }: Props) {
               className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
             >
               {copied
-                ? (isDE ? '✓ Text kopiert!' : '✓ Text copied!')
+                ? (isDE ? '✓ Text kopiert' : '✓ Text copied')
                 : (isDE ? '1. Text kopieren' : '1. Copy report text')}
             </button>
             {selectedLand && (

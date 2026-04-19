@@ -31,9 +31,26 @@ class ClassifierUnavailableError(RuntimeError):
     """
 
 
-def classify(text: str) -> ClassificationResult:
+def classify(
+    text: str,
+    *,
+    victim_context: str | None = None,
+    jurisdiction: str = "DE",
+    user_lang: str = "de",
+) -> ClassificationResult:
     """
     Classify text using the LLM classifier.
+
+    Optional keyword args are threaded through to `classify_with_llm`, which
+    injects them into the user-role prompt via `build_user_message`. Omitting
+    them preserves the legacy prompt exactly.
+
+    Args:
+        text: the content to classify.
+        victim_context: optional free-text victim-provided context
+            (e.g. "ex-partner after breakup") — steers severity/§ mapping.
+        jurisdiction: ISO country code of applicable law. Defaults to "DE".
+        user_lang: preferred output language. Defaults to "de".
 
     Raises:
         ClassifierUnavailableError: if no API key is set, or the LLM call fails.
@@ -46,7 +63,12 @@ def classify(text: str) -> ClassificationResult:
             "LLM classifier unavailable — OPENAI_API_KEY not configured."
         )
 
-    result = classify_with_llm(text)
+    result = classify_with_llm(
+        text,
+        victim_context=victim_context,
+        jurisdiction=jurisdiction,
+        user_lang=user_lang,
+    )
     if result is None:
         raise ClassifierUnavailableError(
             "LLM classification failed. Please try again in a moment."

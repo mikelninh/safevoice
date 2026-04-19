@@ -119,6 +119,11 @@ class EvidenceCreate(BaseModel):
 
 class AnalyzeTextRequest(BaseModel):
     text: str
+    # Optional dynamic-prompt context — richer classification when provided.
+    # Omitting these reproduces the legacy prompt byte-for-byte.
+    victim_context: Optional[str] = None
+    jurisdiction: str = "DE"
+    user_lang: str = "de"
 
 
 class IngestRequest(BaseModel):
@@ -126,11 +131,19 @@ class IngestRequest(BaseModel):
     author_username: str = "unknown"
     url: str = ""
     case_id: Optional[str] = None
+    # Same optional context as AnalyzeTextRequest
+    victim_context: Optional[str] = None
+    jurisdiction: str = "DE"
+    user_lang: str = "de"
 
 
 class AnalyzeUrlRequest(BaseModel):
     url: str
     case_id: Optional[str] = None
+    # Same optional context
+    victim_context: Optional[str] = None
+    jurisdiction: str = "DE"
+    user_lang: str = "de"
 
 
 # ── Org / multi-tenant schemas ──

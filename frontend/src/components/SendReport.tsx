@@ -453,7 +453,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
             <span className="text-slate-400">{isDE ? 'Vorlage:' : 'Template:'}</span>{' '}
             <span className="text-slate-100 font-medium">{intendedTemplateLabel}</span>
             {bodyLoading && (
-              <span className="text-slate-500 ml-2">{isDE ? '(wird geladen…)' : '(loading…)'}</span>
+              <span className="text-slate-500 ml-2">{isDE ? '(Vorlage wird vom Server geladen…)' : '(fetching template…)'}</span>
             )}
             {bodyError && (
               <span className="text-red-400 ml-2">{bodyError.slice(0, 60)}</span>
@@ -571,7 +571,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
                 >
                   {emlDone
                     ? isDE ? '✓ Text kopiert' : '✓ Text copied'
-                    : isDE ? '1. 📋 Text kopieren' : '1. 📋 Copy text'}
+                    : isDE ? '1. Text kopieren' : '1. Copy text'}
                 </button>
                 <a
                   href={formUrl}
@@ -581,8 +581,8 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
                   className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm text-center inline-flex items-center justify-center gap-1"
                 >
                   {isPlatform
-                    ? isDE ? '2. 🛡️ Plattform-Formular öffnen' : '2. 🛡️ Open platform form'
-                    : isDE ? '2. 🌐 Onlinewache öffnen' : '2. 🌐 Open portal'}
+                    ? isDE ? '2. Plattform-Formular öffnen' : '2. Open platform form'
+                    : isDE ? '2. Onlinewache öffnen' : '2. Open portal'}
                 </a>
               </div>
               <div className="text-[11px] text-indigo-300/70">
@@ -632,15 +632,14 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
         <div className="space-y-2 pt-2">
           <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">
             <div className="flex items-start gap-2">
-              <span className="text-xl">✨</span>
               <div className="flex-1">
                 <div className="text-sm font-semibold text-indigo-200">
                   {isDE ? 'Empfohlen: Fertige E-Mail (.eml)' : 'Recommended: Ready-to-send email (.eml)'}
                 </div>
                 <div className="text-xs text-indigo-300/80 mt-0.5">
                   {isDE
-                    ? 'Doppelklick auf die Datei öffnet deine Mail-App mit Empfänger, Betreff, Text und Anhängen — du musst nur noch senden.'
-                    : 'Double-click the file to open your mail app with recipient, subject, body, and attachments all ready — just hit send.'}
+                    ? 'Doppelklick auf die Datei öffnet deine Mail-App mit Empfänger, Betreff, Text und Anhängen — du musst noch senden.'
+                    : 'Double-click the file to open your mail app with recipient, subject, body, and attachments all pre-filled — then send.'}
                 </div>
               </div>
             </div>
@@ -655,10 +654,10 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               {emlLoading
-                ? isDE ? 'Wird erstellt…' : 'Building…'
+                ? isDE ? '.eml wird vom Server gebaut…' : 'Building .eml on server…'
                 : emlDone
                   ? isDE ? '✓ .eml heruntergeladen — Doppelklick öffnet Mail' : '✓ .eml downloaded — double-click to open'
-                  : isDE ? '📨 E-Mail-Datei (.eml) herunterladen' : '📨 Download email file (.eml)'}
+                  : isDE ? 'E-Mail-Datei (.eml) herunterladen' : 'Download email file (.eml)'}
             </button>
             {emlError && (
               <div className="text-xs text-red-300 bg-red-950/40 border border-red-900 rounded px-3 py-2 break-all font-mono">
@@ -686,7 +685,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
                 >
                   {sent
                     ? isDE ? 'E-Mail geöffnet — PDF manuell anhängen' : 'Email opened — attach PDF manually'
-                    : isDE ? '📧 mailto: öffnen + PDF herunterladen' : '📧 Open mailto: + download PDF'}
+                    : isDE ? 'mailto: öffnen + PDF herunterladen' : 'Open mailto: + download PDF'}
                 </button>
                 <p className="text-[11px] text-slate-500 mt-1">
                   {isDE
@@ -698,7 +697,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
                 onClick={copyFullReport}
                 className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-lg text-sm border border-slate-700"
               >
-                {isDE ? '📋 Volltext kopieren (z.B. für Onlinewache)' : '📋 Copy full text (for online police forms)'}
+                {isDE ? 'Volltext kopieren (z.B. für Onlinewache)' : 'Copy full text (for online police forms)'}
               </button>
             </div>
           </details>

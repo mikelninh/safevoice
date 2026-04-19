@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SafeVoice · Tutor-Prep Quiz</title>
+  <style>
+    :root {
+      --bg:        #0a0a0f;
+      --surface:  #13131c;
+      --surface-2: #1a1a24;
+      --border:   #262632;
+      --border-hi: #3a3a48;
+      --text:     #edeef2;
+      --dim:      #a0a0ae;
+      --mute:     #55556a;
+      --gold:     #d4ac6b;
+      --green:    #4ade80;
+      --red:      #ef4444;
+      --blue:     #60a5fa;
+      --font:     -apple-system, "Inter", system-ui, sans-serif;
+      --mono:     "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.55;
+      min-height: 100vh;
+      padding: 40px 20px 100px;
+    }
+    .wrap { max-width: 740px; margin: 0 auto; }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-weight: 300;
+      font-size: 36px;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: var(--dim);
+      font-size: 14px;
+    }
+
+    /* Progress */
+    .progress-shell {
+      margin: 28px 0;
+      height: 4px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), #ffdb9a);
+      width: 0;
+      transition: width 400ms ease;
+      box-shadow: 0 0 16px rgba(212,172,107,0.4);
+    }
+    .progress-meta {
+      display: flex; justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--mute);
+      letter-spacing: 0.08em;
+      margin-top: 8px;
+    }
+    .progress-meta strong { color: var(--gold); font-weight: 600; }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px 32px 28px;
+      animation: fade 280ms ease;
+    }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .topic {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--gold);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .q {
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      line-height: 1.35;
+      margin-bottom: 24px;
+    }
+    .q code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      padding: 2px 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--gold);
+    }
+
+    /* Options */
+    .options { display: flex; flex-direction: column; gap: 10px; }
+    .opt {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 160ms ease;
+      font-size: 14.5px;
+      line-height: 1.5;
+    }
+    .opt:hover { border-color: var(--border-hi); background: #202030; }
+    .opt.selected {
+      border-color: var(--gold);
+      background: rgba(212,172,107,0.06);
+    }
+    .opt.correct {
+      border-color: var(--green);
+      background: rgba(74,222,128,0.07);
+    }
+    .opt.wrong {
+      border-color: var(--red);
+      background: rgba(239,68,68,0.06);
+    }
+    .opt .letter {
+      flex: none;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 1px solid var(--border-hi);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--dim);
+    }
+    .opt.selected .letter { border-color: var(--gold); color: var(--gold); }
+    .opt.correct .letter { border-color: var(--green); color: var(--green); }
+    .opt.wrong .letter { border-color: var(--red); color: var(--red); }
+
+    /* Open-ended */
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 14px 16px;
+      font-family: var(--font);
+      font-size: 14.5px;
+      line-height: 1.55;
+      resize: vertical;
+      transition: border-color 160ms ease;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    /* Feedback */
+    .feedback {
+      margin-top: 20px;
+      padding: 16px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      font-size: 14px;
+      line-height: 1.6;
+      display: none;
+    }
+    .feedback.show { display: block; animation: fade 200ms; }
+    .feedback.correct { border-color: var(--green); background: rgba(74,222,128,0.04); }
+    .feedback.wrong { border-color: var(--red); background: rgba(239,68,68,0.04); }
+    .feedback .verdict {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .feedback.correct .verdict { color: var(--green); }
+    .feedback.wrong .verdict { color: var(--red); }
+    .feedback .model {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border);
+      color: var(--dim);
+      font-size: 13px;
+    }
+    .feedback .model strong { color: var(--text); font-weight: 600; }
+    .feedback code {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 1px 5px;
+      background: var(--bg);
+      border-radius: 4px;
+      color: var(--gold);
+    }
+
+    /* Actions */
+    .actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .btn {
+      padding: 12px 22px;
+      border-radius: 8px;
+      border: 1px solid var(--border-hi);
+      background: var(--surface-2);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: 180ms ease;
+    }
+    .btn:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-primary {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: var(--bg);
+    }
+    .btn-primary:hover {
+      background: #ffdb9a;
+      color: var(--bg);
+      box-shadow: 0 0 24px rgba(212,172,107,0.3);
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Final screen */
+    .final {
+      text-align: center;
+      padding: 48px 24px;
+    }
+    .score {
+      font-family: var(--mono);
+      font-size: 96px;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      margin: 20px 0;
+      text-shadow: 0 0 40px rgba(212,172,107,0.3);
+    }
+    .verdict-final {
+      font-size: 22px;
+      font-weight: 500;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+    .score-note { color: var(--dim); font-size: 14px; margin-bottom: 30px; }
+    .missed {
+      margin-top: 28px;
+      text-align: left;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+    }
+    .missed h3 {
+      margin: 0 0 14px;
+      font-size: 13px;
+      letter-spacing: 0.2em;
+      color: var(--gold);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .missed ul { margin: 0; padding-left: 20px; }
+    .missed li { margin-bottom: 8px; font-size: 13.5px; color: var(--dim); }
+    .missed strong { color: var(--text); font-weight: 600; }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: 0.18em;
+      color: var(--mute);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>SafeVoice · Tutor-Prep Quiz</h1>
+      <div class="sub">20 questions · 6 topics · no time limit · English</div>
+    </header>
+
+    <div class="progress-shell"><div class="progress-bar" id="bar"></div></div>
+    <div class="progress-meta">
+      <span><strong id="qnum">1</strong> of <strong id="qtotal">20</strong></span>
+      <span id="topic-label">DATABASE · USER vs AI</span>
+      <span>score <strong id="score">0</strong></span>
+    </div>
+
+    <main id="stage"></main>
+
+    <footer>REHEARSE · ANSWER OUT LOUD · CLOSE WHEN READY</footer>
+  </div>
+
+  <script>
+    // ═════════════════════════════════════════════════════════════
+    // Questions — 20 total, organized by topic
+    // MC  = multiple choice       (type: "mc", correct index)
+    // OE  = open-ended reveal     (type: "oe", model answer)
+    // ═════════════════════════════════════════════════════════════
+    const QUESTIONS = [
+      // ─── TOPIC 1 · Database (4) ──────────────────────────────
+      {
+        topic: "Database · user vs AI",
+        type: "mc",
+        q: "Which field on the <code>classifications</code> table is AI-populated, NOT user input?",
+        options: [
+          "email",
+          "severity",
+          "title",
+          "victim_context",
+        ],
+        correct: 1,
+        note: "Users provide email, language, content, and optional victim_context. The system generates IDs and timestamps. The AI populates severity, categories, laws, summaries, and consequences.",
+      },
+      {
+        topic: "Database · user vs AI",
+        type: "mc",
+        q: "Why are <code>categories</code> and <code>laws</code> stored in separate tables with junction tables, instead of as arrays on <code>classifications</code>?",
+        options: [
+          "SQLAlchemy doesn't support arrays in SQLite.",
+          "Because a single classification can map to many categories and many laws (many-to-many).",
+          "Because categories are AI-populated and laws are user-input.",
+          "Because Postgres is faster with junction tables.",
+        ],
+        correct: 1,
+        note: "A comment can be misogyny AND a threat, triggering § 185 AND § 241 StGB. Many-to-many is the correct shape. The junction tables also let us seed reference data once and reuse IDs.",
+      },
+      {
+        topic: "Database · persistence",
+        type: "mc",
+        q: "How does the database survive a server restart in production?",
+        options: [
+          "In-memory Pydantic models serialise to JSON on shutdown.",
+          "SQLAlchemy ORM + Alembic migrations persist to Postgres on Railway.",
+          "The frontend localStorage syncs to disk.",
+          "A cron job dumps state every hour.",
+        ],
+        correct: 1,
+        note: "Real SQLAlchemy + Alembic migrations. SQLite for local dev (file: safevoice.db). Postgres on Railway in production, connected via DATABASE_URL. Migrations auto-run at container start; categories + laws are seeded via seed_categories_and_laws() on first boot.",
+      },
+      {
+        topic: "Database · multi-tenancy",
+        type: "oe",
+        q: "What are the <code>orgs</code> and <code>org_members</code> tables for, in your own words?",
+        model: "NGO multi-tenancy. An org (e.g. HateAid Berlin) has multiple case-workers — each with their own user record. One person can belong to several orgs. API keys live at org level, so rotating a key doesn't log out a human. Case visibility is scoped via services/authz.py — personal cases are only visible to the author; org cases are visible to all org members.",
+      },
+
+      // ─── TOPIC 2 · User Auth (4) ─────────────────────────────
+      {
+        topic: "User auth · magic link",
+        type: "mc",
+        q: "Why did you choose magic-link auth and NOT passwords?",
+        options: [
+          "Magic links are trendier than passwords.",
+          "Passwords require 2FA by law in Germany.",
+          "Victims are stressed, no password DB to breach, one-time tokens are phishing-resistant.",
+          "Magic links are cheaper to implement.",
+        ],
+        correct: 2,
+        note: "Three reasons — all victim-centered. Victims under stress forget passwords. No password database means no breach risk. Tokens are one-time use with 15-min expiry, which is stronger against phishing than a reusable password.",
+      },
+      {
+        topic: "User auth · endpoints",
+        type: "mc",
+        q: "Which of these is NOT one of your auth endpoints?",
+        options: [
+          "POST /auth/login",
+          "DELETE /auth/me/emergency",
+          "POST /auth/verify",
+          "POST /auth/reset-password",
+        ],
+        correct: 3,
+        note: "No password reset because no passwords. The real 7 endpoints: POST /login, POST /verify, GET/PUT/DELETE /me, DELETE /me/emergency, POST /logout.",
+      },
+      {
+        topic: "User auth · GDPR",
+        type: "mc",
+        q: "What is the difference between <code>DELETE /auth/me</code> and <code>DELETE /auth/me/emergency</code>?",
+        options: [
+          "There is no difference; one is an alias.",
+          "Soft delete sets deleted_at flag with 7-day recovery; emergency does immediate hard delete.",
+          "Soft delete removes the user; emergency also removes their cases.",
+          "Emergency requires admin approval; soft delete doesn't.",
+        ],
+        correct: 1,
+        note: "Soft delete is the default — 7-day recovery window, data preserved in case of accidental deletion. Emergency is the Safe-Exit pattern: for victims whose perpetrator has access to their device. Immediate, no recovery, no forensic trace.",
+      },
+      {
+        topic: "User auth · sessions",
+        type: "oe",
+        q: "A client sends <code>GET /auth/me</code>. Walk me through exactly how the server knows who they are.",
+        model: "The client sends Authorization: Bearer <session_token>. The helper _require_user() in routers/auth.py extracts the token (strips 'Bearer '), calls get_user_by_session(token) in services/auth.py, which looks up the session in the DB and checks the expires_at timestamp. If the session is missing or expired → 401 Unauthorized. If valid → returns the User ORM object, which the route uses to scope data access. Session tokens are UUIDs stored in the DB, 30-day lifetime.",
+      },
+
+      // ─── TOPIC 3 · Endpoints (3) ─────────────────────────────
+      {
+        topic: "Endpoints · design",
+        type: "mc",
+        q: "What is the difference between <code>POST /analyze/text</code> and <code>POST /analyze/ingest</code>?",
+        options: [
+          "Text is for text, ingest is for URLs.",
+          "Text is stateless (no persistence); ingest creates evidence + case in the DB.",
+          "Text is paid, ingest is free.",
+          "Text uses GPT-4o, ingest uses GPT-4o-mini.",
+        ],
+        correct: 1,
+        note: "/analyze/text is the stateless testing endpoint — classify, return JSON, nothing saved. /analyze/ingest is the real flow — it classifies AND creates an evidence_item + a case in the DB, with SHA-256 hash and UTC timestamp. /analyze/url scrapes first, then ingests.",
+      },
+      {
+        topic: "Endpoints · design",
+        type: "mc",
+        q: "Why is <code>POST</code> (not <code>GET</code>) used for <code>/analyze/text</code> even though it doesn't persist anything?",
+        options: [
+          "Because POST is faster.",
+          "Semantics (creating a new classification resource) + request body size (text can be &gt;2KB).",
+          "Because GET requests can't be classified.",
+          "Because OpenAI requires POST.",
+        ],
+        correct: 1,
+        note: "Two reasons. Semantically POST = 'create' — even a stateless classification is a new resource. Pragmatically, text can be 10,000+ characters and URLs are limited to ~2KB, so GET query strings would break.",
+      },
+      {
+        topic: "Endpoints · implicit creation",
+        type: "oe",
+        q: "Why can't a user explicitly 'create a case' via some <code>POST /cases</code> endpoint? What's the reasoning?",
+        model: "Cases are created implicitly when evidence is ingested. A user pastes content → POST /analyze/ingest creates both the evidence_item AND its containing case in one call. The design choice is user-centered: the victim never thinks 'I need to create a case,' they think 'I want to document what happened.' The system does the structuring. This also avoids empty-case pollution and simplifies the mental model.",
+      },
+
+      // ─── TOPIC 4 · AI input + context (3) ────────────────────
+      {
+        topic: "AI flow · input",
+        type: "mc",
+        q: "What is the single INPUT format that reaches the classifier, regardless of how the user submitted their content?",
+        options: [
+          "A Pydantic model with text, image, and url fields.",
+          "Always a string.",
+          "JSON with metadata.",
+          "A tuple of (text, source).",
+        ],
+        correct: 1,
+        note: "Always a string. Text-paste stays text. URL scrape extracts text. Screenshot OCR extracts text. By the time classify() is called, there's one code path and one input type.",
+      },
+      {
+        topic: "AI flow · context",
+        type: "mc",
+        q: "Where does 'context' live in your AI flow?",
+        options: [
+          "In a separate context parameter to the OpenAI API.",
+          "In the system prompt — role, rules, allowed categories, allowed laws.",
+          "In a vector database queried per request (RAG).",
+          "In a fine-tuned model.",
+        ],
+        correct: 1,
+        note: "The system prompt is the context. It tells the model who it is ('SafeVoice legal classifier'), what it's analyzing ('social media content'), which laws and categories are valid (exact enum strings), the severity definitions, and the 'err on the side of the victim' rule. No RAG, no fine-tuning — clean prompt engineering.",
+      },
+      {
+        topic: "AI flow · prompt",
+        type: "oe",
+        q: "Name at least 3 specific elements in your system prompt that make the classification safer or more reliable.",
+        model: "(1) Exact category enum — model can only return strings from a defined list, so parseable and verifiable. (2) Exact law enum — model can't invent a §-paragraph. (3) Behavioral rule: 'im Zweifel FÜR das Opfer' — biases toward false-positive severity, which is victim-safe. (4) Invariant: 'NetzDG § 3 always applies' — guarantees the platform-obligation law is never forgotten. (5) Severity definitions (low/medium/high/critical) — so the scale is consistent across calls. (6) Obfuscation awareness: 'understand typos and intentional misspellings like f0tze'.",
+      },
+
+      // ─── TOPIC 5 · Classification endpoint (3) ───────────────
+      {
+        topic: "Classification · API call",
+        type: "mc",
+        q: "Why <code>temperature=0</code>?",
+        options: [
+          "It's cheaper.",
+          "Legal classification must be deterministic — same input, same output.",
+          "Higher temperatures don't support JSON schema.",
+          "OpenAI blocks temperature &gt; 0 for legal content.",
+        ],
+        correct: 1,
+        note: "Deterministic classification is a legal + trust requirement. The same content on Monday and Wednesday must produce the same result, or we lose court-admissibility and user trust. We give up creativity, we gain reproducibility. Classification is a mapping task, not a generative one.",
+      },
+      {
+        topic: "Classification · model choice",
+        type: "mc",
+        q: "Why <code>gpt-4o-mini</code> instead of <code>gpt-4o</code>?",
+        options: [
+          "gpt-4o doesn't support German.",
+          "~15x cheaper, ~90% of accuracy on classification tasks.",
+          "gpt-4o only works in the EU.",
+          "gpt-4o-mini is the only model with Structured Outputs.",
+        ],
+        correct: 1,
+        note: "Classification isn't a reasoning task where the extra capacity of gpt-4o pays off. Mini is roughly 15x cheaper and performs within about 90% on classification benchmarks. For a free-for-victims tool with viral cost risk, mini is the right trade-off.",
+      },
+      {
+        topic: "Classification · fallback",
+        type: "oe",
+        q: "What happens if OpenAI returns an error or refuses to classify? Why did you NOT add a fallback to a weaker model?",
+        model: "The classify() function raises ClassifierUnavailableError, which the analyze router catches and returns as 503 Service Unavailable. No fallback by design. A weak classification (e.g. regex tier misclassifies a death threat as MEDIUM § 185) is WORSE than no classification — it can give victims false confidence and mislead them about how serious the case is. An honest 'try again later' is safer than a misleading answer. The transformer and regex files still exist in the repo for legacy tests, but the production classify() only uses the LLM.",
+      },
+
+      // ─── TOPIC 6 · Structured Outputs (3) ────────────────────
+      {
+        topic: "Structured Outputs · the method",
+        type: "mc",
+        q: "What does <code>client.chat.completions.parse()</code> give you that <code>.create()</code> did not?",
+        options: [
+          "Lower latency.",
+          "Server-side schema validation — invalid outputs are refused before you see them.",
+          "Automatic retries.",
+          "Support for images.",
+        ],
+        correct: 1,
+        note: "The big win. OpenAI validates the response against your Pydantic schema server-side. If the model tries to return an invalid severity or unknown category, the call is refused. You get a typed Pydantic instance back, OR None. No more defensive try/except json.loads(), no more markdown-code-fence stripping.",
+      },
+      {
+        topic: "Structured Outputs · refusal",
+        type: "mc",
+        q: "When you call <code>.parse()</code>, what two things do you check on the returned message?",
+        options: [
+          "msg.status and msg.code",
+          "msg.refusal and msg.parsed",
+          "msg.content and msg.role",
+          "msg.finish_reason and msg.usage",
+        ],
+        correct: 1,
+        note: "If msg.refusal is set, OpenAI declined to classify (safety reasons — rare but real). If msg.parsed is None, the model failed to produce a schema-valid output. Either → return None → classifier.py raises ClassifierUnavailableError → 503 to the client.",
+      },
+      {
+        topic: "Structured Outputs · schema",
+        type: "oe",
+        q: "Your <code>LLMClassification</code> Pydantic model has <code>model_config = ConfigDict(extra=\"forbid\")</code>. Why?",
+        model: "extra='forbid' rejects any extra fields the model might add beyond the schema. Without it, a mischievous model could return { 'severity': 'high', 'joke': '...' } and we'd silently accept it. With forbid, any unexpected key causes a validation error, which means OpenAI's server-side enforcement will reject the response before we see it. It locks the contract.",
+      },
+    ];
+
+    // ═════════════════════════════════════════════════════════════
+    // State + rendering
+    // ═════════════════════════════════════════════════════════════
+    const stage = document.getElementById("stage");
+    const bar = document.getElementById("bar");
+    const qNumEl = document.getElementById("qnum");
+    const qTotalEl = document.getElementById("qtotal");
+    const scoreEl = document.getElementById("score");
+    const topicLabel = document.getElementById("topic-label");
+
+    qTotalEl.textContent = QUESTIONS.length;
+
+    let index = 0;
+    let score = 0;
+    const missed = [];
+
+    function updateProgress() {
+      bar.style.width = `${(index / QUESTIONS.length) * 100}%`;
+      qNumEl.textContent = Math.min(index + 1, QUESTIONS.length);
+      scoreEl.textContent = score;
+      if (QUESTIONS[index]) topicLabel.textContent = QUESTIONS[index].topic.toUpperCase();
+    }
+
+    function render() {
+      if (index >= QUESTIONS.length) { renderFinal(); return; }
+      const q = QUESTIONS[index];
+      updateProgress();
+
+      if (q.type === "mc") renderMC(q);
+      else if (q.type === "oe") renderOE(q);
+    }
+
+    function renderMC(q) {
+      const letters = ["A", "B", "C", "D"];
+      let selected = null;
+
+      stage.innerHTML = `
+        <div class="card">
+          <div class="topic">${q.topic}</div>
+          <div class="q">${q.q}</div>
+          <div class="options">
+            ${q.options.map((o, i) => `
+              <div class="opt" data-i="${i}">
+                <div class="letter">${letters[i]}</div>
+                <div>${o}</div>
+              </div>
+            `).join("")}
+          </div>
+          <div class="feedback" id="feedback"></div>
+          <div class="actions">
+            <button class="btn btn-primary" id="check" disabled>CHECK</button>
+          </div>
+        </div>
+      `;
+
+      const opts = stage.querySelectorAll(".opt");
+      const check = document.getElementById("check");
+      opts.forEach((opt) => {
+        opt.addEventListener("click", () => {
+          if (check.disabled === false && check.dataset.checked === "1") return;
+          opts.forEach((o) => o.classList.remove("selected"));
+          opt.classList.add("selected");
+          selected = +opt.dataset.i;
+          check.disabled = false;
+        });
+      });
+
+      check.addEventListener("click", () => {
+        if (check.dataset.checked === "1") {
+          // proceed
+          index++;
+          render();
+          return;
+        }
+        const correct = selected === q.correct;
+        const fb = document.getElementById("feedback");
+        opts.forEach((o) => {
+          const i = +o.dataset.i;
+          if (i === q.correct) o.classList.add("correct");
+          if (i === selected && !correct) o.classList.add("wrong");
+          o.style.pointerEvents = "none";
+        });
+        fb.className = `feedback show ${correct ? "correct" : "wrong"}`;
+        fb.innerHTML = `
+          <div class="verdict">${correct ? "✓ correct" : "✗ not quite"}</div>
+          <div>${q.note}</div>
+        `;
+        if (correct) score++;
+        else missed.push({ topic: q.topic, q: q.q, note: q.note });
+        check.textContent = "CONTINUE →";
+        check.dataset.checked = "1";
+        updateProgress();
+      });
+    }
+
+    function renderOE(q) {
+      stage.innerHTML = `
+        <div class="card">
+          <div class="topic">${q.topic} · open-ended</div>
+          <div class="q">${q.q}</div>
+          <textarea id="answer" placeholder="Type your answer in your own words — then click REVEAL to compare with the model answer. This question is self-graded."></textarea>
+          <div class="feedback" id="feedback"></div>
+          <div class="actions">
+            <button class="btn" id="skip">SKIP</button>
+            <button class="btn btn-primary" id="reveal" disabled>REVEAL</button>
+          </div>
+        </div>
+      `;
+      const answer = document.getElementById("answer");
+      const reveal = document.getElementById("reveal");
+      const skip = document.getElementById("skip");
+      const fb = document.getElementById("feedback");
+
+      answer.addEventListener("input", () => {
+        reveal.disabled = answer.value.trim().length < 10;
+      });
+
+      function showReveal(userSaid) {
+        answer.readOnly = true;
+        fb.className = "feedback show";
+        fb.innerHTML = `
+          <div class="verdict">▸ model answer — grade yourself</div>
+          <div>${q.model}</div>
+          <div class="model">
+            <strong>Your answer:</strong><br>
+            <em>${userSaid || "(skipped)"}</em>
+          </div>
+        `;
+        reveal.textContent = "✓ I had it";
+        reveal.disabled = false;
+        reveal.dataset.revealed = "1";
+        skip.textContent = "✗ need to study";
+      }
+
+      reveal.addEventListener("click", () => {
+        if (reveal.dataset.revealed === "1") {
+          score++;
+          index++;
+          render();
+          return;
+        }
+        showReveal(answer.value.trim());
+      });
+
+      skip.addEventListener("click", () => {
+        if (reveal.dataset.revealed === "1") {
+          missed.push({ topic: q.topic, q: q.q, note: q.model });
+          index++;
+          render();
+          return;
+        }
+        showReveal(answer.value.trim());
+      });
+    }
+
+    function renderFinal() {
+      updateProgress();
+      bar.style.width = "100%";
+      qNumEl.textContent = QUESTIONS.length;
+      const pct = Math.round((score / QUESTIONS.length) * 100);
+      let verdict;
+      if (pct >= 90) verdict = "Tutor-ready. You have this.";
+      else if (pct >= 75) verdict = "Solid. Review the missed topics and you're there.";
+      else if (pct >= 60) verdict = "Almost. Read <code>MEETING_20_APR.md</code> sections for missed topics, retake.";
+      else verdict = "Re-read <code>DEMO_EN.md</code> and <code>MEETING_20_APR.md</code>, then retake.";
+
+      const missedHtml = missed.length
+        ? `<div class="missed">
+            <h3>Review these before the meeting</h3>
+            <ul>
+              ${missed.map((m) => `<li><strong>${m.topic}:</strong> ${m.note}</li>`).join("")}
+            </ul>
+          </div>`
+        : `<div class="missed"><h3>Nothing to review</h3><ul><li>Nice — full sweep. You can skip the retake.</li></ul></div>`;
+
+      stage.innerHTML = `
+        <div class="card final">
+          <div class="topic">RESULT</div>
+          <div class="score">${score}/${QUESTIONS.length}</div>
+          <div class="verdict-final">${verdict}</div>
+          <div class="score-note">${pct}% · missed ${QUESTIONS.length - score}</div>
+          <div class="actions" style="justify-content:center">
+            <button class="btn" onclick="location.reload()">RETAKE</button>
+          </div>
+          ${missedHtml}
+        </div>
+      `;
+    }
+
+    render();
+
+    // Keyboard: Enter advances when a button is focusable
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const btn = document.getElementById("check") || document.getElementById("reveal");
+        if (btn && !btn.disabled) btn.click();
+      }
+      if (e.key >= "1" && e.key <= "4") {
+        const opt = document.querySelector(`.opt[data-i="${+e.key - 1}"]`);
+        if (opt) opt.click();
+      }
+    });
+  </script>
+</body>
+</html>

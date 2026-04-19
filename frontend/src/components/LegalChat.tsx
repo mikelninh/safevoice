@@ -55,10 +55,10 @@ export default function LegalChat({ lang, originalText, classification }: Props)
         const data = await res.json()
         setMessages(prev => [...prev, { role: 'ai', text: data.answer }])
       } else {
-        setMessages(prev => [...prev, { role: 'ai', text: isDE ? 'Fehler bei der Analyse.' : 'Analysis failed.' }])
+        setMessages(prev => [...prev, { role: 'ai', text: isDE ? `Classifier antwortete ${res.status}. Bitte Frage erneut stellen.` : `Classifier returned ${res.status}. Please ask again.` }])
       }
     } catch {
-      setMessages(prev => [...prev, { role: 'ai', text: isDE ? 'Verbindungsfehler.' : 'Connection error.' }])
+      setMessages(prev => [...prev, { role: 'ai', text: isDE ? 'Classifier nicht erreichbar. Netzwerk prüfen.' : 'Classifier unreachable. Check network.' }])
     } finally {
       setLoading(false)
     }
@@ -128,7 +128,7 @@ export default function LegalChat({ lang, originalText, classification }: Props)
           {loading && (
             <div className="flex justify-start">
               <div className="bg-slate-900 rounded-lg px-3 py-2 text-sm text-slate-400">
-                {isDE ? 'Analyse läuft...' : 'Analysing...'}
+                {isDE ? 'Classifier läuft…' : 'Classifier running…'}
               </div>
             </div>
           )}

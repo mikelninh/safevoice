@@ -34,9 +34,18 @@ class AnalyzeCaseResponse(BaseModel):
 
 @router.post("/text", response_model=ClassificationResult)
 def analyze_text(req: AnalyzeTextRequest):
-    """Quick classification — no persistence, no case needed."""
+    """Quick classification — no persistence, no case needed.
+
+    Dynamic-prompt context (victim_context, jurisdiction, user_lang) is
+    optional; absent it the prompt falls back to the legacy default.
+    """
     try:
-        return classify(req.text)
+        return classify(
+            req.text,
+            victim_context=req.victim_context,
+            jurisdiction=req.jurisdiction,
+            user_lang=req.user_lang,
+        )
     except ClassifierUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
@@ -53,7 +62,12 @@ def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Text content is required")
 
     try:
-        classification = classify(text)
+        classification = classify(
+            text,
+            victim_context=req.victim_context,
+            jurisdiction=req.jurisdiction,
+            user_lang=req.user_lang,
+        )
     except ClassifierUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e))
     content_hash = hash_content(text)
@@ -132,7 +146,12 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
 
     # Classify the main post
     try:
-        classification = classify(scraped.content_text)
+        classification = classify(
+            scraped.content_text,
+            victim_context=req.victim_context,
+            jurisdiction=req.jurisdiction,
+            user_lang=req.user_lang,
+        )
     except ClassifierUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e))
     content_hash = hash_content(scraped.content_text)
@@ -159,7 +178,12 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
         for comment in scraped.comments[:20]:
             if not comment.get("text"):
                 continue
-            c_result = classify(comment["text"])
+            c_result = classify(
+                comment["text"],
+                victim_context=req.victim_context,
+                jurisdiction=req.jurisdiction,
+                user_lang=req.user_lang,
+            )
             prev = get_last_hash(db, req.case_id)
             c_evidence = add_evidence_with_classification(
                 db=db, case_id=req.case_id, text=comment["text"],
@@ -193,7 +217,12 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
     for comment in scraped.comments[:20]:
         if not comment.get("text"):
             continue
-        c_classification = classify(comment["text"])
+        c_classification = classify(
+            comment["text"],
+            victim_context=req.victim_context,
+            jurisdiction=req.jurisdiction,
+            user_lang=req.user_lang,
+        )
         comment_evidence.append(EvidenceItem(
             id=str(uuid.uuid4()), url=url, platform=platform,
             captured_at=captured_at, author_username=comment.get("author", "unknown"),

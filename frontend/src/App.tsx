@@ -82,16 +82,50 @@ function AppShell() {
         </Routes>
       </main>
       <SafeExit lang={lang} />
-      {/* Footer with legal links */}
-      <footer className="border-t border-slate-800 mt-12 py-6 px-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-center gap-6 text-sm text-slate-500">
-          <Link to="/impressum" className="hover:text-slate-300 transition-colors">
-            {t(lang, 'footer.legal')}
-          </Link>
-          <span className="text-slate-700">|</span>
-          <Link to="/datenschutz" className="hover:text-slate-300 transition-colors">
-            {t(lang, 'footer.privacy')}
-          </Link>
+      {/* Footer — Impressum-grade: operator, update date, source, license, changelog. */}
+      <footer className="border-t border-slate-800 mt-12 py-8 px-4">
+        <div className="max-w-2xl mx-auto text-sm text-slate-500 space-y-3">
+          <p className="text-slate-400">
+            {lang === 'de' ? 'Gebaut von ' : 'Built by '}
+            {import.meta.env.VITE_OPERATOR_NAME || 'Mikel Ninh'}
+            {lang === 'de' ? ', Berlin.' : ', Berlin.'}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+            <Link to="/impressum" className="hover:text-slate-300 transition-colors">
+              {t(lang, 'footer.legal')}
+            </Link>
+            <Link to="/datenschutz" className="hover:text-slate-300 transition-colors">
+              {t(lang, 'footer.privacy')}
+            </Link>
+            <a
+              href="https://github.com/mikelninh/safevoice"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-slate-300 transition-colors"
+            >
+              {lang === 'de' ? 'Quellcode (GitHub)' : 'Source (GitHub)'}
+            </a>
+            <a
+              href="https://github.com/mikelninh/safevoice#license"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-slate-300 transition-colors"
+            >
+              {lang === 'de' ? 'Lizenz' : 'License'}
+            </a>
+            <a
+              href="https://github.com/mikelninh/safevoice/blob/main/CHANGELOG.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-slate-300 transition-colors"
+            >
+              {lang === 'de' ? 'Änderungsprotokoll' : 'Changelog'}
+            </a>
+          </div>
+          <p className="text-xs text-slate-600">
+            {lang === 'de' ? 'Stand: ' : 'Last updated: '}
+            2026-04-18
+          </p>
         </div>
       </footer>
     </div>

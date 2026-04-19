@@ -60,28 +60,6 @@ export default function Home({ lang }: Props) {
         </div>
       </section>
 
-      {/* Coverage grid */}
-      <section className="px-4 pb-12 max-w-2xl mx-auto">
-        <h2 className="text-center text-slate-400 text-sm uppercase tracking-wider mb-6">
-          {isDE ? 'Was wir abdecken' : 'What we cover'}
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {[
-            { icon: '🚨', de: 'Drohungen & Todesdrohungen', en: 'Threats & death threats' },
-            { icon: '♀️', de: 'Frauenfeindlichkeit', en: 'Misogyny & gender hate' },
-            { icon: '💬', de: 'Belästigung & Beleidigung', en: 'Harassment & insults' },
-            { icon: '📸', de: 'Sexuelle Belästigung', en: 'Sexual harassment' },
-            { icon: '💸', de: 'Betrug & Scams', en: 'Fraud & scams' },
-            { icon: '🎭', de: 'Identitätsmissbrauch', en: 'Impersonation' },
-          ].map((item, i) => (
-            <div key={i} className="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center">
-              <div className="text-2xl mb-1">{item.icon}</div>
-              <p className="text-slate-300 text-xs">{isDE ? item.de : item.en}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Beta status — honest about what works and what doesn't yet */}
       <section className="px-4 pb-8 max-w-2xl mx-auto">
         <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-5 text-sm">

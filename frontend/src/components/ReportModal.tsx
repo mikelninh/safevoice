@@ -59,7 +59,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
       .catch((e: Error) => {
         if (cancelled) return
         console.error('[ReportModal] fetch failed:', e)
-        setError(e?.message ?? 'Unknown error')
+        setError(e?.message ?? (isDE ? 'Bericht konnte nicht vom Server geladen werden.' : 'Report could not be loaded from the server.'))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -138,7 +138,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
                 : 'text-slate-500 hover:text-slate-300'
             }`}
           >
-            {isDE ? '📧 Senden' : '📧 Send'}
+            {isDE ? 'Senden' : 'Send'}
           </button>
         </div>
 
@@ -173,7 +173,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
             />
           ) : loading ? (
             <div className="text-slate-400 text-center py-12">
-              {isDE ? 'Bericht wird generiert...' : 'Generating report...'}
+              {isDE ? 'Bericht wird vom Server generiert…' : 'Generating report on server…'}
             </div>
           ) : error ? (
             <div className="bg-red-900/40 border border-red-800 text-red-200 rounded-lg p-4 text-sm">
@@ -306,7 +306,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
               disabled={!report || loading}
               className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors border border-slate-600"
             >
-              {isDE ? '⬇ PDF Export' : '⬇ PDF Export'}
+              {isDE ? 'PDF herunterladen' : 'Download PDF'}
             </button>
             <button
               onClick={onClose}

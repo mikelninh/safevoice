@@ -152,12 +152,62 @@ def is_available() -> bool:
     return _openai_installed and bool(os.environ.get("OPENAI_API_KEY"))
 
 
-def classify_with_llm(text: str) -> ClassificationResult | None:
+# ── Dynamic user-message builder ──
+# Pure function, easy to unit-test and inspect. Absent all optional fields the
+# output is byte-for-byte identical to the original f-string, so existing tests
+# continue to pass.
+
+def build_user_message(
+    text: str,
+    *,
+    victim_context: str | None = None,
+    jurisdiction: str = "DE",
+    user_lang: str = "de",
+) -> str:
+    """Build the user-role message from a (possibly enriched) classification context.
+
+    The default call — `build_user_message(text)` — reproduces the legacy prompt
+    verbatim to keep prior test fixtures stable. Any non-default argument
+    triggers an extended prompt that tells the LLM the jurisdiction, the user's
+    output-language preference and any victim-provided context. Richer context
+    materially improves classification accuracy, especially for ambiguous cases
+    (e.g. stalking after a breakup → § 238 StGB).
+    """
+    uses_defaults = (
+        victim_context is None
+        and jurisdiction == "DE"
+        and user_lang == "de"
+    )
+    if uses_defaults:
+        return f"Klassifiziere diesen Inhalt:\n\n{text}"
+
+    parts: list[str] = [
+        f"Klassifiziere diesen Inhalt nach dem Strafrecht der Jurisdiktion: {jurisdiction}."
+    ]
+    if victim_context:
+        parts.append(f"Kontext des Opfers: {victim_context.strip()}")
+    if user_lang and user_lang != "de":
+        parts.append(f"Bevorzugte Ausgabesprache: {user_lang}")
+    parts.append(f"Inhalt:\n{text}")
+    return "\n\n".join(parts)
+
+
+def classify_with_llm(
+    text: str,
+    *,
+    victim_context: str | None = None,
+    jurisdiction: str = "DE",
+    user_lang: str = "de",
+) -> ClassificationResult | None:
     """
     Classify text using OpenAI Structured Outputs with Pydantic schema enforcement.
 
+    Optional keyword args (`victim_context`, `jurisdiction`, `user_lang`) are
+    injected into the user-role message via `build_user_message`. When all are
+    left at their defaults the prompt is identical to the legacy one.
+
     Returns None on any error (missing key, SDK not installed, API error, refusal).
-    The orchestrator in `classifier.py::classify` falls through to tier 2/3 on None.
+    The orchestrator in `classifier.py::classify` surfaces None as 503.
     """
     if not _openai_installed:
         return None
@@ -167,6 +217,12 @@ def classify_with_llm(text: str) -> ClassificationResult | None:
 
     try:
         client = OpenAI(api_key=api_key)
+        user_message = build_user_message(
+            text,
+            victim_context=victim_context,
+            jurisdiction=jurisdiction,
+            user_lang=user_lang,
+        )
         # .parse() is the modern structured-output method — schema-enforced server-side.
         completion = client.chat.completions.parse(
             model="gpt-4o-mini",
@@ -174,7 +230,7 @@ def classify_with_llm(text: str) -> ClassificationResult | None:
             max_tokens=1024,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
+                {"role": "user", "content": user_message},
             ],
             response_format=LLMClassification,
         )

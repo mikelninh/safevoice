@@ -36,7 +36,7 @@ export default function Cases({ lang }: Props) {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center text-slate-400">
-        {isDE ? 'Wird geladen...' : 'Loading...'}
+        {isDE ? 'Fälle werden geladen…' : 'Loading cases…'}
       </div>
     )
   }

@@ -82,7 +82,7 @@ export default function Analyze({ lang }: Props) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       setError(
-        msg || (isDE ? 'Analyse fehlgeschlagen. Bitte versuche es erneut.' : 'Analysis failed. Please try again.')
+        msg || (isDE ? 'Classifier nicht erreichbar. Bitte erneut versuchen.' : 'Classifier unreachable. Please try again.')
       )
     } finally {
       setLoading(false)
@@ -112,7 +112,7 @@ export default function Analyze({ lang }: Props) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       setError(
-        msg || (isDE ? 'Screenshot-Upload fehlgeschlagen.' : 'Screenshot upload failed.')
+        msg || (isDE ? 'Screenshot konnte nicht hochgeladen werden. Datei zu groß oder OCR-Dienst offline.' : 'Screenshot could not be uploaded. File too large or OCR service offline.')
       )
     } finally {
       setLoading(false)
@@ -198,7 +198,7 @@ export default function Analyze({ lang }: Props) {
                 className="ml-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
               >
                 {uploadingScreenshot
-                  ? (isDE ? 'Wird hochgeladen...' : 'Uploading...')
+                  ? (isDE ? `Screenshot wird hochgeladen${uploadProgress !== null ? ` · ${uploadProgress}%` : '…'}` : `Uploading screenshot${uploadProgress !== null ? ` · ${uploadProgress}%` : '…'}`)
                   : (isDE ? 'Analysieren' : 'Analyze')}
               </button>
             </div>
