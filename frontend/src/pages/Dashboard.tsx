@@ -35,13 +35,20 @@ const SEVERITY_LABELS_DE: Record<string, string> = {
 export default function Dashboard({ lang }: Props) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const isDE = lang === 'de'
 
   useEffect(() => {
     fetch('/api/dashboard/stats')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`)
+        return r.json()
+      })
       .then(setData)
-      .catch(() => {})
+      .catch(err => {
+        const msg = err instanceof Error ? err.message : String(err)
+        setErrorMsg(msg)
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -55,8 +62,15 @@ export default function Dashboard({ lang }: Props) {
 
   if (!data) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center text-slate-400">
-        {isDE ? 'Dashboard nicht verfügbar.' : 'Dashboard unavailable.'}
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        <p className="text-slate-400 mb-2">
+          {isDE ? 'Dashboard nicht erreichbar.' : 'Dashboard unreachable.'}
+        </p>
+        {errorMsg && (
+          <p className="text-slate-600 text-xs font-mono">
+            GET /api/dashboard/stats — {errorMsg}
+          </p>
+        )}
       </div>
     )
   }

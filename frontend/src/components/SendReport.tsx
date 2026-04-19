@@ -333,12 +333,12 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
       {/* Step 1: Opferdaten */}
       <section>
         <h3 className="text-sm font-semibold text-slate-200 mb-2">
-          {isDE ? '1. Ihre Absenderdaten' : '1. Your sender details'}
+          {isDE ? '1. Absenderdaten' : '1. Sender details'}
         </h3>
         <p className="text-xs text-slate-400 mb-3">
           {isDE
-            ? 'Wird in die Strafanzeige eingefügt. Bleibt nur in deinem Browser — nichts wird ohne dein Klick versendet.'
-            : 'Inserted into the complaint. Stays in your browser — nothing sent without your click.'}
+            ? 'Wird in die Strafanzeige eingefügt. Bleibt nur im Browser — nichts wird ohne Klick versendet.'
+            : 'Inserted into the complaint. Stays in the browser — nothing sent without a click.'}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <input
@@ -616,7 +616,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
                     <div className="font-semibold mb-1">Text in clipboard. Next:</div>
                     <ol className="list-decimal list-inside space-y-0.5 text-emerald-100/80">
                       <li>{isPlatform ? 'Open the platform form (button above)' : 'Open Onlinewache (button above)'}</li>
-                      <li>{isPlatform ? 'Select "Other" / "Reason" in the form' : 'Select your Bundesland'}</li>
+                      <li>{isPlatform ? 'Select "Other" / "Reason" in the form' : 'Select the Bundesland'}</li>
                       <li>Paste text (Cmd+V)</li>
                       <li>{isPlatform
                         ? 'Upload PDF as attachment (if supported) and submit.'

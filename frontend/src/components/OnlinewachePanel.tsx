@@ -50,8 +50,8 @@ export default function OnlinewachePanel({ lang, reportText }: Props) {
         </h3>
         <p className="text-slate-400 text-sm">
           {isDE
-            ? 'Wähle dein Bundesland, kopiere den vorbereiteten Text und füge ihn in das Onlinewache-Formular ein.'
-            : 'Select your state, copy the prepared text and paste it into the Onlinewache form.'}
+            ? 'Bundesland wählen, vorbereiteten Text kopieren, in das Onlinewache-Formular einfügen.'
+            : 'Select the state, copy the prepared text, paste it into the Onlinewache form.'}
         </p>
       </div>
 

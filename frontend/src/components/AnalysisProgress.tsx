@@ -52,8 +52,8 @@ export default function AnalysisProgress({ lang, totalComments }: Props) {
 
       <p className="text-slate-600 text-xs mt-3">
         {isDE
-          ? 'Dein Inhalt verlässt niemals dieses Gerät unverschlüsselt.'
-          : 'Your content never leaves this device unencrypted.'}
+          ? 'Inhalte verlassen dieses Gerät nur verschlüsselt.'
+          : 'Content leaves this device only in encrypted form.'}
       </p>
     </div>
   )

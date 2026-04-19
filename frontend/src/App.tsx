@@ -124,7 +124,7 @@ function AppShell() {
           </div>
           <p className="text-xs text-slate-600">
             {lang === 'de' ? 'Stand: ' : 'Last updated: '}
-            2026-04-18
+            {new Date().toISOString().slice(0, 10)}
           </p>
         </div>
       </footer>
