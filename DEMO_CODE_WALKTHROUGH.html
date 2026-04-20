@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SafeVoice · Code walkthrough for the tutor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <style>
+    :root {
+      --bg:        #0a0a0c;
+      --surface:  #14141b;
+      --surface-2: #1a1a24;
+      --border:   #242433;
+      --text:     #edeef2;
+      --text-2:   #b1b2bc;
+      --text-3:   #7a7b86;
+      --text-mute:#4a4a54;
+      --gold:     #d4ac6b;
+      --gold-hi:  #ffdb9a;
+      --cyan:     #60a5fa;   /* user input */
+      --purple:   #a78bfa;
+      --green:    #70c989;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg); color: var(--text);
+      font-family: "Inter", system-ui, sans-serif;
+      font-size: 16px; line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.003em;
+    }
+    body { min-height: 100vh; }
+
+    .wrap {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+
+    /* ── TOC sidebar ── */
+    nav.toc {
+      position: sticky; top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 32px 20px 32px 28px;
+      border-right: 1px solid var(--border);
+      background: var(--bg);
+    }
+    nav.toc .brand {
+      font-family: "Fraunces", serif;
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: -0.015em;
+      margin-bottom: 4px;
+    }
+    nav.toc .sub {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.14em;
+      color: var(--text-3);
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    nav.toc a {
+      display: block;
+      padding: 9px 12px;
+      margin-bottom: 3px;
+      border-radius: 6px;
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 14px;
+      border-left: 2px solid transparent;
+      transition: 150ms;
+    }
+    nav.toc a:hover { color: var(--text); background: var(--surface); }
+    nav.toc a.active { color: var(--gold); border-left-color: var(--gold); background: var(--surface); }
+    nav.toc a .num {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      color: var(--gold);
+      margin-right: 8px;
+      font-weight: 500;
+    }
+    nav.toc .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 18px 0 14px;
+    }
+    nav.toc .small {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+      padding: 0 12px;
+      line-height: 1.6;
+    }
+
+    /* ── Main content ── */
+    main {
+      padding: 64px 56px 120px;
+      max-width: 860px;
+    }
+    header.intro {
+      margin-bottom: 56px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    header.intro .kicker {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    header.intro h1 {
+      font-family: "Fraunces", serif;
+      font-weight: 300;
+      font-size: 44px;
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+      margin-bottom: 16px;
+    }
+    header.intro p {
+      font-size: 17px;
+      line-height: 1.6;
+      color: var(--text-2);
+      max-width: 60ch;
+    }
+
+    section.topic {
+      padding: 48px 0;
+      border-bottom: 1px dashed var(--border);
+      scroll-margin-top: 24px;
+    }
+    section.topic:last-child { border-bottom: none; }
+    section.topic .label {
+      display: inline-block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--gold);
+      text-transform: uppercase;
+      font-weight: 500;
+      padding: 5px 10px;
+      background: rgba(212, 172, 107, 0.08);
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    section.topic h2 {
+      font-family: "Fraunces", serif;
+      font-weight: 400;
+      font-size: 34px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    section.topic h2 em { color: var(--gold); font-style: normal; }
+    section.topic .zisis {
+      font-family: "Fraunces", serif;
+      font-style: italic;
+      font-size: 17px;
+      color: var(--text-2);
+      margin-bottom: 24px;
+      padding: 12px 18px;
+      border-left: 2px solid var(--gold);
+      background: rgba(212, 172, 107, 0.035);
+      border-radius: 0 6px 6px 0;
+    }
+    section.topic .zisis strong { color: var(--gold); font-weight: 600; }
+    section.topic p {
+      font-size: 15.5px;
+      line-height: 1.7;
+      color: var(--text-2);
+      margin-bottom: 14px;
+      max-width: 60ch;
+    }
+    section.topic p strong { color: var(--text); font-weight: 500; }
+    section.topic p code, section.topic li code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 13px;
+      padding: 2px 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--gold);
+    }
+    section.topic ul {
+      margin: 10px 0 18px 20px;
+      padding: 0;
+    }
+    section.topic li {
+      font-size: 15px;
+      color: var(--text-2);
+      padding: 3px 0;
+      list-style: "· ";
+      padding-left: 6px;
+    }
+    section.topic li::marker { color: var(--gold); }
+    section.topic li strong { color: var(--text); font-weight: 500; }
+
+    section.topic .filepath {
+      display: inline-block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11.5px;
+      color: var(--text-3);
+      padding: 4px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 6px 0 8px;
+    }
+
+    pre[class*="language-"] {
+      background: var(--surface) !important;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px !important;
+      font-size: 13.5px;
+      line-height: 1.55;
+      margin: 14px 0 20px;
+      overflow-x: auto;
+    }
+    code[class*="language-"] {
+      font-family: "JetBrains Mono", monospace !important;
+      font-size: 13.5px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 16px 0;
+    }
+    .two-col div {
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text-2);
+    }
+    .two-col h4 {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.18em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .callout {
+      padding: 16px 20px;
+      background: rgba(212, 172, 107, 0.05);
+      border: 1px solid rgba(212, 172, 107, 0.18);
+      border-radius: 10px;
+      font-size: 14.5px;
+      color: var(--text);
+      margin: 20px 0;
+      line-height: 1.6;
+    }
+    .callout .prefix {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.18em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-right: 10px;
+      font-weight: 600;
+    }
+
+    footer.end {
+      margin-top: 80px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      color: var(--text-3);
+      font-size: 14px;
+      text-align: center;
+      font-family: "JetBrains Mono", monospace;
+      letter-spacing: 0.08em;
+    }
+
+    @media (max-width: 900px) {
+      .wrap { grid-template-columns: 1fr; }
+      nav.toc { position: relative; height: auto; padding: 20px; border-right: none; border-bottom: 1px solid var(--border); }
+      main { padding: 32px 24px 80px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <nav class="toc">
+      <div class="brand">SafeVoice</div>
+      <div class="sub">code walkthrough</div>
+      <a href="#intro" class="active"><span class="num">00</span>Introduction</a>
+      <a href="#db"><span class="num">01</span>Database schema</a>
+      <a href="#user-crud"><span class="num">02</span>User CRUD</a>
+      <a href="#case-crud"><span class="num">03</span>Case CRUD</a>
+      <a href="#ai-flow"><span class="num">04</span>AI flow · input + context</a>
+      <a href="#classify"><span class="num">05</span>Classification endpoint</a>
+      <a href="#parse"><span class="num">06</span>Parse structured output</a>
+      <div class="divider"></div>
+      <a href="#rag"><span class="num">+</span>Bonus · RAG</a>
+      <div class="divider"></div>
+      <div class="small">Each section shows: what Zisis asked, the real file, the code, and what to say out loud.</div>
+    </nav>
+
+    <main>
+
+      <header class="intro" id="intro">
+        <div class="kicker">For the 20-April tutor meeting</div>
+        <h1>The code, for the six things Zisis asked about.</h1>
+        <p>Nothing about the slide deck — this is the <strong>actual SafeVoice engineering code</strong>, organised against the six action items he gave you on 27 March. Each section points at the real file in <code>backend/app/…</code>, shows the critical code block, and gives you the one sentence you'd say out loud when he asks about it.</p>
+      </header>
+
+      <!-- ══════════════════════ 01 · DB ══════════════════════ -->
+      <section class="topic" id="db">
+        <span class="label">action item 1</span>
+        <h2>Database schema — <em>user input vs AI-populated vs system-generated</em></h2>
+        <p class="zisis"><strong>Zisis asked:</strong> for each table, which attributes are user input, which are AI-populated, which are system-generated?</p>
+
+        <p>Eight tables, real SQLAlchemy ORM with Alembic migrations. SQLite locally (<code>safevoice.db</code>), Postgres in production. Every column has a provenance:</p>
+        <ul>
+          <li><strong>User input</strong> — email, language, content, victim_context</li>
+          <li><strong>System-generated</strong> — IDs, hashes, UTC timestamps, platform auto-detection</li>
+          <li><strong>AI-populated</strong> — severity, categories, laws, summaries, consequences</li>
+        </ul>
+
+        <span class="filepath">backend/app/database.py</span>
+
+<pre><code class="language-python">class User(Base):
+    __tablename__ = "users"
+
+    id           = Column(String, primary_key=True, default=gen_uuid)   # system
+    email        = Column(String, unique=True, nullable=False)          # user input
+    display_name = Column(String)                                       # user input
+    language     = Column(String, default="de")                         # user input
+    created_at   = Column(DateTime, default=datetime.utcnow)            # system
+    deleted_at   = Column(DateTime, nullable=True)   # GDPR soft delete # system
+
+
+class Case(Base):
+    __tablename__ = "cases"
+
+    id               = Column(String, primary_key=True, default=gen_uuid)
+    user_id          = Column(String, ForeignKey("users.id"), nullable=True)
+    org_id           = Column(String, ForeignKey("orgs.id"), nullable=True)
+    title            = Column(String)              # AI_POPULATED initially
+    victim_context   = Column(Text)                # USER INPUT
+    overall_severity = Column(String, default="none")  # AI_POPULATED
+    status           = Column(String, default="open")  # USER INPUT
+
+    user     = relationship("User", back_populates="cases")
+    evidence_items = relationship("EvidenceItem", back_populates="case")
+
+
+class EvidenceItem(Base):
+    __tablename__ = "evidence_items"
+
+    id                   = Column(String, primary_key=True, default=gen_uuid)
+    case_id              = Column(String, ForeignKey("cases.id"), nullable=False)
+    raw_content          = Column(Text, nullable=False)    # USER INPUT
+    content_hash         = Column(String)                  # system · SHA-256
+    hash_chain_previous  = Column(String)                  # system · chain link
+    platform             = Column(String)                  # AI · detected from URL
+    timestamp_utc        = Column(DateTime, default=datetime.utcnow)  # system
+
+    case           = relationship("Case", back_populates="evidence_items")
+    classification = relationship("Classification", back_populates="evidence_item",
+                                  uselist=False)  # 1-to-1
+
+
+class Classification(Base):
+    __tablename__ = "classifications"
+
+    id               = Column(String, primary_key=True, default=gen_uuid)
+    evidence_item_id = Column(String, ForeignKey("evidence_items.id"),
+                              nullable=False, unique=True)
+    severity         = Column(String, default="none")       # AI
+    confidence       = Column(Float,  default=0.0)          # AI
+    summary          = Column(Text)                         # AI · English
+    summary_de       = Column(Text)                         # AI · German
+    potential_consequences    = Column(Text)                # AI
+    potential_consequences_de = Column(Text)                # AI
+
+    categories = relationship("Category", secondary=classification_categories)
+    laws       = relationship("Law",      secondary=classification_laws)</code></pre>
+
+        <div class="callout"><span class="prefix">Say out loud</span>
+          "The user provides email and content. The system generates IDs, SHA-256 hashes, UTC timestamps, and auto-detects platform from URL. The AI populates severity, categories, laws, summaries, and consequences. Each column knows where it came from."
+        </div>
+
+        <p>The flow direction is <code>users → cases → evidence_items → classifications</code> because a case is the unit of legal documentation — a harassment incident is <em>one case</em> with many evidence items, not orphaned evidence sorted afterwards.</p>
+      </section>
+
+      <!-- ══════════════════════ 02 · User CRUD ══════════════════════ -->
+      <section class="topic" id="user-crud">
+        <span class="label">action item 2</span>
+        <h2>User CRUD — <em>seven endpoints, magic link only.</em></h2>
+        <p class="zisis"><strong>Zisis asked:</strong> show me the user-management endpoints.</p>
+
+        <p>Magic link only. Three reasons, in this order:</p>
+        <ul>
+          <li><strong>Victims under stress forget passwords.</strong></li>
+          <li><strong>No password DB</strong> = no breach risk.</li>
+          <li><strong>One-time 15-min tokens</strong> are phishing-resistant.</li>
+        </ul>
+
+        <span class="filepath">backend/app/routers/auth.py</span>
+
+<pre><code class="language-python">router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _require_user(authorization: str | None):
+    """Extract and validate session token from the Authorization header."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required")
+    token = authorization.replace("Bearer ", "").strip()
+    user = get_user_by_session(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    return user, token
+
+
+# 1. Request a magic link (email goes in, token comes out)
+@router.post("/login")
+def login(req: LoginRequest):
+    email = req.email.strip().lower()
+    link = request_magic_link(email)
+    return LoginResponse(message=f"Magic link sent to {email}.",
+                         magic_link_token=link.token)    # MVP: returned directly
+
+
+# 2. Exchange magic link for a 30-day session token
+@router.post("/verify")
+def verify(req: VerifyRequest):
+    session = verify_magic_link(req.token)
+    if not session:
+        raise HTTPException(status_code=401,
+                            detail="Invalid, expired, or already used magic link")
+    user = get_user(session.user_id)
+    return {"session_token": session.token,
+            "expires_at": session.expires_at.isoformat(),
+            "user": {"id": user.id, "email": user.email, ...}}
+
+
+# 3 / 4 / 5 / 6 · profile read/update, soft delete, emergency delete
+@router.get("/me")    def get_me(...):             ...   # read profile
+@router.put("/me")    def update_me(...):          ...   # update display_name, lang
+@router.delete("/me") def delete_me(...):          ...   # 7-day recovery soft delete
+@router.delete("/me/emergency") def emergency(...): ...  # immediate hard delete
+
+
+# 7. End session
+@router.post("/logout")
+def logout(authorization: str | None = Header(default=None)):
+    _, token = _require_user(authorization)
+    logout_session(token)
+    return {"ok": True}</code></pre>
+
+        <div class="callout"><span class="prefix">Say out loud</span>
+          "Seven endpoints under <code>/auth</code>. Magic link only — no passwords. Soft delete keeps the row with <code>deleted_at</code> for seven days of recovery. Emergency delete is immediate — the Safe-Exit pattern for victims whose perpetrator has access to their device."
+        </div>
+      </section>
+
+      <!-- ══════════════════════ 03 · Case CRUD ══════════════════════ -->
+      <section class="topic" id="case-crud">
+        <span class="label">action item 3</span>
+        <h2>Case CRUD — <em>cases are created implicitly.</em></h2>
+        <p class="zisis"><strong>Zisis asked:</strong> how does the user create a case?</p>
+
+        <p>They don't. The user never sends a <code>POST /cases</code>. They paste content to <code>POST /analyze/ingest</code>, and the system creates both <strong>the evidence row</strong> and <strong>the case row</strong> in one call. The product mental-model matches the user's: they think <em>"I want to document what happened,"</em> not <em>"I should create a case object."</em></p>
+
+        <span class="filepath">backend/app/routers/analyze.py</span>
+
+<pre><code class="language-python">@router.post("/ingest")
+def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
+    """
+    Classify text and optionally persist to a case.
+    If case_id is provided, evidence is saved to the database.
+    Otherwise, returns ephemeral result (backward compatible).
+    """
+    text = req.text
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Text content is required")
+
+    # 1. Classify (pure AI call — no DB yet)
+    try:
+        classification = classify(
+            text,
+            victim_context=req.victim_context,
+            jurisdiction=req.jurisdiction,
+            user_lang=req.user_lang,
+        )
+    except ClassifierUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    # 2. System-generated fields
+    content_hash = hash_content(text)
+    captured_at  = capture_timestamp()
+
+    # 3. Persist if a case_id was given (and create the case if it doesn't exist)
+    if req.case_id:
+        case = db.query(DBCase).filter_by(id=req.case_id).first()
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+
+        previous_hash = get_last_hash(db, req.case_id)
+        evidence = add_evidence_with_classification(
+            db=db, case_id=req.case_id, text=text,
+            classification_result=classification,
+            content_type="text",
+            previous_hash=previous_hash,    # SHA-256 chain
+            classifier_tier=1,
+        )
+        return {"evidence_id": evidence.id, "case_id": req.case_id, ...}
+
+    # 4. Ephemeral path — return an EvidenceItem without saving
+    return {"evidence": EvidenceItem(...), "persisted": False}</code></pre>
+
+        <div class="callout"><span class="prefix">Say out loud</span>
+          "Cases are created implicitly. The user pastes content via <code>POST /analyze/ingest</code> — the system classifies, hashes, timestamps, chains, and persists — all in one call. Read, export, and PDF follow standard REST afterwards."
+        </div>
+      </section>
+
+      <!-- ══════════════════════ 04 · AI flow ══════════════════════ -->
+      <section class="topic" id="ai-flow">
+        <span class="label">action item 4 · !!!</span>
+        <h2>AI flow — <em>input, context, system prompt.</em></h2>
+        <p class="zisis"><strong>Zisis asked</strong> (with three exclamation marks): <strong>design the AI flow</strong>. What is the input? What is the context? What is the system prompt?</p>
+
+        <p><strong>Input</strong> is always a string. It arrives three ways — paste, URL scrape, screenshot OCR — but by the time <code>classify()</code> is called the input is text. One format, one classification path.</p>
+
+        <p><strong>Context</strong> lives entirely in the system prompt. It tells the model who it is, what to analyse, which enums it's allowed to produce, how to handle obfuscation, and how severity is defined. No RAG at classification time; no DB lookup; no external context. System prompt + user text is the whole input.</p>
+
+        <span class="filepath">backend/app/services/classifier_llm_v2.py</span>
+
+<pre><code class="language-python">SYSTEM_PROMPT = """Du bist SafeVoice — ein juristischer Klassifikator für digitale Gewalt in Deutschland.
+
+Du analysierst Texte aus sozialen Medien (Kommentare, DMs, Posts) und klassifizierst
+sie nach deutschem Strafrecht.
+
+WICHTIG:
+- Verstehe Tippfehler, Slang, absichtliche Verschleierung (z.B. "f0tze", "stirbt" statt "stirb")
+- Wenn unklar: im Zweifel FÜR das Opfer entscheiden (höhere Severity)
+- Eine Drohung ist eine Drohung, auch wenn sie indirekt formuliert ist
+- Beachte den Gesamtkontext, nicht einzelne Wörter
+
+Gib mindestens eine Kategorie an (im Zweifel: harassment).
+NetzDG § 3 gilt IMMER bei Social Media Inhalten — füge es zu applicable_laws hinzu.
+
+SEVERITY:
+- low: Grenzwertig, Verstoß gegen Nutzungsbedingungen möglich
+- medium: Wahrscheinlicher Rechtsverstoß
+- high:  Klarer Rechtsverstoß, Anzeige empfohlen
+- critical: Schwere Straftat, sofortige Anzeige + Beweissicherung"""</code></pre>
+
+        <p>Why this prompt works:</p>
+        <div class="two-col">
+          <div>
+            <h4>Role assignment</h4>
+            "Du bist SafeVoice — ein juristischer Klassifikator." Not a chatbot. The model adopts the role for the whole call.
+          </div>
+          <div>
+            <h4>Behavioural rule</h4>
+            "Im Zweifel FÜR das Opfer" — prefers false positives over false negatives. For victim-support this is correct.
+          </div>
+          <div>
+            <h4>Invariant</h4>
+            "NetzDG § 3 gilt IMMER" — guarantees we never forget the platform-obligation law.
+          </div>
+          <div>
+            <h4>Scale definitions</h4>
+            low / medium / high / critical are defined concretely, so the scale stays consistent across calls.
+          </div>
+        </div>
+
+        <p>The user-role message is then just:</p>
+<pre><code class="language-python">user_message = f"Klassifiziere diesen Inhalt:\n\n{text}"</code></pre>
+
+        <div class="callout"><span class="prefix">Say out loud</span>
+          "Input is always a string. Context is the whole system prompt — role, category enum, law enum, severity definitions, the rule 'err on the side of the victim.' User message is <code>'Klassifiziere diesen Inhalt:\\n\\n{text}'</code>. One turn. No RAG here."
+        </div>
+      </section>
+
+      <!-- ══════════════════════ 05 · Classify endpoint ══════════════════════ -->
+      <section class="topic" id="classify">
+        <span class="label">action item 5</span>
+        <h2>Classification endpoint — <em>four decisions, one call.</em></h2>
+        <p class="zisis"><strong>Zisis asked:</strong> design your classification endpoint.</p>
+
+        <span class="filepath">backend/app/services/classifier_llm_v2.py · line ~171</span>
+
+<pre><code class="language-python">completion = client.chat.completions.parse(
+    model="gpt-4o-mini",              # 15× cheaper than gpt-4o, ~90% accuracy
+    temperature=0,                    # deterministic — legal must be reproducible
+    max_tokens=1024,                  # enough for the JSON, not wasteful
+    messages=[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
+    ],
+    response_format=LLMClassification,  # Pydantic class, server-enforced schema
+)</code></pre>
+
+        <p>The four decisions encoded in this single call:</p>
+        <ul>
+          <li><strong><code>gpt-4o-mini</code></strong> over gpt-4o — about fifteen times cheaper, roughly ninety percent of accuracy on classification tasks. Classification isn't a reasoning task where the extra capacity pays off.</li>
+          <li><strong><code>temperature=0</code></strong> — legal classification must be deterministic. Same content today and next month must produce the same result, or court-admissibility breaks.</li>
+          <li><strong><code>.parse()</code></strong> instead of <code>.create()</code> — the modern Structured Outputs API. OpenAI validates the schema server-side and refuses invalid responses before we see them.</li>
+          <li><strong><code>response_format=LLMClassification</code></strong> — a Pydantic class, not a JSON Schema string. Typed, enum-validated, and portable across model providers.</li>
+        </ul>
+
+        <div class="callout"><span class="prefix">Say out loud</span>
+          "<code>gpt-4o-mini</code>, temperature zero, <code>.parse()</code> with a Pydantic <code>response_format</code>. Four decisions, one call — cheap, deterministic, schema-enforced."
+        </div>
+      </section>
+
+      <!-- ══════════════════════ 06 · Parse ══════════════════════ -->
+      <section class="topic" id="parse">
+        <span class="label">action item 6</span>
+        <h2>Parsing the structured output — <em>two checks, no regex.</em></h2>
+        <p class="zisis"><strong>Zisis pointed</strong> at the OpenAI Structured Outputs docs — he wanted to see typed parsing, not manual JSON.</p>
+
+        <p>The old approach (still in <code>classifier_llm.py</code> for comparison) put a JSON schema inside the prompt and then <code>json.loads()</code> the raw string — defensive against markdown fences, enum-invention, and missing fields. The new approach does none of that.</p>
+
+        <span class="filepath">backend/app/services/classifier_llm_v2.py · Pydantic schema</span>
+
+<pre><code class="language-python">class LLMClassification(BaseModel):
+    """Pydantic model for the classifier's structured output.
+    Schema-enforced by OpenAI server-side."""
+    model_config = ConfigDict(extra="forbid")    # reject any unexpected field
+
+    severity:                   LLMSeverity                                  # enum
+    categories:                 list[LLMCategory] = Field(..., min_length=1) # enum list
+    confidence:                 float             = Field(..., ge=0.0, le=1.0)
+    requires_immediate_action:  bool
+    summary:                    str
+    summary_de:                 str
+    applicable_laws:            list[LLMLaw]   # enum list (§ 185, § 241, NetzDG § 3…)
+    potential_consequences:     str
+    potential_consequences_de:  str</code></pre>
+
+        <p>After the <code>.parse()</code> call, the parsing code is exactly this:</p>
+
+<pre><code class="language-python">msg = completion.choices[0].message
+
+# Check 1: did OpenAI refuse on safety grounds?
+if msg.refusal:
+    return None                         # → orchestrator returns 503
+
+# Check 2: did the model produce a schema-valid result?
+llm_result = msg.parsed                 # typed LLMClassification or None
+if llm_result is None:
+    return None                         # → orchestrator returns 503
+
+# Map the typed LLM enums into domain objects (Severity, Category, Law)
+return _to_domain(llm_result)</code></pre>
+
+        <p>What the schema buys you, concretely:</p>
+        <ul>
+          <li><strong>Server-side enforcement</strong> — OpenAI refuses malformed outputs before they reach Python.</li>
+          <li><strong>Type safety</strong> — <code>msg.parsed</code> is a validated <code>LLMClassification</code> instance, or <code>None</code>. No <code>dict[str, Any]</code>.</li>
+          <li><strong>Enum validation</strong> — if the model tried to return <code>severity="extreme"</code>, the call is refused. Only the four values in <code>LLMSeverity</code> are valid.</li>
+          <li><strong>Refusal handling</strong> — <code>msg.refusal</code> is set when OpenAI declines on safety grounds; we handle it explicitly.</li>
+        </ul>
+
+        <div class="callout"><span class="prefix">Say out loud</span>
+          "Two checks: <code>msg.refusal</code> for safety declines, and <code>msg.parsed is None</code> for schema failure. Otherwise I get a validated Pydantic instance. No <code>json.loads</code>, no markdown-fence stripping, no defensive try/except. Either it's valid or it's None."
+        </div>
+      </section>
+
+      <!-- ══════════════════════ + · RAG ══════════════════════ -->
+      <section class="topic" id="rag">
+        <span class="label">bonus</span>
+        <h2>RAG — <em>two AI layers, one uses it.</em></h2>
+        <p class="zisis"><strong>Zisis wants to know if you use RAG.</strong> Yes, but only in the second layer. The classifier above is pure prompt-in / structured-out. The <em>case-level</em> analysis is where retrieval earns its place.</p>
+
+        <span class="filepath">backend/app/services/legal_ai.py</span>
+
+<pre><code class="language-python">def analyze_case_legally(case: Case) -> dict | None:
+    """Deep legal analysis of an entire case using gpt-4o-mini.
+    Returns a CaseAnalysis-shaped dict or a rule-based fallback."""
+    if not is_available():
+        return _fallback_analysis(case)
+
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+    # ── RETRIEVE ─── pull every evidence item + its classification
+    evidence_summary = []
+    for ev in case.evidence_items:
+        entry = {
+            "author":       ev.author_username,
+            "platform":     ev.platform,
+            "content":      ev.content_text[:500],
+            "captured_at":  str(ev.captured_at),
+        }
+        if ev.classification:
+            entry["severity"]   = ev.classification.severity.value
+            entry["categories"] = [c.value for c in ev.classification.categories]
+            entry["laws"]       = [l.paragraph for l in ev.classification.applicable_laws]
+        evidence_summary.append(entry)
+
+    # ── AUGMENT ─── structure as a context block inside the user prompt
+    user_prompt = f"""Analyze this digital harassment case.
+
+Case ID: {case.id}
+Title: {case.title}
+Overall severity: {case.overall_severity.value}
+Victim context: {case.victim_context or 'Not provided'}
+
+Evidence ({len(case.evidence_items)} items):
+{json.dumps(evidence_summary, indent=2, ensure_ascii=False)}
+
+Produce a structured legal assessment. Use German primary for _de fields
+and English secondary for _en fields."""
+
+    # ── GENERATE ─── same Structured Outputs pattern as the classifier
+    completion = client.chat.completions.parse(
+        model="gpt-4o-mini",
+        temperature=0.2,
+        max_tokens=2048,
+        messages=[
+            {"role": "system", "content": LEGAL_SYSTEM_PROMPT},
+            {"role": "user",   "content": user_prompt},
+        ],
+        response_format=CaseAnalysis,       # strategy, charges, actions, risk, gaps
+    )
+
+    msg = completion.choices[0].message
+    if msg.refusal or msg.parsed is None:
+        return _fallback_analysis(case)
+    return msg.parsed.model_dump()</code></pre>
+
+        <p>That's textbook <strong>retrieve → augment → generate</strong>. The classifier above is single-turn, single-input, no retrieval. The legal layer above is retrieval across N evidence items so the model can reason about patterns, escalation, and cross-references.</p>
+
+        <div class="callout"><span class="prefix">Say out loud</span>
+          "The classifier is prompt-in, structured-out — no RAG. The legal-analysis layer uses RAG: it retrieves all the case's evidence plus classifications from the database, structures them as a context block, and sends to the same <code>gpt-4o-mini</code> with a different Pydantic schema — <code>CaseAnalysis</code> — for strategy, strongest charges, recommended actions, risk assessment, and evidence gaps. One model family, two jobs."
+        </div>
+      </section>
+
+      <footer class="end">
+        Generated 2026-04-20 · <a href="./DEMO_SLIDES.html" style="color: var(--gold);">back to slides</a>
+      </footer>
+
+    </main>
+
+  </div>
+
+  <!-- Syntax highlighting -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+  <script>
+    // Active TOC link syncing with scroll position.
+    const sections = document.querySelectorAll("section.topic, header.intro");
+    const links = document.querySelectorAll("nav.toc a");
+    const byId = {};
+    links.forEach((a) => { byId[a.getAttribute("href").slice(1)] = a; });
+
+    function setActive(id) {
+      links.forEach((a) => a.classList.remove("active"));
+      if (byId[id]) byId[id].classList.add("active");
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) setActive(entry.target.id);
+      });
+    }, { rootMargin: "-30% 0px -50% 0px", threshold: 0 });
+
+    sections.forEach((s) => observer.observe(s));
+  </script>
+</body>
+</html>

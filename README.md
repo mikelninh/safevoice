@@ -8,7 +8,7 @@
 
 **Document digital harassment. Classify under German law. Generate court-ready reports. In 30 seconds.**
 
-Bilingual (DE/EN). Multilingual classifier (DE/EN/TR/AR). DSGVO-by-design. Free for victims.
+Bilingual UI (DE/EN). Classifier runs in German and English on OpenAI `gpt-4o-mini` with Pydantic Structured Outputs. DSGVO-by-design. Free for victims. Turkish and Arabic coverage on the roadmap.
 
 ---
 
@@ -69,17 +69,22 @@ Three ways to get content in:
 - **Upload a screenshot** — OCR extracts the text from WhatsApp/DM screenshots
 
 ### 2. AI classifies it
-Single-tier LLM classifier (OpenAI GPT-4o-mini with structured outputs via
-Pydantic `.parse()`). Detects 18 offense categories across 4 languages.
-Returns: severity, categories, applicable German laws, bilingual summary +
-recommended actions.
+Single-tier LLM classifier — OpenAI `gpt-4o-mini` with **Pydantic Structured
+Outputs** via `client.chat.completions.parse()`. Detects **15 offense
+categories** and returns: severity, confidence, applicable German paragraphs,
+bilingual summary (DE + EN), and recommended actions.
+
+Schema enforcement is server-side. Categories and laws are exhaustive Python
+enums, so the model cannot invent a category or a paragraph. If the model
+refuses on safety grounds or a response fails schema validation, the API
+returns a clean `503` — no silent fallback.
 
 Earlier versions had a 3-tier fallback (LLM → transformer → regex). We
-removed it because (a) the LLM is dramatically more accurate on real evidence,
-(b) the regex tier produced too many false positives to send to police, and
-(c) running a transformer added 1.5 GB of dependencies for marginal gain.
-A regex-only fallback mode for organizations that cannot send data to OpenAI
-is on the roadmap.
+removed it because (a) the LLM is dramatically more accurate on real
+evidence, (b) the regex tier produced too many false positives to send to
+police, and (c) running a transformer added 1.5 GB of dependencies for
+marginal gain. A regex-only fallback for organisations that cannot send data
+to OpenAI remains on the roadmap.
 
 ### 3. Evidence is preserved
 - SHA-256 content hash for integrity
@@ -111,23 +116,59 @@ classification_laws       — many-to-many junction
 
 ---
 
-## API Endpoints (MVP)
+## API Endpoints
+
+The core trio — **auth**, **cases**, **analyze** — is what Zisis's action
+items map to. A dozen more routers cover reports, the Partner API, policy
+exports, the hash chain, and dashboards.
 
 ```
-GET  /health              — health check + active classifier tier
+# Auth  (backend/app/routers/auth.py)
+POST   /auth/login              — request magic link
+POST   /auth/verify             — exchange token for session
+GET    /auth/me                 — read user
+PUT    /auth/me                 — update user
+POST   /auth/logout             — end session
+DELETE /auth/me                 — soft delete (GDPR Art. 17)
+DELETE /auth/me/emergency       — hard delete (purges cases + evidence)
+GET    /auth/me/export          — Art. 20 data export (JSON)
 
-POST /analyze/text        — classify raw text
-POST /analyze/ingest      — classify + save as evidence with hash
-POST /analyze/url         — scrape Instagram/X URL + classify
+# Cases  (backend/app/routers/cases.py)
+GET    /cases/                  — list
+GET    /cases/{id}              — detail + evidence + classifications
+POST   /cases/                  — explicit create (rare — usually implicit)
+PUT    /cases/{id}              — update
+DELETE /cases/{id}              — delete (cascade)
+POST   /cases/{id}/evidence     — attach evidence to existing case
 
-GET  /cases/              — list cases
-GET  /cases/{id}          — case detail with evidence + classifications
+# Analyze  (backend/app/routers/analyze.py)
+POST   /analyze/text            — classify a string (no DB write)
+POST   /analyze/ingest          — evidence + classify + case in one tx
+POST   /analyze/url             — scrape URL → classify
+POST   /analyze/case            — case-level RAG analysis across N evidence
 
-GET  /reports/{id}        — text report (general / netzdg / police)
-GET  /reports/{id}/pdf    — downloadable PDF report
+# Reports  (backend/app/routers/reports.py)
+GET    /reports/{id}            — text report
+GET    /reports/{id}/pdf        — PDF
+GET    /reports/{id}/bafin      — BaFin scam report
+GET    /reports/{id}/court-package  — ZIP bundle
+POST   /reports/{id}/eml        — RFC 5322 email export
+
+# Partner API  (backend/app/routers/partners.py)
+POST   /partners/organizations  — onboard NGO / law firm
+POST   /partners/cases/submit   — institutional case submission
+…                               — 9 endpoints total
+
+# Hash chain  (backend/app/routers/chain.py)
+POST   /chain/build             — build tamper-proof hash chain for a case
+POST   /chain/verify            — verify the chain
+GET    /chain/{case_id}         — read the chain
+
+# Health
+GET    /health                  — liveness check
 ```
 
-Full interactive docs: http://localhost:8000/docs
+Full interactive OpenAPI docs: http://localhost:8000/docs
 
 ---
 
@@ -170,24 +211,24 @@ Full interactive docs: http://localhost:8000/docs
 ```
 safevoice/
 ├── backend/app/
-│   ├── main.py              — FastAPI app
-│   ├── models/evidence.py   — Case, Evidence, Classification, Law
+│   ├── main.py                   — FastAPI app
+│   ├── database.py               — SQLAlchemy models + seed data
+│   ├── models/                   — Pydantic domain objects (Case, Evidence, …)
 │   ├── services/
-│   │   ├── classifier.py    — 3-tier classifier (OpenAI → transformer → regex)
-│   │   ├── classifier_llm.py — Tier 1: OpenAI with prompt engineering
-│   │   ├── scraper.py       — Instagram + X URL scraper
-│   │   ├── evidence.py      — SHA-256 hashing + timestamps
-│   │   └── pdf_generator.py — Court-ready PDF reports
-│   └── routers/
-│       ├── analyze.py       — /analyze/text, /ingest, /url
-│       ├── cases.py         — /cases/
-│       └── reports.py       — /reports/{id}, /pdf
+│   │   ├── classifier.py         — orchestrator (single-tier LLM)
+│   │   ├── classifier_llm_v2.py  — OpenAI gpt-4o-mini + Pydantic .parse()
+│   │   ├── legal_ai.py           — case-level RAG: retrieve → augment → generate
+│   │   ├── scraper.py            — Instagram + X URL scraper
+│   │   ├── evidence.py           — SHA-256 hashing + hash chain
+│   │   └── pdf_generator.py      — court-ready PDF reports
+│   └── routers/                  — FastAPI routes (auth, cases, analyze, reports, …)
 ├── frontend/src/
-│   ├── pages/               — Home, Analyze, Cases, CaseDetail
-│   ├── components/          — SeverityBadge, LawCard, SafeExit, etc.
-│   └── i18n/                — DE/EN translations
-├── .env                     — OPENAI_API_KEY (not committed)
-└── Dockerfile               — Production deployment
+│   ├── pages/                    — Home, Analyze, Cases, CaseDetail
+│   ├── components/               — SeverityBadge, LawCard, SafeExit, …
+│   └── i18n/                     — DE/EN translations
+├── schema.dbml                   — DB schema for dbdiagram.io
+├── .env                          — OPENAI_API_KEY (not committed)
+└── Dockerfile                    — production deployment
 ```
 
 ---

@@ -225,6 +225,78 @@
     .center { text-align: center; align-items: center; }
     .center p, .center ul, .center ol { margin-left: auto; margin-right: auto; }
     .center blockquote { margin-left: auto; margin-right: auto; border-left: none; padding-left: 0; }
+
+    /* Rehearsal helpers */
+    .zisis-asked {
+      font-family: var(--font-mono);
+      font-size: clamp(12px, 1.0vw, 15px);
+      color: var(--text-2);
+      background: rgba(96, 165, 250, 0.06);
+      border-left: 2px solid #60a5fa;
+      padding: 10px 18px;
+      margin: 14px 0;
+      max-width: 62em;
+      line-height: 1.5;
+    }
+    .zisis-asked .who {
+      display: inline-block;
+      color: #60a5fa;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 500;
+      margin-right: 10px;
+      font-size: 0.85em;
+    }
+    .decision {
+      margin-top: 14px;
+      max-width: 60em;
+    }
+    .decision .tag {
+      font-family: var(--font-mono);
+      font-size: clamp(11px, 0.9vw, 13px);
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--text-3); font-weight: 500;
+      margin-right: 10px;
+    }
+    .say-out-loud {
+      margin-top: auto;
+      padding: 16px 22px;
+      background: rgba(212, 172, 107, 0.08);
+      border: 1px solid rgba(212, 172, 107, 0.3);
+      border-radius: 8px;
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: clamp(16px, 1.3vw, 21px);
+      line-height: 1.45;
+      color: var(--text);
+      max-width: 62em;
+      position: relative;
+    }
+    .say-out-loud::before {
+      content: "SOLUTION";
+      position: absolute;
+      top: -9px; left: 18px;
+      background: var(--bg);
+      padding: 0 10px;
+      font-family: var(--font-mono);
+      font-style: normal;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      color: var(--gold);
+      font-weight: 500;
+    }
+    .inventory {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 6px 24px;
+      font-family: var(--font-mono);
+      font-size: clamp(13px, 1.05vw, 16px);
+      line-height: 1.8;
+      margin: 10px 0 16px;
+      max-width: 62em;
+    }
+    .inventory code { background: transparent; border: none; padding: 0; color: var(--gold); }
+    .inventory .desc { color: var(--text-2); font-family: var(--font-sans); font-size: 0.9em; }
     @media (max-height: 700px) {
       .slide { padding: 32px 48px; }
       h1 { font-size: 48px; }
@@ -241,7 +313,7 @@
 
     <!-- 1 · Title -->
     <section class="slide center">
-      <div class="kicker">Tutor check-in · 20 April 2026</div>
+      <div class="kicker">Tutor check-in · April 2026</div>
       <h1>SafeVoice</h1>
       <p class="lead" style="max-width: 34em;">
         Document digital harassment. Classify under German law. Export a court-ready report. In 30 seconds.
@@ -254,34 +326,249 @@
       <div class="kicker">60-second opener</div>
       <blockquote>
         <p>SafeVoice helps victims of digital harassment document an incident in 30 seconds and export a court-ready report.</p>
-        <p>Since our last meeting I've implemented the six action items — real SQLAlchemy database, user endpoints with magic-link auth, case endpoints, the AI flow fully documented, structured outputs via Pydantic, and I removed the 3-tier classifier fallback.</p>
-        <p>Today I want to walk you mostly through <em>the AI flow</em> — the three exclamation marks you put on that one.</p>
+        <p>Since our last meeting I've implemented all six action items. The next six slides follow the same shape — one per task: the task itself, the code or endpoint inventory that answers it, the design decision behind it, and a single-sentence summary.</p>
+        <p>We'll spend most time on action item four — the AI flow — since that's where you placed three exclamation marks.</p>
       </blockquote>
     </section>
 
-    <!-- 3 · Structure (DB + auth + endpoints, combined) -->
+    <!-- 3 · The whole database, one page -->
     <section class="slide">
-      <div class="kicker">Action items 1 – 3 · structure</div>
-      <h2>Real database. Magic link. Implicit cases.</h2>
-      <div class="two-col" style="margin-top: 16px;">
-        <div>
-          <h3>Database</h3>
-          <p>SQLAlchemy ORM + Alembic migrations. SQLite locally, Postgres on Railway. Eight tables + multi-tenancy (<code>orgs</code>, <code>org_members</code>) added April 12.</p>
-          <p><strong>User input</strong> → email, language, content, victim_context.<br><strong>System-generated</strong> → IDs, SHA-256 hashes, UTC timestamps.<br><strong>AI-populated</strong> → severity, categories, laws, summaries.</p>
-        </div>
-        <div>
-          <h3>Auth + endpoints</h3>
-          <p><strong>Seven auth endpoints</strong>, magic link only. No passwords — victims under stress forget passwords, no password DB means no breach risk, tokens are 15-min phishing-resistant.</p>
-          <p><strong>Cases are created implicitly.</strong> The user pastes content via <code>POST /analyze/ingest</code> — the system creates both evidence and case in one call. They never think "I'll create a case."</p>
-        </div>
+      <div class="label">the database at a glance</div>
+      <h2>Six tables, <em>six reasons.</em></h2>
+      <table style="margin-top: 6px;">
+        <thead><tr><th style="width: 7%;">#</th><th style="width: 24%;">Table</th><th style="width: 34%;">Question it answers</th><th>Why it's separate</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>01</strong></td>
+            <td><code>users</code></td>
+            <td><em>Who was harassed?</em></td>
+            <td>Email only — <strong>no passwords</strong>. Magic link + 15-min token.</td>
+          </tr>
+          <tr>
+            <td><strong>02</strong></td>
+            <td><code>evidence_items</code></td>
+            <td><em>What exactly happened?</em></td>
+            <td>SHA-256 hash + UTC timestamp + hash chain — court-ready.</td>
+          </tr>
+          <tr>
+            <td><strong>03</strong></td>
+            <td><code>cases</code></td>
+            <td><em>Which incidents belong together?</em></td>
+            <td>Created <strong>implicitly</strong> — the user never clicks "new case."</td>
+          </tr>
+          <tr>
+            <td><strong>04</strong></td>
+            <td><code>classifications</code></td>
+            <td><em>What did the AI think?</em></td>
+            <td>1-to-1 with evidence in its own table — re-classify without losing history.</td>
+          </tr>
+          <tr>
+            <td><strong>05</strong></td>
+            <td><code>categories</code> · <code>laws</code></td>
+            <td><em>What counts as "harassment" or "§ 241 StGB"?</em></td>
+            <td>Seeded reference data — 15 categories, 11 paragraphs.</td>
+          </tr>
+          <tr>
+            <td><strong>06</strong></td>
+            <td><code>classification_categories</code><br><code>classification_laws</code></td>
+            <td><em>One comment → many categories + many laws.</em></td>
+            <td>M:N junction tables — one JOIN, no substring hacks.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="say-out-loud">
+        "Six tables, one story. We remember a person, freeze the evidence, group it into a case, record the AI's verdict separately, and anchor that verdict to a shared vocabulary of categories and German law paragraphs."
       </div>
     </section>
 
-    <!-- 4 · Database schema (visual) -->
+    <!-- 4 · Action 1 · DB attributes labelled -->
     <section class="slide">
-      <div class="label">action item 1 · database schema</div>
-      <h2>Eight tables. <em>Three sources of truth.</em></h2>
-      <svg viewBox="0 0 1200 620" style="width: 100%; max-width: 1100px; height: auto; margin: 8px auto 0; display: block;" aria-hidden="true">
+      <div class="label">action item 1 of 6</div>
+      <h2>Every column, <em>labelled.</em></h2>
+      <div class="zisis-asked">
+        <span class="who">Task</span>Identify DB table attributes as <em>input_from_the_user</em> or <em>populated_by_AI</em>.
+      </div>
+      <pre style="font-size: clamp(11px, 0.95vw, 14px); margin-top: 10px;"><code>class Classification(Base):
+    __tablename__ = "classifications"
+    id               = Column(String, primary_key=True, default=gen_uuid)    # system_generated
+    evidence_item_id = Column(String, ForeignKey("evidence_items.id"), unique=True)  # 1-to-1
+    severity         = Column(String, default="none")    # AI_POPULATED
+    confidence       = Column(Float,  default=0.0)       # AI_POPULATED
+    summary          = Column(Text)                      # AI_POPULATED · en
+    summary_de       = Column(Text)                      # AI_POPULATED · de
+    classified_at    = Column(DateTime, default=datetime.utcnow)  # system_generated</code></pre>
+      <div class="decision">
+        <p><span class="tag">design decision</span>Three sources of truth — <strong>user input</strong>, <strong>AI populated</strong>, <strong>system generated</strong> — never mixed. The label lives as an inline comment in <code>backend/app/database.py</code>, mirrored in <code>schema.dbml</code>. Anyone reading either file can answer <em>"who wrote this column?"</em> in one glance.</p>
+      </div>
+      <div class="say-out-loud">
+        "Every column in every table is labelled. User input, AI populated, or system generated. That's the mental model I use when reading or writing any query."
+      </div>
+    </section>
+
+    <!-- 5 · Action 2 · User CRUD -->
+    <section class="slide">
+      <div class="label">action item 2 of 6</div>
+      <h2>User CRUD — <em>eight endpoints, zero passwords.</em></h2>
+      <div class="zisis-asked">
+        <span class="who">Task</span>Design the endpoints for creating and updating a user.
+      </div>
+      <div class="inventory">
+        <code>POST /auth/login</code>      <span class="desc">Request magic link · creates user on first login</span>
+        <code>POST /auth/verify</code>     <span class="desc">Exchange token for session</span>
+        <code>GET  /auth/me</code>         <span class="desc">Read — current user</span>
+        <code>PUT  /auth/me</code>         <span class="desc">Update — display_name, language</span>
+        <code>POST /auth/logout</code>     <span class="desc">Invalidate session</span>
+        <code>DELETE /auth/me</code>       <span class="desc">Soft delete — GDPR Art. 17</span>
+        <code>DELETE /auth/me/emergency</code> <span class="desc">Hard delete — purges all cases + evidence</span>
+        <code>GET  /auth/me/export</code>  <span class="desc">Art. 20 GDPR data export (JSON)</span>
+      </div>
+      <div class="decision">
+        <p><span class="tag">design decision</span><strong>No passwords, ever.</strong> A victim under stress forgets passwords; a password database we don't have cannot leak. Magic link → 15-minute token, single use, 256 bits of entropy. Sessions expire, tokens chain to sessions. <code>backend/app/routers/auth.py</code>.</p>
+      </div>
+      <div class="say-out-loud">
+        "Eight endpoints in <code>auth.py</code>. Magic-link only — no passwords means no password breach. Update is <code>PUT /auth/me</code>, delete is a two-level system: soft-delete for GDPR Art. 17, hard-delete for emergency erasure."
+      </div>
+    </section>
+
+    <!-- 6 · Action 3 · Case CRUD -->
+    <section class="slide">
+      <div class="label">action item 3 of 6</div>
+      <h2>Case CRUD — <em>six endpoints, implicit creation.</em></h2>
+      <div class="zisis-asked">
+        <span class="who">Task</span>Design the endpoints for filling, updating, deleting a case.
+      </div>
+      <div class="inventory">
+        <code>GET  /cases/</code>                  <span class="desc">List — all cases for current user</span>
+        <code>GET  /cases/{id}</code>              <span class="desc">Read — case + evidence + classifications</span>
+        <code>POST /cases/</code>                  <span class="desc">Create — rarely used directly</span>
+        <code>PUT  /cases/{id}</code>              <span class="desc">Update — title, status, notes</span>
+        <code>DELETE /cases/{id}</code>            <span class="desc">Delete — cascades to evidence + classifications</span>
+        <code>POST /cases/{id}/evidence</code>     <span class="desc">Filling — attach more evidence to existing case</span>
+      </div>
+      <div class="decision">
+        <p><span class="tag">design decision</span>In practice, cases are created <strong>implicitly</strong> by <code>POST /analyze/ingest</code> — the user pastes content and the backend creates evidence + classification + case in one transaction. <code>POST /cases/</code> exists for completeness but the real flow never touches it. <em>Let the system do the bookkeeping; the victim has enough to do.</em></p>
+      </div>
+      <div class="say-out-loud">
+        "Six CRUD endpoints in <code>cases.py</code>, but the user rarely sees them. The real entry point is <code>POST /analyze/ingest</code> — the user pastes content, and evidence + classification + case are created in a single transaction. Zero clicks between hurt and help."
+      </div>
+    </section>
+
+    <!-- 7 · Action 4 · AI flow (the three !!!) -->
+    <section class="slide">
+      <div class="label">action item 4 of 6  ·  !!!</div>
+      <h2>AI flow — <em>input, context, system prompt.</em></h2>
+      <div class="zisis-asked">
+        <span class="who">Task</span>Design the AI flow. What is the input? What is the context? What is the system prompt?
+      </div>
+      <div class="two-col" style="margin-top: 14px;">
+        <div>
+          <h3 style="font-size: 22px;">Input</h3>
+          <p style="font-size: 17px;">Always a <strong>string</strong>. Arrives three ways — paste, URL scrape, or screenshot OCR — but by the time <code>classify()</code> runs, it's plain text. One format, one path.</p>
+          <h3 style="font-size: 22px; margin-top: 18px;">Context</h3>
+          <p style="font-size: 17px;">Lives <strong>entirely in the system prompt</strong>. No RAG here — the context is stable rules, not retrieved documents. (RAG shows up at the case level — last slide.)</p>
+        </div>
+        <div>
+          <h3 style="font-size: 22px;">System prompt — the three rules</h3>
+          <pre style="font-size: 12px; margin-top: 4px;"><code>Du bist SafeVoice — Klassifikator für
+digitale Gewalt in Deutschland.
+
+WICHTIG:
+- Verstehe Tippfehler, Slang, Verschleierung
+- Wenn unklar: im Zweifel FÜR das Opfer
+- NetzDG § 3 gilt IMMER bei Social Media
+
+SEVERITY:
+- low / medium / high / critical</code></pre>
+        </div>
+      </div>
+      <div class="say-out-loud">
+        "The AI input is one string. The context is the system prompt — it contains the role, the severity scale, the category and law enums, and one ethical rule: <em>when in doubt, err on the side of the victim.</em>"
+      </div>
+    </section>
+
+    <!-- 8 · Action 5 · Classification endpoints -->
+    <section class="slide">
+      <div class="label">action item 5 of 6</div>
+      <h2>Classification — <em>four entry points, one brain.</em></h2>
+      <div class="zisis-asked">
+        <span class="who">Task</span>Design your classification endpoint / endpoints.
+      </div>
+      <div class="inventory">
+        <code>POST /analyze/text</code>    <span class="desc">Classify one string — fastest path, no DB writes</span>
+        <code>POST /analyze/ingest</code>  <span class="desc">Create evidence + classify + create case — the workhorse</span>
+        <code>POST /analyze/url</code>     <span class="desc">Scrape URL → classify the scraped text</span>
+        <code>POST /analyze/case</code>    <span class="desc">Case-level analysis across N evidence items (RAG)</span>
+      </div>
+      <div class="decision">
+        <p><span class="tag">design decision</span>Four endpoints, <strong>one brain</strong>: every route funnels into <code>classifier_llm_v2.classify_with_llm()</code>. The difference is only <em>where the string comes from</em> and <em>what we do with the result</em>. <code>backend/app/routers/analyze.py</code>.</p>
+      </div>
+      <div class="say-out-loud">
+        "Four endpoints in <code>analyze.py</code>, but they all call the same <code>classify_with_llm()</code> function. Separating <em>where the text comes from</em> from <em>what we do with the verdict</em> means the classifier itself stays stateless and unit-testable."
+      </div>
+    </section>
+
+    <!-- 9 · Action 6 · Parse the output -->
+    <section class="slide">
+      <div class="label">action item 6 of 6</div>
+      <h2><code>.parse()</code> · <em>schema-enforced, one call.</em></h2>
+      <div class="zisis-asked">
+        <span class="who">Task</span>Parse the output using OpenAI Structured Outputs.
+      </div>
+      <pre style="font-size: clamp(11px, 0.95vw, 14px); margin-top: 10px;"><code>completion = client.chat.completions.parse(
+    model="gpt-4o-mini",
+    temperature=0,
+    messages=[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
+    ],
+    response_format=LLMClassification,   # ← Pydantic, server-enforced
+)
+
+msg = completion.choices[0].message
+if msg.refusal: return None     # OpenAI declined on safety
+parsed = msg.parsed             # typed Pydantic instance, or None
+if parsed is None: return None  # schema failed → clean 503
+return _to_domain(parsed)</code></pre>
+      <div class="decision">
+        <p><span class="tag">design decision</span>Pydantic schema with <code>LLMCategory</code> and <code>LLMLaw</code> as enums — the model <strong>cannot invent a category or a paragraph</strong>. Refusal is explicit (not exception), and None propagates cleanly to a 503. No <code>json.loads</code>, no regex cleanup. <code>classifier_llm_v2.py:227</code>.</p>
+      </div>
+      <div class="say-out-loud">
+        "One call. The response is either a typed Pydantic instance with schema-enforced enums, or it's None — and None means we return a clean 503. No JSON parsing, no malformed-output retries."
+      </div>
+    </section>
+
+    <!-- 10 · Bonus · RAG -->
+    <section class="slide">
+      <div class="label">bonus · RAG</div>
+      <h2>Two AI layers. <em>Only one uses RAG.</em></h2>
+      <table>
+        <thead><tr><th>Layer</th><th>Job</th><th>RAG?</th><th>Model</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Classifier</strong></td>
+            <td>One piece of content → severity, categories, laws</td>
+            <td>No</td>
+            <td><code>gpt-4o-mini</code></td>
+          </tr>
+          <tr>
+            <td><strong>Legal AI</strong></td>
+            <td>Whole case → strategy, precedents, cross-references</td>
+            <td><em>Yes</em></td>
+            <td><code>gpt-4o-mini</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top: 18px;">
+        <code>services/legal_ai.py</code> retrieves all evidence + classifications from a case, structures them as a context block, sends to OpenAI. Classic <strong>retrieve → augment → generate</strong>. The Week 9–10 deliverable.
+      </p>
+      <div class="say-out-loud">
+        "Classification doesn't need RAG — it's one string in, one verdict out. RAG earns its place at the case level, where the model has to reason across N pieces of evidence at once."
+      </div>
+    </section>
+
+    <!-- REMOVED · old SVG slide superseded by action-item cards -->
+    <section style="display:none !important;" aria-hidden="true" hidden>
+      <svg viewBox="0 0 1200 620" style="display: none;">
         <defs>
           <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="#d4ac6b"/>
@@ -319,7 +606,7 @@
           <rect width="230" height="180" rx="10" fill="#161621" stroke="#2e2e3c"/>
           <text x="18" y="32" font-family="Fraunces, serif" font-size="22" fill="#edeef2" font-weight="500">cases</text>
           <g font-family="JetBrains Mono, monospace" font-size="12">
-            <text x="18" y="62" fill="#65656f">id · user_id · org_id</text>
+            <text x="18" y="62" fill="#65656f">id · user_id</text>
             <text x="18" y="82" fill="#d4ac6b">title</text>
             <text x="18" y="100" fill="#60a5fa">victim_context</text>
             <text x="18" y="118" fill="#d4ac6b">overall_severity</text>
@@ -405,81 +692,10 @@
         <path d="M 1025 300 Q 960 360 880 460" fill="none" stroke="#d4ac6b" stroke-width="1.2" stroke-dasharray="4 4"/>
         <text x="960" y="370" font-family="JetBrains Mono, monospace" font-size="11" fill="#65656f">M · N · via classification_laws</text>
       </svg>
-      <p style="margin-top: 16px; max-width: 64em;">Plus multi-tenancy — <code>orgs</code> and <code>org_members</code> (added 12 April) carry NGO case-workers and API keys. SQLAlchemy ORM + Alembic migrations. Categories and laws are <strong>seeded on startup</strong> so a fresh database ships with reference data.</p>
+      <p style="margin-top: 16px; max-width: 64em;">SQLAlchemy ORM + Alembic migrations. Categories and laws are <strong>seeded on startup</strong> so a fresh database ships with reference data — no "empty dropdown" state on first launch.</p>
     </section>
 
-    <!-- 5 · AI flow · input + context -->
-    <section class="slide">
-      <div class="label">AI flow · input + context</div>
-      <h2>One string in. <em>One system prompt.</em></h2>
-      <div class="two-col" style="margin-top: 18px;">
-        <div>
-          <h3>Input</h3>
-          <p>Always a string. It arrives three ways — paste, URL scrape, or OCR — but by the time <code>classify()</code> is called, the input is text. One format, one path.</p>
-        </div>
-        <div>
-          <h3>Context</h3>
-          <p>Lives entirely in the system prompt. Role, category enum, law enum, severity definitions, and the core rule <em>"err on the side of the victim"</em> — prefer false positives to false negatives.</p>
-        </div>
-      </div>
-      <pre style="margin-top: 20px;"><code>WICHTIG:
-- Verstehe Tippfehler, Slang, absichtliche Verschleierung
-- Wenn unklar: im Zweifel FÜR das Opfer entscheiden
-- NetzDG § 3 gilt IMMER bei Social Media Inhalten
-
-SEVERITY:
-- low / medium / high / critical (defined explicitly)</code></pre>
-    </section>
-
-    <!-- 5 · AI flow · classification endpoint + parse -->
-    <section class="slide">
-      <div class="label">AI flow · classification + parse</div>
-      <h2><code>.parse()</code> · schema-enforced · <em>one call.</em></h2>
-      <pre><code>completion = client.chat.completions.parse(
-    model="gpt-4o-mini",          # 15× cheaper, ~90% accuracy
-    temperature=0,                 # deterministic — legal must be
-    max_tokens=1024,
-    messages=[
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
-    ],
-    response_format=LLMClassification,   # Pydantic, server-enforced
-)
-
-msg = completion.choices[0].message
-if msg.refusal: return None       # OpenAI declined on safety
-parsed = msg.parsed               # typed instance or None
-if parsed is None: return None    # schema-conformance failed
-return _to_domain(parsed)</code></pre>
-      <p style="margin-top: 14px;">No <code>json.loads</code>. No code-fence stripping. No defensive try/except around malformed JSON. Either I get a validated Pydantic instance, or I get None and return a clean 503.</p>
-    </section>
-
-    <!-- 6 · AI flow · RAG (where it lives) -->
-    <section class="slide">
-      <div class="label">bonus · RAG</div>
-      <h2>Two AI layers. <em>One uses RAG.</em></h2>
-      <table>
-        <thead><tr><th>Layer</th><th>Job</th><th>RAG?</th><th>Model</th></tr></thead>
-        <tbody>
-          <tr>
-            <td><strong>Classifier</strong></td>
-            <td>One piece of content → severity, categories, laws</td>
-            <td>No</td>
-            <td><code>gpt-4o-mini</code></td>
-          </tr>
-          <tr>
-            <td><strong>Legal AI</strong></td>
-            <td>Whole case → strategy, precedents, cross-references</td>
-            <td><em>Yes</em></td>
-            <td><code>gpt-4o-mini</code></td>
-          </tr>
-        </tbody>
-      </table>
-      <p style="margin-top: 20px;">
-        <code>services/legal_ai.py</code> retrieves all evidence + classifications from a case, structures them as a context block, sends to OpenAI. Classic retrieve → augment → generate. The Week 9–10 deliverable.
-      </p>
-      <p><strong>The split is deliberate:</strong> classification must be deterministic and single-input. Case-level reasoning is retrieval across N evidence items — that's where retrieval earns its place.</p>
-    </section>
+    <!-- (superseded AI-flow slides removed — content folded into action items 4/5/6) -->
 
     <!-- 7 · Open + close -->
     <section class="slide">

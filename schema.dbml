@@ -1,59 +1,102 @@
 // SafeVoice — Database Schema
-// Paste into dbdiagram.io
+// Paste into https://dbdiagram.io to visualise.
+// Source of truth: backend/app/database.py (SQLAlchemy models).
+// Colour legend (for dbdiagram "note"): USER INPUT · AI POPULATED · system generated
+
+Project safevoice {
+  database_type: 'PostgreSQL'
+  Note: '''
+    SafeVoice — legal-AI backend for victims of digital violence.
+    Flow: users → cases → evidence_items → classifications
+    Eight tables, one story: remember a person, freeze the evidence,
+    group it into a case, record the AI's verdict, anchor that verdict
+    to a shared vocabulary of categories and German law paragraphs.
+  '''
+}
+
+// ── 01 · users — "who was harassed?" ──────────────────────
 
 Table users {
-  id varchar [pk, note: 'system generated']
-  email varchar [unique, not null, note: 'USER INPUT']
+  id varchar [pk, note: 'system generated uuid']
+  email varchar [unique, not null, note: 'USER INPUT — magic-link auth']
   display_name varchar [note: 'USER INPUT']
-  lang varchar [default: 'de', note: 'USER INPUT']
-  status varchar [default: 'active', note: 'system generated']
-  created_at timestamp [not null, note: 'system generated']
-}
-
-Table cases {
-  id varchar [pk, note: 'system generated']
-  user_id varchar [ref: > users.id]
-  title varchar [not null, note: 'system generated']
-  victim_context text [note: 'USER INPUT']
-  overall_severity varchar [note: 'AI POPULATED']
-  status varchar [default: 'open', note: 'USER INPUT']
+  language varchar [default: 'de', note: 'USER INPUT — de / en']
   created_at timestamp [not null, note: 'system generated']
   updated_at timestamp [not null, note: 'system generated']
+  deleted_at timestamp [note: 'system generated — GDPR soft delete']
 }
+
+// ── 02 · evidence_items — "what exactly happened?" ────────
 
 Table evidence_items {
-  id varchar [pk, note: 'system generated']
-  case_id varchar [ref: > cases.id]
-  content_text text [not null, note: 'USER INPUT or SCRAPED']
-  url varchar [note: 'USER INPUT']
-  platform varchar [note: 'system detected']
-  author_username varchar [note: 'USER INPUT or SCRAPED']
-  content_hash varchar [not null, note: 'system generated SHA-256']
-  captured_at timestamp [not null, note: 'system generated UTC']
+  id varchar [pk]
+  case_id varchar [ref: > cases.id, not null]
+  content_type varchar [not null, note: 'USER INPUT — text/url/screenshot']
+  raw_content text [not null, note: 'USER INPUT — original text/URL']
+  extracted_text text [note: 'AI POPULATED — OCR or scraped text']
+  content_hash varchar [note: 'system generated — SHA-256']
+  hash_chain_previous varchar [note: 'system generated — tamper-proof chain']
+  platform varchar [note: 'AI POPULATED — detected platform']
+  source_url varchar [note: 'USER INPUT']
+  archived_url varchar [note: 'system generated — archive.org URL']
+  timestamp_utc timestamp [not null, note: 'system generated UTC']
+  metadata_json text [note: 'system generated']
 }
+
+// ── 03 · cases — "which incidents belong together?" ───────
+
+Table cases {
+  id varchar [pk]
+  user_id varchar [ref: > users.id, note: 'USER INPUT — owner']
+  title varchar [note: 'AI POPULATED initially, USER editable']
+  summary text [note: 'AI POPULATED — English']
+  summary_de text [note: 'AI POPULATED — German']
+  status varchar [default: 'open', note: 'USER INPUT — open/in_progress/closed']
+  overall_severity varchar [default: 'none', note: 'AI POPULATED — low/medium/high/critical']
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+// ── 04 · classifications — "the AI's verdict" ─────────────
 
 Table classifications {
-  id varchar [pk, note: 'system generated']
-  evidence_id varchar [unique, ref: - evidence_items.id]
-  severity varchar [not null, note: 'AI POPULATED']
-  confidence float [note: 'AI POPULATED']
-  requires_immediate_action boolean [note: 'AI POPULATED']
-  summary text [note: 'AI POPULATED English']
-  summary_de text [note: 'AI POPULATED German']
+  id varchar [pk]
+  evidence_item_id varchar [unique, ref: - evidence_items.id, not null]
+  severity varchar [default: 'none', note: 'AI POPULATED — none/low/medium/high/critical']
+  confidence float [default: 0.0, note: 'AI POPULATED — 0.0–1.0']
+  classifier_tier integer [note: 'system generated — 1=LLM']
+  summary text [note: 'AI POPULATED — English']
+  summary_de text [note: 'AI POPULATED — German']
+  potential_consequences text [note: 'AI POPULATED — English']
+  potential_consequences_de text [note: 'AI POPULATED — German']
+  recommended_actions text [note: 'AI POPULATED — English']
+  recommended_actions_de text [note: 'AI POPULATED — German']
+  classified_at timestamp [not null]
 }
 
+// ── 05+06 · categories + laws — "shared vocabulary" ───────
+
 Table categories {
-  id varchar [pk]
-  name varchar [not null, note: 'harassment, threat, misogyny, scam...']
+  id varchar [pk, note: 'e.g. harassment, threat, misogyny']
+  name varchar [unique, not null]
+  name_de varchar
+  description text
+  description_de text
 }
 
 Table laws {
-  id varchar [pk]
-  paragraph varchar [not null, note: '§ 185 StGB, § 241 StGB...']
-  title varchar [not null]
-  title_de varchar [not null]
-  max_penalty varchar [not null]
+  id varchar [pk, note: 'e.g. stgb-185']
+  code varchar [not null, note: 'stgb / netzdg']
+  section varchar [not null, note: '185, 241, 238, 201a ...']
+  name varchar [note: 'Insult, Threat, Stalking ...']
+  name_de varchar [note: 'Beleidigung, Bedrohung ...']
+  full_text text
+  full_text_de text
+  max_penalty varchar [note: 'Up to 5 years']
+  jurisdiction varchar [default: 'DE']
 }
+
+// ── 07+08 · junction tables — "many-to-many" ──────────────
 
 Table classification_categories {
   classification_id varchar [ref: > classifications.id]
