@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SafeVoice · Tutor check-in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root {
+      --bg:        #0a0a0c;
+      --bg-2:     #11111a;
+      --surface:  #161621;
+      --border:   #1f1f2c;
+      --border-hi: #2e2e3c;
+
+      --text:     #edeef2;
+      --text-2:   #a6a7b0;
+      --text-3:   #65656f;
+
+      --gold:     #d4ac6b;
+      --gold-hi:  #ffdb9a;
+
+      --font-sans:  "Inter", system-ui, -apple-system, sans-serif;
+      --font-serif: "Fraunces", "New York", Georgia, serif;
+      --font-mono:  "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.003em;
+    }
+    .deck { position: relative; width: 100vw; height: 100vh; }
+    .slide {
+      position: absolute; inset: 0;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(40px, 7vh, 96px) clamp(48px, 8vw, 140px);
+      opacity: 0;
+      transition: opacity 400ms ease;
+    }
+    .slide.active { display: flex; opacity: 1; }
+    .slide::before {
+      content: ""; position: absolute;
+      top: 40px; left: 40px;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gold); opacity: 0.6;
+    }
+    .counter {
+      position: fixed; bottom: 24px; right: 32px;
+      font-family: var(--font-mono);
+      font-size: 11px; color: var(--text-3);
+      letter-spacing: 0.14em; z-index: 10;
+    }
+    .counter strong { color: var(--gold); font-weight: 500; }
+    .progress {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 2px; background: var(--border); z-index: 10;
+    }
+    .progress-bar {
+      height: 100%; background: var(--gold); width: 0;
+      transition: width 400ms ease;
+    }
+    .hint {
+      position: fixed; bottom: 24px; left: 32px;
+      font-family: var(--font-mono); font-size: 10.5px;
+      color: var(--text-3); letter-spacing: 0.14em;
+      opacity: 0; transition: opacity 400ms ease; z-index: 10;
+    }
+    .hint.show { opacity: 1; }
+    .hint kbd {
+      padding: 1px 6px; background: var(--bg-2);
+      border: 1px solid var(--border-hi); border-radius: 3px;
+      color: var(--text-2); font-family: var(--font-mono);
+      font-size: 10px; margin: 0 2px;
+    }
+
+    .kicker {
+      font-family: var(--font-mono);
+      font-size: clamp(11px, 0.9vw, 13px);
+      letter-spacing: 0.28em; color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: clamp(22px, 2.6vh, 36px);
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-weight: 300;
+      font-size: clamp(52px, 8vw, 112px);
+      line-height: 1.02; letter-spacing: -0.03em;
+      color: var(--text); text-wrap: balance;
+      margin-bottom: clamp(24px, 2.6vh, 40px);
+    }
+    h1 em { color: var(--gold); font-style: normal; font-weight: 400; }
+    h2 {
+      font-family: var(--font-serif);
+      font-weight: 300;
+      font-size: clamp(40px, 6vw, 80px);
+      line-height: 1.06; letter-spacing: -0.024em;
+      color: var(--text); text-wrap: balance;
+      margin-bottom: clamp(22px, 2.4vh, 34px);
+    }
+    h2 em { color: var(--gold); font-style: normal; font-weight: 400; }
+    h3 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: clamp(24px, 3vw, 36px);
+      letter-spacing: -0.015em;
+      color: var(--text);
+      margin-bottom: clamp(14px, 1.6vh, 20px);
+    }
+    p {
+      font-size: clamp(18px, 1.45vw, 24px);
+      line-height: 1.55;
+      color: var(--text-2);
+      max-width: 52em;
+      margin-bottom: clamp(14px, 1.4vh, 18px);
+    }
+    p.lead {
+      font-size: clamp(20px, 1.7vw, 28px);
+      color: var(--text); line-height: 1.5;
+    }
+    p strong { color: var(--text); font-weight: 500; }
+    em { color: var(--gold); font-style: normal; }
+    blockquote {
+      font-family: var(--font-serif);
+      font-weight: 300;
+      font-size: clamp(24px, 2.3vw, 36px);
+      line-height: 1.35; letter-spacing: -0.012em;
+      color: var(--text);
+      max-width: 38em;
+      border-left: 2px solid var(--gold);
+      padding-left: clamp(24px, 2.2vw, 40px);
+      margin: clamp(10px, 1.4vh, 20px) 0;
+    }
+    blockquote p {
+      font-family: inherit; color: inherit;
+      font-size: inherit; line-height: inherit;
+      margin: 0 0 0.7em 0;
+    }
+    blockquote p:last-child { margin-bottom: 0; }
+    code, pre {
+      font-family: var(--font-mono);
+      font-size: clamp(13px, 1.1vw, 17px);
+      color: var(--gold);
+    }
+    code {
+      padding: 2px 7px; background: var(--bg-2);
+      border: 1px solid var(--border); border-radius: 4px;
+    }
+    pre {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: clamp(20px, 2.2vh, 32px) clamp(24px, 2.6vw, 36px);
+      color: var(--text);
+      overflow-x: auto;
+      line-height: 1.55;
+    }
+    pre code { background: transparent; border: none; padding: 0; color: inherit; }
+    ul, ol {
+      list-style: none; padding: 0;
+      margin: clamp(14px, 1.6vh, 20px) 0;
+      font-size: clamp(17px, 1.35vw, 22px);
+      line-height: 1.55;
+      color: var(--text-2);
+      max-width: 52em;
+    }
+    li { padding: clamp(8px, 1vh, 12px) 0; position: relative; padding-left: 30px; }
+    li::before {
+      content: "·"; position: absolute; left: 10px;
+      color: var(--gold); font-weight: 700;
+    }
+    li strong { color: var(--text); font-weight: 500; }
+    table {
+      width: 100%; max-width: 64em;
+      border-collapse: collapse;
+      font-size: clamp(15px, 1.2vw, 19px);
+      margin: clamp(14px, 1.6vh, 22px) 0;
+    }
+    th, td {
+      text-align: left;
+      padding: clamp(12px, 1.4vh, 18px) clamp(14px, 1.6vw, 20px);
+      border-bottom: 1px solid var(--border);
+      color: var(--text-2);
+      vertical-align: top;
+    }
+    th {
+      font-family: var(--font-mono);
+      font-size: clamp(11px, 0.9vw, 14px);
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--gold); font-weight: 500;
+      border-bottom: 1px solid var(--border-hi);
+    }
+    td strong { color: var(--text); font-weight: 500; }
+    td code { font-size: 0.9em; }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(32px, 4vw, 72px);
+      align-items: start;
+    }
+    .label {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: clamp(11px, 0.9vw, 14px);
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--gold); font-weight: 500;
+      margin-bottom: 12px;
+    }
+    .slide-sig {
+      position: absolute;
+      bottom: clamp(28px, 3.5vh, 48px);
+      left: clamp(48px, 8vw, 140px);
+      font-family: var(--font-mono);
+      font-size: 12px; color: var(--text-3);
+      letter-spacing: 0.14em;
+    }
+    .center { text-align: center; align-items: center; }
+    .center p, .center ul, .center ol { margin-left: auto; margin-right: auto; }
+    .center blockquote { margin-left: auto; margin-right: auto; border-left: none; padding-left: 0; }
+    @media (max-height: 700px) {
+      .slide { padding: 32px 48px; }
+      h1 { font-size: 48px; }
+      h2 { font-size: 36px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="deck" id="deck">
+
+    <!-- 1 · Title -->
+    <section class="slide center">
+      <div class="kicker">Tutor check-in · 20 April 2026</div>
+      <h1>SafeVoice</h1>
+      <p class="lead" style="max-width: 34em;">
+        Document digital harassment. Classify under German law. Export a court-ready report. In 30 seconds.
+      </p>
+      <div class="slide-sig">Mikel Ninh · Berlin</div>
+    </section>
+
+    <!-- 2 · Opener / pitch -->
+    <section class="slide">
+      <div class="kicker">60-second opener</div>
+      <blockquote>
+        <p>SafeVoice helps victims of digital harassment document an incident in 30 seconds and export a court-ready report.</p>
+        <p>Since our last meeting I've implemented the six action items — real SQLAlchemy database, user endpoints with magic-link auth, case endpoints, the AI flow fully documented, structured outputs via Pydantic, and I removed the 3-tier classifier fallback.</p>
+        <p>Today I want to walk you mostly through <em>the AI flow</em> — the three exclamation marks you put on that one.</p>
+      </blockquote>
+    </section>
+
+    <!-- 3 · Structure (DB + auth + endpoints, combined) -->
+    <section class="slide">
+      <div class="kicker">Action items 1 – 3 · structure</div>
+      <h2>Real database. Magic link. Implicit cases.</h2>
+      <div class="two-col" style="margin-top: 16px;">
+        <div>
+          <h3>Database</h3>
+          <p>SQLAlchemy ORM + Alembic migrations. SQLite locally, Postgres on Railway. Eight tables + multi-tenancy (<code>orgs</code>, <code>org_members</code>) added April 12.</p>
+          <p><strong>User input</strong> → email, language, content, victim_context.<br><strong>System-generated</strong> → IDs, SHA-256 hashes, UTC timestamps.<br><strong>AI-populated</strong> → severity, categories, laws, summaries.</p>
+        </div>
+        <div>
+          <h3>Auth + endpoints</h3>
+          <p><strong>Seven auth endpoints</strong>, magic link only. No passwords — victims under stress forget passwords, no password DB means no breach risk, tokens are 15-min phishing-resistant.</p>
+          <p><strong>Cases are created implicitly.</strong> The user pastes content via <code>POST /analyze/ingest</code> — the system creates both evidence and case in one call. They never think "I'll create a case."</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · Database schema (visual) -->
+    <section class="slide">
+      <div class="label">action item 1 · database schema</div>
+      <h2>Eight tables. <em>Three sources of truth.</em></h2>
+      <svg viewBox="0 0 1200 620" style="width: 100%; max-width: 1100px; height: auto; margin: 8px auto 0; display: block;" aria-hidden="true">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#d4ac6b"/>
+          </marker>
+          <marker id="diamond" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" orient="auto">
+            <path d="M0,7 L7,0 L14,7 L7,14 z" fill="none" stroke="#d4ac6b" stroke-width="1.2"/>
+          </marker>
+        </defs>
+
+        <!-- Legend -->
+        <g font-family="JetBrains Mono, monospace" font-size="13">
+          <rect x="30" y="30" width="10" height="10" fill="#60a5fa" rx="2"/>
+          <text x="48" y="40" fill="#a6a7b0">user input</text>
+          <rect x="180" y="30" width="10" height="10" fill="#d4ac6b" rx="2"/>
+          <text x="198" y="40" fill="#a6a7b0">AI populated</text>
+          <rect x="350" y="30" width="10" height="10" fill="#65656f" rx="2"/>
+          <text x="368" y="40" fill="#a6a7b0">system generated</text>
+        </g>
+
+        <!-- users -->
+        <g transform="translate(40, 90)">
+          <rect width="210" height="150" rx="10" fill="#161621" stroke="#2e2e3c"/>
+          <text x="18" y="32" font-family="Fraunces, serif" font-size="22" fill="#edeef2" font-weight="500">users</text>
+          <g font-family="JetBrains Mono, monospace" font-size="12">
+            <text x="18" y="62" fill="#65656f">id · pk</text>
+            <text x="18" y="84" fill="#60a5fa">email</text>
+            <text x="18" y="102" fill="#60a5fa">display_name</text>
+            <text x="18" y="120" fill="#60a5fa">lang</text>
+            <text x="18" y="138" fill="#65656f">created_at · deleted_at</text>
+          </g>
+        </g>
+
+        <!-- cases -->
+        <g transform="translate(300, 90)">
+          <rect width="230" height="180" rx="10" fill="#161621" stroke="#2e2e3c"/>
+          <text x="18" y="32" font-family="Fraunces, serif" font-size="22" fill="#edeef2" font-weight="500">cases</text>
+          <g font-family="JetBrains Mono, monospace" font-size="12">
+            <text x="18" y="62" fill="#65656f">id · user_id · org_id</text>
+            <text x="18" y="82" fill="#d4ac6b">title</text>
+            <text x="18" y="100" fill="#60a5fa">victim_context</text>
+            <text x="18" y="118" fill="#d4ac6b">overall_severity</text>
+            <text x="18" y="136" fill="#60a5fa">status</text>
+            <text x="18" y="156" fill="#65656f">created_at · updated_at</text>
+          </g>
+        </g>
+
+        <!-- evidence_items -->
+        <g transform="translate(580, 90)">
+          <rect width="260" height="200" rx="10" fill="#161621" stroke="#2e2e3c"/>
+          <text x="18" y="32" font-family="Fraunces, serif" font-size="22" fill="#edeef2" font-weight="500">evidence_items</text>
+          <g font-family="JetBrains Mono, monospace" font-size="12">
+            <text x="18" y="62" fill="#65656f">id · case_id</text>
+            <text x="18" y="82" fill="#60a5fa">content_text</text>
+            <text x="18" y="100" fill="#60a5fa">url · author_username</text>
+            <text x="18" y="118" fill="#65656f">platform · detected</text>
+            <text x="18" y="136" fill="#65656f">content_hash · SHA-256</text>
+            <text x="18" y="154" fill="#65656f">hash_chain_previous</text>
+            <text x="18" y="174" fill="#65656f">captured_at · UTC</text>
+          </g>
+        </g>
+
+        <!-- classifications -->
+        <g transform="translate(890, 90)">
+          <rect width="270" height="210" rx="10" fill="#161621" stroke="#2e2e3c"/>
+          <text x="18" y="32" font-family="Fraunces, serif" font-size="22" fill="#edeef2" font-weight="500">classifications</text>
+          <g font-family="JetBrains Mono, monospace" font-size="12">
+            <text x="18" y="62" fill="#65656f">id · evidence_id</text>
+            <text x="18" y="82" fill="#d4ac6b">severity</text>
+            <text x="18" y="100" fill="#d4ac6b">confidence</text>
+            <text x="18" y="118" fill="#d4ac6b">requires_immediate_action</text>
+            <text x="18" y="136" fill="#d4ac6b">summary · summary_de</text>
+            <text x="18" y="154" fill="#d4ac6b">potential_consequences</text>
+            <text x="18" y="174" fill="#65656f">classified_at</text>
+            <text x="18" y="194" fill="#65656f">classifier_tier · 1</text>
+          </g>
+        </g>
+
+        <!-- categories -->
+        <g transform="translate(410, 410)">
+          <rect width="210" height="130" rx="10" fill="#161621" stroke="#2e2e3c"/>
+          <text x="18" y="32" font-family="Fraunces, serif" font-size="22" fill="#edeef2" font-weight="500">categories</text>
+          <g font-family="JetBrains Mono, monospace" font-size="12">
+            <text x="18" y="62" fill="#65656f">id · pk</text>
+            <text x="18" y="82" fill="#d4ac6b">name · name_de</text>
+            <text x="18" y="104" fill="#a6a7b0" font-size="11" font-style="italic">15 seeded values</text>
+            <text x="18" y="120" fill="#a6a7b0" font-size="11" font-style="italic">harassment, threat, …</text>
+          </g>
+        </g>
+
+        <!-- laws -->
+        <g transform="translate(740, 410)">
+          <rect width="280" height="150" rx="10" fill="#161621" stroke="#2e2e3c"/>
+          <text x="18" y="32" font-family="Fraunces, serif" font-size="22" fill="#edeef2" font-weight="500">laws</text>
+          <g font-family="JetBrains Mono, monospace" font-size="12">
+            <text x="18" y="62" fill="#65656f">id · code · section</text>
+            <text x="18" y="82" fill="#d4ac6b">name · name_de</text>
+            <text x="18" y="100" fill="#d4ac6b">max_penalty</text>
+            <text x="18" y="122" fill="#a6a7b0" font-size="11" font-style="italic">11 seeded paragraphs</text>
+            <text x="18" y="138" fill="#a6a7b0" font-size="11" font-style="italic">§ 185, § 241, NetzDG § 3, …</text>
+          </g>
+        </g>
+
+        <!-- Relationships -->
+        <!-- users (1) --> cases (N) -->
+        <path d="M 250 165 L 300 180" fill="none" stroke="#d4ac6b" stroke-width="1.4" marker-end="url(#arr)"/>
+        <text x="255" y="160" font-family="JetBrains Mono, monospace" font-size="11" fill="#65656f">1 · N</text>
+
+        <!-- cases (1) --> evidence_items (N) -->
+        <path d="M 530 190 L 580 190" fill="none" stroke="#d4ac6b" stroke-width="1.4" marker-end="url(#arr)"/>
+        <text x="535" y="180" font-family="JetBrains Mono, monospace" font-size="11" fill="#65656f">1 · N</text>
+
+        <!-- evidence_items (1) -1 classifications -->
+        <path d="M 840 190 L 890 195" fill="none" stroke="#d4ac6b" stroke-width="1.4" marker-end="url(#arr)"/>
+        <text x="842" y="180" font-family="JetBrains Mono, monospace" font-size="11" fill="#65656f">1 · 1</text>
+
+        <!-- classifications M:N categories (junction: classification_categories) -->
+        <path d="M 1020 300 Q 900 380 620 460" fill="none" stroke="#d4ac6b" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="750" y="400" font-family="JetBrains Mono, monospace" font-size="11" fill="#65656f">M · N · via classification_categories</text>
+
+        <!-- classifications M:N laws (junction: classification_laws) -->
+        <path d="M 1025 300 Q 960 360 880 460" fill="none" stroke="#d4ac6b" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="960" y="370" font-family="JetBrains Mono, monospace" font-size="11" fill="#65656f">M · N · via classification_laws</text>
+      </svg>
+      <p style="margin-top: 16px; max-width: 64em;">Plus multi-tenancy — <code>orgs</code> and <code>org_members</code> (added 12 April) carry NGO case-workers and API keys. SQLAlchemy ORM + Alembic migrations. Categories and laws are <strong>seeded on startup</strong> so a fresh database ships with reference data.</p>
+    </section>
+
+    <!-- 5 · AI flow · input + context -->
+    <section class="slide">
+      <div class="label">AI flow · input + context</div>
+      <h2>One string in. <em>One system prompt.</em></h2>
+      <div class="two-col" style="margin-top: 18px;">
+        <div>
+          <h3>Input</h3>
+          <p>Always a string. It arrives three ways — paste, URL scrape, or OCR — but by the time <code>classify()</code> is called, the input is text. One format, one path.</p>
+        </div>
+        <div>
+          <h3>Context</h3>
+          <p>Lives entirely in the system prompt. Role, category enum, law enum, severity definitions, and the core rule <em>"err on the side of the victim"</em> — prefer false positives to false negatives.</p>
+        </div>
+      </div>
+      <pre style="margin-top: 20px;"><code>WICHTIG:
+- Verstehe Tippfehler, Slang, absichtliche Verschleierung
+- Wenn unklar: im Zweifel FÜR das Opfer entscheiden
+- NetzDG § 3 gilt IMMER bei Social Media Inhalten
+
+SEVERITY:
+- low / medium / high / critical (defined explicitly)</code></pre>
+    </section>
+
+    <!-- 5 · AI flow · classification endpoint + parse -->
+    <section class="slide">
+      <div class="label">AI flow · classification + parse</div>
+      <h2><code>.parse()</code> · schema-enforced · <em>one call.</em></h2>
+      <pre><code>completion = client.chat.completions.parse(
+    model="gpt-4o-mini",          # 15× cheaper, ~90% accuracy
+    temperature=0,                 # deterministic — legal must be
+    max_tokens=1024,
+    messages=[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
+    ],
+    response_format=LLMClassification,   # Pydantic, server-enforced
+)
+
+msg = completion.choices[0].message
+if msg.refusal: return None       # OpenAI declined on safety
+parsed = msg.parsed               # typed instance or None
+if parsed is None: return None    # schema-conformance failed
+return _to_domain(parsed)</code></pre>
+      <p style="margin-top: 14px;">No <code>json.loads</code>. No code-fence stripping. No defensive try/except around malformed JSON. Either I get a validated Pydantic instance, or I get None and return a clean 503.</p>
+    </section>
+
+    <!-- 6 · AI flow · RAG (where it lives) -->
+    <section class="slide">
+      <div class="label">bonus · RAG</div>
+      <h2>Two AI layers. <em>One uses RAG.</em></h2>
+      <table>
+        <thead><tr><th>Layer</th><th>Job</th><th>RAG?</th><th>Model</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Classifier</strong></td>
+            <td>One piece of content → severity, categories, laws</td>
+            <td>No</td>
+            <td><code>gpt-4o-mini</code></td>
+          </tr>
+          <tr>
+            <td><strong>Legal AI</strong></td>
+            <td>Whole case → strategy, precedents, cross-references</td>
+            <td><em>Yes</em></td>
+            <td><code>gpt-4o-mini</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top: 20px;">
+        <code>services/legal_ai.py</code> retrieves all evidence + classifications from a case, structures them as a context block, sends to OpenAI. Classic retrieve → augment → generate. The Week 9–10 deliverable.
+      </p>
+      <p><strong>The split is deliberate:</strong> classification must be deterministic and single-input. Case-level reasoning is retrieval across N evidence items — that's where retrieval earns its place.</p>
+    </section>
+
+    <!-- 7 · Open + close -->
+    <section class="slide">
+      <div class="kicker">Honestly open · next week</div>
+      <h2>What's next, <em>and questions.</em></h2>
+      <ul>
+        <li><strong>Art. 20 GDPR export</strong> — shipped this morning, live on Railway.</li>
+        <li><strong>7-day cleanup job</strong> for soft-deleted users.</li>
+        <li><strong>Resend-based magic-link email</strong> — MVP currently returns the token directly.</li>
+        <li><strong>HttpOnly session cookie</strong> replacing LocalStorage.</li>
+      </ul>
+      <p class="lead" style="margin-top: 28px;">Questions — or anything you'd like me to prioritise differently?</p>
+      <div class="slide-sig">github.com/mikelninh/safevoice · safevoice-production-0847.up.railway.app</div>
+    </section>
+
+  </div>
+
+  <div class="counter"><strong id="cur">01</strong> / <span id="total">07</span></div>
+  <div class="hint" id="hint">
+    <kbd>→</kbd><kbd>←</kbd> navigate · <kbd>F</kbd> fullscreen · <kbd>.</kbd> blackout · <kbd>Home</kbd> first · <kbd>End</kbd> last
+  </div>
+  <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const total = slides.length;
+    const counter = document.getElementById("cur");
+    const totalEl = document.getElementById("total");
+    const bar = document.getElementById("progress-bar");
+    const hint = document.getElementById("hint");
+    totalEl.textContent = String(total).padStart(2, "0");
+
+    let index = 0;
+    function show(i) {
+      index = Math.max(0, Math.min(total - 1, i));
+      slides.forEach((s, k) => s.classList.toggle("active", k === index));
+      counter.textContent = String(index + 1).padStart(2, "0");
+      bar.style.width = `${((index + 1) / total) * 100}%`;
+      try { localStorage.setItem("sv.slides.pos.v2", String(index)); } catch(_) {}
+    }
+    function next() { if (index < total - 1) show(index + 1); }
+    function prev() { if (index > 0) show(index - 1); }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.target.matches("input, textarea, [contenteditable]")) return;
+      const k = e.key.toLowerCase();
+      if (k === "arrowright" || k === " " || k === "pagedown" || k === "n") { e.preventDefault(); next(); }
+      else if (k === "arrowleft" || k === "pageup" || k === "p") { e.preventDefault(); prev(); }
+      else if (k === "home") { e.preventDefault(); show(0); }
+      else if (k === "end") { e.preventDefault(); show(total - 1); }
+      else if (k === "f") {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      }
+      else if (k === ".") {
+        document.body.style.background = document.body.style.background === "rgb(0, 0, 0)" ? "" : "#000";
+        slides[index].style.visibility = slides[index].style.visibility === "hidden" ? "" : "hidden";
+      }
+    });
+
+    let touchX = null;
+    document.addEventListener("touchstart", (e) => { touchX = e.touches[0].clientX; });
+    document.addEventListener("touchend", (e) => {
+      if (touchX === null) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 40) { dx < 0 ? next() : prev(); }
+      touchX = null;
+    });
+
+    try {
+      const saved = parseInt(localStorage.getItem("sv.slides.pos.v2") || "0", 10);
+      if (Number.isFinite(saved) && saved > 0 && saved < total) show(saved);
+      else show(0);
+    } catch (_) { show(0); }
+
+    setTimeout(() => hint.classList.add("show"), 400);
+    setTimeout(() => hint.classList.remove("show"), 4200);
+    let hideT;
+    document.addEventListener("mousemove", () => {
+      hint.classList.add("show");
+      clearTimeout(hideT);
+      hideT = setTimeout(() => hint.classList.remove("show"), 1800);
+    });
+  </script>
+</body>
+</html>

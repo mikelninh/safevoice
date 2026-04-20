@@ -161,14 +161,14 @@ The system has **two AI layers**, and the answer to "do you use RAG?" differs by
 
 1. **Retrieve** — pulls every evidence item for the case from the DB, plus each item's classification (severity, categories, applicable laws).
 2. **Augment** — structures them into a context block *("Evidence (N items): …")* inside a prompt.
-3. **Generate** — sends to Claude (Anthropic) for aggregate legal reasoning across the whole case: strategy, precedents, cross-references, risk assessment for the victim.
+3. **Generate** — sends to OpenAI (`gpt-4o-mini` with Structured Outputs) for aggregate legal reasoning across the whole case: strategy, precedents, cross-references, risk assessment for the victim.
 
 Two jobs, two layers:
 
 | Layer | Job | RAG? | Model |
 |---|---|---|---|
 | Classifier | One piece of content → severity, categories, laws | No | gpt-4o-mini (structured outputs) |
-| Legal AI | Whole case → strategy + precedents + recommendations | **Yes** | Claude Sonnet (JSON) |
+| Legal AI | Whole case → strategy + precedents + recommendations | **Yes** | gpt-4o-mini (structured outputs) |
 
 This is the Week 9–10 deliverable in `COURSE_SUBMISSION.md`: *"Applied RAG pattern: case evidence as retrieval context."*
 
@@ -273,7 +273,7 @@ return _to_domain(llm_result)
 
 **"Do you use RAG?"**
 
-Yes, in one place. The classifier does not — it's prompt-in, structured-out, single-turn. RAG lives in `services/legal_ai.py`: when a case has multiple evidence items, we retrieve them all plus their classifications from the database, structure them as a context block inside the prompt, and send the aggregate to Claude for legal reasoning across the whole case. That's the Week 9–10 deliverable. The split is deliberate: classification must be deterministic and single-input; case-level legal analysis is reasoning across a set of facts — that's where retrieval earns its place.
+Yes, in one place. The classifier does not — it's prompt-in, structured-out, single-turn. RAG lives in `services/legal_ai.py`: when a case has multiple evidence items, we retrieve them all plus their classifications from the database, structure them as a context block inside the prompt, and send the aggregate to `gpt-4o-mini` (same model as the classifier, also via Structured Outputs) for legal reasoning across the whole case. That's the Week 9–10 deliverable. The split is deliberate: classification must be deterministic and single-input; case-level legal analysis is reasoning across a set of facts — that's where retrieval earns its place.
 
 **"Why Structured Outputs instead of manual JSON parsing?"**
 

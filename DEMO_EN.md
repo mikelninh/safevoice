@@ -86,7 +86,7 @@ Say:
 
 3. **Case CRUD.** Cases are created implicitly — the user pastes content via `POST /analyze/ingest` and the system creates both evidence and case in one call. Read, export, and PDF follow standard REST.
 
-4. **AI flow — input, context, prompt.** The classifier path has no RAG — input is always a string, context is the whole system prompt (role, categories enum, laws enum, severity definitions, "err on the side of the victim"), user message is `"Klassifiziere diesen Inhalt:\n\n{text}"`. The second layer, `services/legal_ai.py`, DOES use RAG: it retrieves all evidence in a case from the DB, structures them as context, and sends to Claude for aggregate legal analysis. Two layers, two jobs.
+4. **AI flow — input, context, prompt.** The classifier path has no RAG — input is always a string, context is the whole system prompt (role, categories enum, laws enum, severity definitions, "err on the side of the victim"), user message is `"Klassifiziere diesen Inhalt:\n\n{text}"`. The second layer, `services/legal_ai.py`, DOES use RAG: it retrieves all evidence in a case from the DB, structures them as context, and sends to OpenAI `gpt-4o-mini` with Structured Outputs for aggregate legal analysis. Two layers, two jobs, one model family.
 
 5. **Classification endpoint.** `gpt-4o-mini`, `temperature=0` for determinism, `max_tokens=1024`, `response_format=LLMClassification` — a Pydantic model enforced by Structured Outputs.
 
@@ -121,7 +121,7 @@ Say:
 > Three mechanisms. Magic link means no password storage, no breach risk. Soft delete sets `deleted_at` with a 7-day recovery window. Emergency delete is immediate — the Safe-Exit pattern, for cases where the perpetrator has access to the victim's device. Art. 20 data export is promised in the privacy policy; the endpoint is on next week's list.
 
 ### "What are you working on next week?"
-> Three things. The Art. 20 GDPR export endpoint. A cleanup job that hard-deletes soft-deleted users after the 7-day window. And the first draft of the Prototype Fund application — €47,500 from BMBF via OKFN for 6 months of runway to move from pilot to NGO licensing.
+> Three things. The Art. 20 GDPR export endpoint. A cleanup job that hard-deletes soft-deleted users after the 7-day window. And a move to real email delivery for the magic-link (Resend), replacing the MVP's direct-in-response token.
 
 ### "What would you change with infinite time?"
 > Replace LocalStorage session tokens with HttpOnly cookies. Ship a second LLM behind a feature flag as a cross-check for high-severity classifications. Build a bias-evaluation suite against a gold-standard set of 100 real cases. The bias work is what I'd start first.
@@ -152,7 +152,7 @@ Say:
 
 ## The close
 
-> Next week I'll focus on the Art. 20 export endpoint, the cleanup job, and the first draft of the Prototype Fund application. Any questions, or anything you'd like me to prioritise differently?
+> Next week I'll focus on the Art. 20 export endpoint, the cleanup job, and the Resend-based magic-link email. Any questions, or anything you'd like me to prioritise differently?
 
 Then stop talking. Let him answer.
 
