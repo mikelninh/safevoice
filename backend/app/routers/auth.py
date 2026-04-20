@@ -3,9 +3,24 @@ Authentication router — magic link login.
 No passwords. Email-only.
 """
 
-from fastapi import APIRouter, HTTPException, Header
-from pydantic import BaseModel
+from datetime import datetime, timezone
 
+from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from sqlalchemy.orm import Session, joinedload
+
+from app.database import (
+    get_db,
+    Case as DBCase,
+    EvidenceItem as DBEvidence,
+    Org as DBOrg,
+    OrgMember as DBOrgMember,
+)
+from app.schemas import (
+    UserExport, ExportUser, ExportCase, ExportEvidence,
+    ExportClassification, ExportOrgMembership,
+)
 from app.services.auth import (
     request_magic_link, verify_magic_link, get_user_by_session,
     logout, soft_delete_user, emergency_delete_user, get_user,
@@ -151,3 +166,112 @@ def emergency_delete(authorization: str | None = Header(default=None)):
         "message": "All data permanently deleted. This cannot be undone.",
         "recovered": False,
     }
+
+
+# === GDPR Art. 20 — Right to data portability ===
+
+def _iso(dt) -> str | None:
+    """Normalize any datetime to ISO-8601 UTC (Z-suffixed when naive)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _law_str(law) -> str:
+    if law.code == "netzdg":
+        return f"NetzDG § {law.section}"
+    return f"§ {law.section} {law.code.upper()}"
+
+
+@router.get("/me/export", response_model=UserExport)
+def export_my_data(
+    include_deleted: bool = False,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """GDPR Art. 20 — Right to data portability.
+
+    Returns a complete JSON export of the authenticated user's profile,
+    cases, evidence, classifications, and org memberships. Excludes
+    sessions, magic-link tokens, other users' data. Reference data
+    (categories/laws) is included by name/paragraph only.
+    """
+    user, _ = _require_user(authorization)
+
+    cases = (
+        db.query(DBCase)
+        .options(joinedload(DBCase.evidence_items).joinedload(DBEvidence.classification))
+        .filter(DBCase.user_id == user.id)
+        .order_by(DBCase.created_at.asc())
+        .all()
+    )
+
+    export_cases: list[ExportCase] = []
+    for c in cases:
+        evidence_out: list[ExportEvidence] = []
+        for ev in c.evidence_items:
+            cl = ev.classification
+            cl_out = ExportClassification(
+                severity=cl.severity or "none",
+                confidence=cl.confidence or 0.0,
+                summary=cl.summary,
+                summary_de=cl.summary_de,
+                potential_consequences=cl.potential_consequences,
+                potential_consequences_de=cl.potential_consequences_de,
+                categories=[cat.name for cat in cl.categories],
+                laws=[_law_str(law) for law in cl.laws],
+                classified_at=_iso(cl.classified_at),
+            ) if cl else None
+            evidence_out.append(ExportEvidence(
+                id=ev.id,
+                content_type=ev.content_type or "text",
+                raw_content=ev.raw_content,
+                content_hash=ev.content_hash,
+                hash_chain_previous=ev.hash_chain_previous,
+                platform=ev.platform,
+                source_url=ev.source_url,
+                archived_url=ev.archived_url,
+                timestamp_utc=_iso(ev.timestamp_utc),
+                classification=cl_out,
+            ))
+        export_cases.append(ExportCase(
+            id=c.id, title=c.title,
+            status=c.status or "open",
+            overall_severity=c.overall_severity or "none",
+            visibility=c.visibility, org_id=c.org_id,
+            created_at=_iso(c.created_at), updated_at=_iso(c.updated_at),
+            evidence_items=evidence_out,
+        ))
+
+    memberships = (
+        db.query(DBOrgMember, DBOrg)
+        .join(DBOrg, DBOrg.id == DBOrgMember.org_id)
+        .filter(DBOrgMember.user_id == user.id)
+        .all()
+    )
+    export_memberships = [
+        ExportOrgMembership(org_id=o.id, org_slug=o.slug, role=m.role, joined_at=_iso(m.joined_at))
+        for (m, o) in memberships
+        if include_deleted or o.deleted_at is None
+    ]
+
+    payload = UserExport(
+        export_version="1.0",
+        exported_at=_iso(datetime.now(timezone.utc)),
+        user=ExportUser(
+            id=user.id, email=user.email, display_name=user.display_name,
+            language=user.lang, created_at=_iso(user.created_at),
+            deleted_at=_iso(user.deleted_at),
+        ),
+        cases=export_cases,
+        org_memberships=export_memberships,
+    )
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    filename = f"safevoice-export-{user.id}-{today}.json"
+    return JSONResponse(
+        content=payload.model_dump(),
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SafeVoice · Tutor-Prep Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap">
   <style>
     :root {
       --bg:        #0a0a0f;
@@ -18,8 +21,9 @@
       --green:    #4ade80;
       --red:      #ef4444;
       --blue:     #60a5fa;
-      --font:     -apple-system, "Inter", system-ui, sans-serif;
-      --mono:     "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+      --font:     "Inter", system-ui, -apple-system, sans-serif;
+      --serif:    "Fraunces", "New York", Georgia, serif;
+      --mono:     "JetBrains Mono", ui-monospace, "SF Mono", monospace;
     }
     * { box-sizing: border-box; }
     body {
@@ -41,6 +45,7 @@
     }
     h1 {
       margin: 0 0 8px;
+      font-family: var(--serif);
       font-weight: 300;
       font-size: 36px;
       letter-spacing: -0.02em;
@@ -60,10 +65,9 @@
     }
     .progress-bar {
       height: 100%;
-      background: linear-gradient(90deg, var(--gold), #ffdb9a);
+      background: var(--gold);
       width: 0;
       transition: width 400ms ease;
-      box-shadow: 0 0 16px rgba(212,172,107,0.4);
     }
     .progress-meta {
       display: flex; justify-content: space-between;
@@ -247,7 +251,6 @@
     .btn-primary:hover {
       background: #ffdb9a;
       color: var(--bg);
-      box-shadow: 0 0 24px rgba(212,172,107,0.3);
     }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -257,14 +260,13 @@
       padding: 48px 24px;
     }
     .score {
-      font-family: var(--mono);
+      font-family: var(--serif);
       font-size: 96px;
-      font-weight: 700;
+      font-weight: 300;
       color: var(--gold);
       line-height: 1;
       letter-spacing: -0.04em;
       margin: 20px 0;
-      text-shadow: 0 0 40px rgba(212,172,107,0.3);
     }
     .verdict-final {
       font-size: 22px;
@@ -306,8 +308,8 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>SafeVoice · Tutor-Prep Quiz</h1>
-      <div class="sub">20 questions · 6 topics · no time limit · English</div>
+      <h1>Tutor-prep quiz</h1>
+      <div class="sub">20 questions · six topics · no time limit</div>
     </header>
 
     <div class="progress-shell"><div class="progress-bar" id="bar"></div></div>
@@ -319,7 +321,7 @@
 
     <main id="stage"></main>
 
-    <footer>REHEARSE · ANSWER OUT LOUD · CLOSE WHEN READY</footer>
+    <footer>Close when ready.</footer>
   </div>
 
   <script>
@@ -610,7 +612,7 @@
           </div>
           <div class="feedback" id="feedback"></div>
           <div class="actions">
-            <button class="btn btn-primary" id="check" disabled>CHECK</button>
+            <button class="btn btn-primary" id="check" disabled>Check</button>
           </div>
         </div>
       `;
@@ -644,12 +646,12 @@
         });
         fb.className = `feedback show ${correct ? "correct" : "wrong"}`;
         fb.innerHTML = `
-          <div class="verdict">${correct ? "✓ correct" : "✗ not quite"}</div>
+          <div class="verdict">${correct ? "Correct" : "Not quite"}</div>
           <div>${q.note}</div>
         `;
         if (correct) score++;
         else missed.push({ topic: q.topic, q: q.q, note: q.note });
-        check.textContent = "CONTINUE →";
+        check.textContent = "Continue →";
         check.dataset.checked = "1";
         updateProgress();
       });
@@ -660,11 +662,11 @@
         <div class="card">
           <div class="topic">${q.topic} · open-ended</div>
           <div class="q">${q.q}</div>
-          <textarea id="answer" placeholder="Type your answer in your own words — then click REVEAL to compare with the model answer. This question is self-graded."></textarea>
+          <textarea id="answer" placeholder="Type the answer in your own words. Click Reveal to compare with the model answer. This question is self-graded."></textarea>
           <div class="feedback" id="feedback"></div>
           <div class="actions">
-            <button class="btn" id="skip">SKIP</button>
-            <button class="btn btn-primary" id="reveal" disabled>REVEAL</button>
+            <button class="btn" id="skip">Skip</button>
+            <button class="btn btn-primary" id="reveal" disabled>Reveal</button>
           </div>
         </div>
       `;
@@ -681,17 +683,17 @@
         answer.readOnly = true;
         fb.className = "feedback show";
         fb.innerHTML = `
-          <div class="verdict">▸ model answer — grade yourself</div>
+          <div class="verdict">Model answer — grade yourself</div>
           <div>${q.model}</div>
           <div class="model">
             <strong>Your answer:</strong><br>
             <em>${userSaid || "(skipped)"}</em>
           </div>
         `;
-        reveal.textContent = "✓ I had it";
+        reveal.textContent = "I had it";
         reveal.disabled = false;
         reveal.dataset.revealed = "1";
-        skip.textContent = "✗ need to study";
+        skip.textContent = "Need to study";
       }
 
       reveal.addEventListener("click", () => {
@@ -721,19 +723,19 @@
       qNumEl.textContent = QUESTIONS.length;
       const pct = Math.round((score / QUESTIONS.length) * 100);
       let verdict;
-      if (pct >= 90) verdict = "Tutor-ready. You have this.";
-      else if (pct >= 75) verdict = "Solid. Review the missed topics and you're there.";
-      else if (pct >= 60) verdict = "Almost. Read <code>MEETING_20_APR.md</code> sections for missed topics, retake.";
+      if (pct >= 90) verdict = "Tutor-ready.";
+      else if (pct >= 75) verdict = "Review the missed topics before the meeting.";
+      else if (pct >= 60) verdict = "Re-read the missed-topic sections in <code>MEETING_20_APR.md</code>, then retake.";
       else verdict = "Re-read <code>DEMO_EN.md</code> and <code>MEETING_20_APR.md</code>, then retake.";
 
       const missedHtml = missed.length
         ? `<div class="missed">
-            <h3>Review these before the meeting</h3>
+            <h3>Review before the meeting</h3>
             <ul>
               ${missed.map((m) => `<li><strong>${m.topic}:</strong> ${m.note}</li>`).join("")}
             </ul>
           </div>`
-        : `<div class="missed"><h3>Nothing to review</h3><ul><li>Nice — full sweep. You can skip the retake.</li></ul></div>`;
+        : `<div class="missed"><h3>Nothing missed</h3><ul><li>Full sweep. Retake is optional.</li></ul></div>`;
 
       stage.innerHTML = `
         <div class="card final">
@@ -742,7 +744,7 @@
           <div class="verdict-final">${verdict}</div>
           <div class="score-note">${pct}% · missed ${QUESTIONS.length - score}</div>
           <div class="actions" style="justify-content:center">
-            <button class="btn" onclick="location.reload()">RETAKE</button>
+            <button class="btn" onclick="location.reload()">Retake</button>
           </div>
           ${missedHtml}
         </div>

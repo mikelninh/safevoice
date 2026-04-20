@@ -1,251 +1,198 @@
-# Tutor Meeting — 20 April 2026 (Zwischencheck)
+# Tutor Meeting — 20 April 2026
 
-> **Read this once tonight. You'll be ready.**
->
-> Zisis gave you 6 action items on 27 March. All six are implemented and answered in `TUTOR_PREP.md`. This sheet is the **talk-track** for tomorrow: what to demo, what to say, what to answer when asked.
+Zwischencheck with Zisis Batzos. Six action items from 27 March, all implemented. This sheet is the study reference — what you need in your head so you can answer any question. The live demo script lives in `DEMO_EN.md`. The quiz is `QUIZ.html`.
 
----
-
-## Meeting format
-
-- **Type**: Zwischencheck + kleine Demo + "was ist fertig / was ist offen"
-- **Not**: Final-Prüfung (die ist 29. Mai)
-- **Your goal**: Show competence. Be honest about what's open. Ask for feedback on direction.
+Language note: Zisis is English-speaking, so everything here is in English. Practise answering in English out loud.
 
 ---
 
-## Opening — 90-second pitch (memorize)
+## Meeting shape
 
-> "SafeVoice hilft Opfern digitaler Gewalt, einen Vorfall in 30 Sekunden zu dokumentieren und als Gerichts-tauglichen Report zu exportieren.
->
-> Der User fügt Text, einen Link oder einen Screenshot ein. Ein LLM klassifiziert den Inhalt nach deutschem Strafrecht — § 185 Beleidigung, § 241 Bedrohung, NetzDG § 3 — und gibt Severity, Kategorien und Laws zurück. Der Beweis wird mit SHA-256 gehasht und Zeitstempel-gesichert, dann als PDF oder .eml für Polizei oder Plattform exportiert.
->
-> Seit unserem letzten Meeting hab ich die 6 Action Items von dir umgesetzt: echte SQLAlchemy-DB statt in-memory, komplette User-Endpoints mit Magic-Link-Auth, Case-Endpoints, AI Flow dokumentiert, Structured Outputs über Pydantic, und das 3-tier-Fallback bewusst auf Single-tier reduziert — dazu erkläre ich gleich warum.
->
-> Heute zeig ich dir eine kurze Demo, gehe die Action Items durch, und wir können offene Punkte für die nächste Woche besprechen."
-
-Das ist der Opener. Danach: Demo, dann Q&A.
+- Zwischencheck — a checkpoint, not a final. The final presentation is 29 May.
+- Goal: show the work, be honest about what is open, ask for direction.
+- Format: 60-second opener → 3-minute demo → walk the six action items → Q&A → next week's plan.
 
 ---
 
-## Demo (3 Minuten) — Ablauf
+## Topic A · Database
 
-Terminal 1: `cd backend && source venv/bin/activate && uvicorn app.main:app --reload`
-Terminal 2: `cd frontend && npm run dev`
+Real SQLAlchemy ORM with Alembic migrations. SQLite locally (`safevoice.db`), Postgres in production via Railway's `DATABASE_URL`. The file is `backend/app/database.py`. Categories and laws are seeded on startup.
 
-Browser: `http://localhost:5173`
+### The eight tables
 
-### Schritt 1 — Paste + Classify (45 Sek)
-
-Auf `/analyze` diesen Text einfügen:
-
-```
-Frauen wie du sollten die Klappe halten. Ich weiß wo du wohnst.
-```
-
-Klick "Analyze". Zeig:
-- Severity: **CRITICAL**
-- Kategorien: **misogyny + threat**
-- Laws: **§ 185, § 241 StGB, NetzDG § 3**
-- Bilingual Summary (DE + EN)
-
-**Sag**: *"Von Paste bis juristische Klassifikation in 3 Sekunden. Das LLM hat Kategorien + § StGB korrekt gemappt, keine manuelle Legal-Kenntnis nötig."*
-
-### Schritt 2 — Case & Report (1 Min)
-
-Auf `/cases`, einen Fall öffnen → "Bericht exportieren" → PDF-Tab → PDF anzeigen.
-
-**Sag**: *"Evidence wird mit SHA-256 gehasht, UTC-Zeitstempel. Der PDF-Report ist A4, gerichtstauglich, bereit für die Polizei oder NetzDG."*
-
-### Schritt 3 — API + Structured Output (1 Min)
-
-`http://localhost:8000/docs` → `POST /analyze/text` → Try it:
-
-```json
-{"text": "I will kill you and your family"}
-```
-
-Zeig die JSON-Response.
-
-**Sag**: *"Das Prompt-Engineering-Herzstück. Ich nutze OpenAI Structured Outputs mit Pydantic — das Schema wird serverseitig erzwungen, ich bekomme ein typisiertes Objekt zurück. Kein manuelles JSON-Parsen mehr."*
-
----
-
-# TOPIC A — Datenbank (das erste Thema letztes Mal)
-
-## Was hast du?
-
-**Echte SQLAlchemy ORM + Alembic Migrations.** SQLite lokal (`safevoice.db`), Postgres-ready für Production.
-
-Datei: **`backend/app/database.py`** — dort leben alle 8 Tabellen als SQLAlchemy-Klassen.
-
-## Die 8 Tabellen (auswendig)
-
-| Tabelle | Zweck | Key fields |
+| Table | Purpose | Key fields |
 |---|---|---|
-| `users` | Wer dokumentiert | email (unique), language, created_at, deleted_at |
-| `cases` | Ein Vorfall (gruppiert Evidence) | user_id, org_id, assigned_to, status, overall_severity |
-| `evidence_items` | Ein Beweis (Text/URL/Bild) | case_id, raw_content, content_hash, hash_chain_previous |
-| `classifications` | AI-Output pro Evidence | evidence_item_id, severity, confidence, summary/_de, classifier_tier |
-| `categories` | Referenz: harassment, threat, misogyny… (15 Werte) | name, name_de |
-| `laws` | Referenz: § 185, § 241… (11 Einträge) | code, section, name, max_penalty |
-| `classification_categories` | Junction: M:N | classification_id + category_id |
-| `classification_laws` | Junction: M:N | classification_id + law_id |
+| `users` | Who documents | email (unique), language, created_at, deleted_at |
+| `cases` | One incident, groups evidence | user_id, org_id, assigned_to, status, overall_severity |
+| `evidence_items` | One piece of content | case_id, raw_content, content_hash, hash_chain_previous |
+| `classifications` | AI output per evidence | evidence_item_id, severity, confidence, summary, summary_de |
+| `categories` | 15 reference values | name, name_de |
+| `laws` | 11 German paragraphs | code, section, name, max_penalty |
+| `classification_categories` | Junction, many-to-many | classification_id + category_id |
+| `classification_laws` | Junction, many-to-many | classification_id + law_id |
 
-**+ Multi-Tenancy (seit 12. April):**
-- `orgs` — NGO-Partner (HateAid-Style)
-- `org_members` — User ↔ Org mit role (owner/admin/caseworker/viewer)
+Plus multi-tenancy tables added 12 April:
+- `orgs` — NGO partners (HateAid-style intake).
+- `org_members` — user-to-org with role (owner / admin / caseworker / viewer).
 
-## Typische Tutor-Frage: "Wie sieht die Beziehung zwischen Evidence und Classification aus?"
+### Likely questions
 
-> *"1:1, separat. Evidence ist ein Fakt — der Text wurde gepostet, Hash und Zeitstempel sind Beweis. Classification ist eine Interpretation — das LLM denkt, es ist eine Drohung. Die Trennung erlaubt Re-Klassifikation, ohne den Original-Beweis zu verändern — wichtig für Gerichts-Zulässigkeit."*
+**"Evidence and classification — what's the relationship?"**
 
-## Typische Tutor-Frage: "Warum hast du Categories und Laws als separate Tabellen?"
+One-to-one, separated by purpose. Evidence is a fact: the text was posted, the hash and timestamp prove it. Classification is an interpretation: the LLM thinks it's a threat. Keeping them apart lets us re-classify without touching the original evidence — important for court admissibility.
 
-> *"Weil eine Classification mehrere Kategorien UND mehrere Gesetze haben kann. Ein Kommentar kann gleichzeitig Misogyny UND Threat sein — das triggert § 185 UND § 241. Junction-Tabellen sind der saubere M:N-Weg. Außerdem kann ich Gesetze/Kategorien zentral pflegen — `seed_categories_and_laws()` macht das beim Startup."*
+**"Why are categories and laws separate tables?"**
 
-## Typische Tutor-Frage: "Was passiert wenn du deployst und die DB ist leer?"
+A single classification can match many categories and many laws. A comment can be misogyny and a threat at once — triggering § 185 and § 241 at once. Junction tables are the clean many-to-many shape. It also lets me maintain reference data centrally; `seed_categories_and_laws()` runs on startup.
 
-> *"Der Docker-Entrypoint macht drei Dinge: erstens `Base.metadata.create_all()` für die Basis-Tabellen, zweitens `alembic upgrade head` für alle Migrationen, drittens `seed_categories_and_laws()` für Referenz-Daten. Fresh Postgres = 11 Laws + 15 Categories direkt verfügbar."*
+**"What happens on a fresh deploy with an empty database?"**
 
----
-
-# TOPIC B — User Authentication (unsicher)
-
-## Design-Entscheidung: Magic Link, keine Passwörter
-
-**Warum:**
-1. Opfer sind gestresst — sie vergessen Passwörter.
-2. Kein Passwort-Hash in der DB = keine Breach-Risk.
-3. One-time-Tokens (15 min Gültigkeit) sind phishing-resistent.
-
-**Das ist eine bewusste Produktentscheidung.** Wenn der Tutor fragt "Warum kein Passwort?", hast du drei gute Antworten.
-
-## Der Flow (auswendig)
-
-```
-1. User gibt Email ein              POST /auth/login { "email": "..." }
-2. Server erzeugt Magic Link        → Token (UUID), 15 min gültig
-3. Token wird per Email geschickt   (MVP: direkt im Response zurückgegeben)
-4. User klickt Link im Browser      POST /auth/verify { "token": "..." }
-5. Server validiert Token           → Session Token (30 Tage)
-6. Frontend speichert Session       Authorization: Bearer <session_token>
-7. Requests nutzen Session          z.B. GET /auth/me
-```
-
-## Die 7 Auth-Endpoints (auswendig)
-
-```
-POST   /auth/login          Magic Link anfordern
-POST   /auth/verify         Magic Link einlösen → Session
-GET    /auth/me             Profile lesen
-PUT    /auth/me             Profile updaten (display_name, lang)
-DELETE /auth/me             Soft delete (7-Tage-Recovery)
-DELETE /auth/me/emergency   Hard delete (sofort, kein Recovery)
-POST   /auth/logout         Session beenden
-```
-
-## Datei-Map
-
-- **`routers/auth.py`** — die REST-Endpoints
-- **`services/auth.py`** — magic-link generation, session storage, soft/hard delete
-- **`database.py`** — `User` SQLAlchemy model mit `deleted_at` für soft delete
-
-## Typische Tutor-Frage: "Wie ist das GDPR-konform?"
-
-> *"Drei Mechanismen. Erstens: keine Passwörter = kein Datenleck-Risiko. Zweitens: Soft Delete setzt `deleted_at`, für 7 Tage kann der User recovern — danach würde ein Cleanup-Job hard-löschen (der Cleanup-Job ist mein offener Punkt für nächste Woche, siehe Roadmap). Drittens: Emergency Delete — sofortiges hard delete, wenn das Opfer sich unsicher fühlt, weil z.B. ein Täter Zugriff auf ihr Gerät hat. Das ist das Safe-Exit-Pattern aus Victim-Support."*
-
-## Typische Tutor-Frage: "Was macht die Session sicher?"
-
-> *"Session-Tokens sind UUIDs in der DB (nicht JWT), mit Expiry-Timestamp. Bei `GET /auth/me` schickt das Frontend `Authorization: Bearer <token>`, `_require_user()` in `routers/auth.py` extrahiert, validiert, gibt 401 zurück wenn abgelaufen. Kein Token im Frontend-LocalStorage ohne HttpOnly-Cookie — das ist ein P1-TODO für Production."*
-
-## Ehrlich-Antwort wenn unsicher: "Wie würdest du das in Production härten?"
-
-> *"Drei Schritte: (1) HttpOnly-SameSite-Strict-Cookie statt LocalStorage, (2) Magic-Link-Email über einen echten Provider wie Resend statt direkter Token-Rückgabe, (3) Rate-Limit auf `/auth/login` um Enumeration zu verhindern. Steht auf der Next-Week-List."*
+The Docker entrypoint does three things in order: `Base.metadata.create_all()` for the base tables, `alembic upgrade head` for any migrations, then `seed_categories_and_laws()`. A fresh Postgres gets 11 laws and 15 categories immediately.
 
 ---
 
-# TOPIC C — Endpoint Design (auffrischen)
+## Topic B · User authentication
 
-## Design-Prinzipien (deine Talking Points)
+### Design decision: magic link, no passwords
 
-1. **Flat resource paths** — `/cases`, `/evidence`, `/analyze/text`. Keine Verschachtelung wie `/users/{id}/cases/{id}/evidence`.
-2. **HTTP Verb = CRUD Intent** — POST create, GET read, PUT update, DELETE delete.
-3. **Case wird implizit erzeugt** — User sagt nie "ich erstelle einen Fall". Er fügt Evidence ein, System erzeugt den Case daraus. `POST /analyze/ingest` macht beides.
-4. **Stateless Analyze** — `POST /analyze/text` gibt Classification zurück OHNE zu speichern. Gut für Testing, Demos, API-Probing.
-5. **Structured Auth** — jeder User-geschützte Endpoint liest `Authorization: Bearer <token>`. Ein zentraler Helper `_require_user()`, nicht jeder Router implementiert das neu.
+Three reasons:
+1. Victims under stress forget passwords.
+2. No password database = no breach risk.
+3. One-time tokens with 15-minute expiry are phishing-resistant.
 
-## Die 8 MVP-Endpoints (auswendig)
+### The flow
 
 ```
-GET  /health                  Health Check + welche Tier aktiv
-POST /analyze/text            Classify stateless (nur für Test)
-POST /analyze/ingest          Classify + save → Evidence + Case
-POST /analyze/url             Scrape Instagram/X + classify
-GET  /cases/                  Alle Cases des Users
-GET  /cases/{id}              Case-Detail + Evidence + Classifications
-GET  /reports/{id}            Text-Report (general/netzdg/police)
-GET  /reports/{id}/pdf        PDF-Download (court-ready A4)
+1. User enters email              POST /auth/login { "email": "…" }
+2. Server creates magic link      Token (UUID), 15-min lifetime
+3. Token sent via email           MVP returns it directly in the response
+4. User clicks the link           POST /auth/verify { "token": "…" }
+5. Server validates the token     Returns session token (30-day lifetime)
+6. Frontend stores the session    Authorization: Bearer <session_token>
+7. Subsequent requests use it     e.g. GET /auth/me
 ```
 
-Dahinter: 30+ weitere Endpoints (auth, orgs, partners, dashboard, SLA, legal AI, policy export) — verfügbar in Demo auf Anfrage.
+### The seven endpoints
 
-## Typische Tutor-Frage: "Warum POST für analyze, nicht GET?"
+```
+POST   /auth/login            Request magic link
+POST   /auth/verify           Exchange magic link for session
+GET    /auth/me               Read profile
+PUT    /auth/me               Update display_name, lang
+DELETE /auth/me               Soft delete with 7-day recovery
+DELETE /auth/me/emergency     Hard delete, immediate, no recovery
+POST   /auth/logout           End session
+```
 
-> *"Zwei Gründe. (1) Semantik: POST signalisiert 'erzeuge etwas' — auch eine stateless Classification ist eine neue Ressource, selbst wenn sie nicht persistiert wird. (2) Body-Größe: Text kann 10.000+ Zeichen haben, URLs sind auf ca. 2KB limitiert. POST hat keine solche Grenze."*
+### Files
 
-## Typische Tutor-Frage: "Wie strukturierst du Errors?"
+- `routers/auth.py` — endpoints
+- `services/auth.py` — magic-link generation, sessions, soft/hard delete
+- `database.py` — the `User` ORM model with `deleted_at`
 
-> *"FastAPI wirft `HTTPException(status_code=..., detail=...)`. 400 für invalid Input, 401 für kein/ungültiges Token, 403 für fehlende Rechte, 404 für Nicht-gefunden, 503 wenn der Classifier nicht erreichbar ist — by design, kein schwacher Fallback. Der Client bekommt immer `{ "detail": "..." }` — ein konsistentes Format."*
+### Likely questions
+
+**"How is this GDPR-compliant?"**
+
+Three mechanisms. Magic link means no password storage, so no breach risk. Soft delete sets `deleted_at` with a 7-day recovery window. Emergency delete is immediate — the Safe-Exit pattern from victim-support software, for cases where the perpetrator has access to the victim's device.
+
+**"What makes the session secure?"**
+
+Session tokens are UUIDs in the database, not JWTs, with an expiry timestamp. `_require_user()` in `routers/auth.py` extracts the Bearer token, validates against the DB, returns 401 when expired. Tokens currently live in LocalStorage — that's a P1 to move to an HttpOnly cookie.
+
+**"How would you harden this for production?"**
+
+Three steps. HttpOnly + SameSite=Strict + Secure cookie replacing LocalStorage. Resend-or-equivalent email delivery instead of returning the token directly. Rate-limit on `/auth/login` to prevent enumeration. All on next week's list.
 
 ---
 
-# TOPIC D — Der AI Flow (das wichtigste Thema)
+## Topic C · Endpoint design
 
-Dies ist **die Kernfrage** von Zisis ("Design the AI flow"). Arbeite dich durch die 5 Schichten:
+### Principles
 
-## 1. Was ist der INPUT?
+1. Flat resource paths — `/cases`, `/evidence`, `/analyze/text`. No `/users/{id}/cases/{id}/evidence` nesting.
+2. HTTP verb matches CRUD intent — POST create, GET read, PUT update, DELETE delete.
+3. Cases are created implicitly. The user never says "create a case" — they paste content, the system structures it.
+4. Stateless analyze — `POST /analyze/text` returns a classification without persisting. Good for testing, demos, API probing.
+5. Centralised auth — every protected endpoint reads `Authorization: Bearer <token>` through the same `_require_user()` helper.
 
-**Raw text.** Immer ein String.
-
-Der Text kann aus drei Quellen kommen:
-- Direct paste (User kopiert einen Kommentar)
-- URL scrape (wir holen die Post-Caption von Instagram/X)
-- Screenshot OCR (Tesseract extrahiert Text aus dem Bild)
-
-**Egal wie er ankommt — im Moment wo er den Classifier trifft, ist er immer ein String.** Das ist wichtig: ein Input-Format, ein Classification-Pfad.
-
-## 2. Was ist der CONTEXT?
-
-Der Context lebt im **System-Prompt**. Er sagt dem LLM:
-1. **Wer du bist** — "Du bist SafeVoice — ein juristischer Klassifikator für digitale Gewalt in Deutschland"
-2. **Was du analysierst** — "Texte aus sozialen Medien (Kommentare, DMs, Posts)"
-3. **Nach welchem Recht** — "deutsches Strafrecht"
-4. **Welche Kategorien du nutzen darfst** — exakte Enum-Liste
-5. **Welche Gesetze du zitieren darfst** — exakte § Liste
-6. **Verhaltensregeln** — Tippfehler verstehen, im Zweifel fürs Opfer, NetzDG § 3 IMMER bei Social Media
-7. **Severity-Definitionen** — was ist low/medium/high/critical
-
-Das LLM hat **keinen zusätzlichen Context** darüber hinaus. Kein RAG (noch nicht), keine DB-Lookups. Nur System-Prompt + User-Text.
-
-## 3. Der System-Prompt (das Herzstück)
-
-Datei: **`backend/app/services/classifier_llm_v2.py`**, Zeile 130-147.
+### The eight MVP endpoints
 
 ```
-Du bist SafeVoice — ein juristischer Klassifikator für digitale Gewalt in Deutschland.
+GET  /health                  Health check + active classifier tier
+POST /analyze/text            Classify statelessly
+POST /analyze/ingest          Classify and persist → evidence + case
+POST /analyze/url             Scrape Instagram/X, then classify
+GET  /cases/                  List the user's cases
+GET  /cases/{id}              Case detail with evidence and classifications
+GET  /reports/{id}            Text report (general / netzdg / police)
+GET  /reports/{id}/pdf        PDF download (court-ready A4)
+```
 
-Du analysierst Texte aus sozialen Medien (Kommentare, DMs, Posts) und klassifizierst
-sie nach deutschem Strafrecht.
+Behind these, 30+ further endpoints (auth, orgs, partners, dashboard, SLA, legal AI, policy export) — available on request in the demo.
+
+### Likely questions
+
+**"Why POST for analyze and not GET?"**
+
+Two reasons. POST signals "create" — even a stateless classification is a new resource. And text content can exceed 10,000 characters, while URL query strings top out near 2 KB.
+
+**"How do you structure errors?"**
+
+FastAPI raises `HTTPException(status_code=…, detail=…)`. 400 for invalid input, 401 for missing or invalid token, 403 for missing rights, 404 for not found, 503 when the classifier is unreachable — by design, no fallback. Clients always receive `{ "detail": "…" }` — one consistent format.
+
+---
+
+## Topic D · The AI flow
+
+Zisis's core question from 27 March was "design the AI flow." Work through the five layers.
+
+### 1. Input
+
+Always a string. It can arrive three ways — direct paste, URL scrape, or OCR from a screenshot — but by the time `classify()` is called, it is a string. One input format, one classification path.
+
+### 2. Context — and where RAG fits
+
+The system has **two AI layers**, and the answer to "do you use RAG?" differs by layer.
+
+**The classifier (`/analyze/*`)** — no RAG. The context lives entirely in the system prompt: who the model is, what it analyses, which law applies, which categories are valid, which paragraphs it may cite, how to handle obfuscation, how severity is defined. System prompt + user text, one turn, structured out.
+
+**The legal-analysis layer (`services/legal_ai.py`)** — this *is* RAG. Triggered after a case has multiple evidence items. The function `analyze_case_legally(case)` does:
+
+1. **Retrieve** — pulls every evidence item for the case from the DB, plus each item's classification (severity, categories, applicable laws).
+2. **Augment** — structures them into a context block *("Evidence (N items): …")* inside a prompt.
+3. **Generate** — sends to Claude (Anthropic) for aggregate legal reasoning across the whole case: strategy, precedents, cross-references, risk assessment for the victim.
+
+Two jobs, two layers:
+
+| Layer | Job | RAG? | Model |
+|---|---|---|---|
+| Classifier | One piece of content → severity, categories, laws | No | gpt-4o-mini (structured outputs) |
+| Legal AI | Whole case → strategy + precedents + recommendations | **Yes** | Claude Sonnet (JSON) |
+
+This is the Week 9–10 deliverable in `COURSE_SUBMISSION.md`: *"Applied RAG pattern: case evidence as retrieval context."*
+
+### 3. The system prompt
+
+File `backend/app/services/classifier_llm_v2.py`, lines 130–147. The prompt is in German — this measurably improves classification of German content because the model stays in the German legal register.
+
+```
+Du bist SafeVoice — ein juristischer Klassifikator für digitale Gewalt
+in Deutschland.
+
+Du analysierst Texte aus sozialen Medien (Kommentare, DMs, Posts) und
+klassifizierst sie nach deutschem Strafrecht.
 
 WICHTIG:
-- Verstehe Tippfehler, Slang, absichtliche Verschleierung (z.B. "f0tze", "stirbt" statt "stirb")
+- Verstehe Tippfehler, Slang, absichtliche Verschleierung
+  (z.B. "f0tze", "stirbt" statt "stirb")
 - Wenn unklar: im Zweifel FÜR das Opfer entscheiden (höhere Severity)
 - Eine Drohung ist eine Drohung, auch wenn sie indirekt formuliert ist
 - Beachte den Gesamtkontext, nicht einzelne Wörter
 
 Gib mindestens eine Kategorie an (im Zweifel: harassment).
-NetzDG § 3 gilt IMMER bei Social Media Inhalten — füge es zu applicable_laws hinzu.
+NetzDG § 3 gilt IMMER bei Social Media Inhalten — füge es zu
+applicable_laws hinzu.
 
 SEVERITY:
 - low: Grenzwertig, Verstoß gegen Nutzungsbedingungen möglich
@@ -254,54 +201,45 @@ SEVERITY:
 - critical: Schwere Straftat, sofortige Anzeige + Beweissicherung
 ```
 
-### Warum dieser Prompt funktioniert
+Why it works: role assignment ("legal classifier", not chatbot); behavioural rule ("err on the side of the victim" favours false positives over false negatives, which is victim-safe); invariant ("NetzDG § 3 always applies" prevents omission); severity definitions keep the scale consistent; German keeps the model in the right legal register.
 
-1. **Role Assignment** — "Du bist SafeVoice — ein juristischer Klassifikator". Kein Chatbot.
-2. **Behavioral Guardrails** — "im Zweifel FÜR das Opfer" = priorisiert False Positives über False Negatives. Für Opferhilfe ist das richtig.
-3. **Invariant** — "NetzDG § 3 gilt IMMER bei Social Media". Garantiert, dass wir nie vergessen, die Plattform-Pflicht zu erwähnen.
-4. **Severity-Definitionen** — nicht "interpretier irgendwie", sondern konkret, was was bedeutet.
-5. **Sprache** — der Prompt ist auf Deutsch. Das verbessert die Klassifikation deutscher Inhalte messbar, weil das LLM im deutschen Legal-Kontext bleibt.
+### 4. The classification call
 
-## 4. Der Classification-Endpoint — wie der API-Call aussieht
-
-Datei: `classifier_llm_v2.py`, Zeile 171-180.
+Same file, lines 171–180.
 
 ```python
 completion = client.chat.completions.parse(
-    model="gpt-4o-mini",          # günstig, schnell, gut genug für Klassifikation
-    temperature=0,                 # deterministisch — Legal muss reproduzierbar sein
-    max_tokens=1024,               # genug für JSON, nicht verschwenderisch
+    model="gpt-4o-mini",
+    temperature=0,
+    max_tokens=1024,
     messages=[
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
     ],
-    response_format=LLMClassification,  # Pydantic-Schema, Server-seitig erzwungen
+    response_format=LLMClassification,
 )
 ```
 
-### Die 4 Schlüssel-Entscheidungen (kenne sie auswendig)
+Four decisions to know:
 
-| Entscheidung | Warum |
+| Decision | Reason |
 |---|---|
-| **gpt-4o-mini** statt gpt-4o | 15x günstiger, 90% der Accuracy für Classification-Tasks |
-| **temperature=0** | Legal = deterministisch. Gleicher Input → gleicher Output. Keine Kreativität. |
-| **`.parse()`** statt `.create()` | Die moderne Structured-Output-API. Server validiert das Pydantic-Schema. |
-| **`response_format=LLMClassification`** | Pydantic-Klasse statt JSON-Schema-String. Typsicher, Server-enforced. |
+| `gpt-4o-mini` | ~15× cheaper than gpt-4o, ~90% of the accuracy for classification |
+| `temperature=0` | Legal classification must be deterministic |
+| `.parse()` over `.create()` | Modern Structured Outputs API, server-side schema enforcement |
+| `response_format=LLMClassification` | Pydantic class, type-safe, no JSON-schema string |
 
-## 5. Output Parsing — der moderne Weg
+### 5. Parsing the output
 
-**Alt (classifier_llm.py)**: JSON-Schema im System-Prompt + manuelles `json.loads(raw)`.
-**Neu (classifier_llm_v2.py)**: OpenAI Structured Outputs + Pydantic `.parse()`.
-
-### Das Pydantic-Schema
+The old code (`classifier_llm.py`) used a JSON schema inside the system prompt and `json.loads(raw)`. The new code uses Pydantic `.parse()`.
 
 ```python
 class LLMClassification(BaseModel):
-    model_config = ConfigDict(extra="forbid")  # keine zusätzlichen Felder erlaubt
+    model_config = ConfigDict(extra="forbid")
 
-    severity: LLMSeverity                          # Enum: low/medium/high/critical
-    categories: list[LLMCategory] = Field(..., min_length=1)  # min 1 Kategorie
-    confidence: float = Field(..., ge=0.0, le=1.0) # zwingend in [0, 1]
+    severity: LLMSeverity
+    categories: list[LLMCategory] = Field(..., min_length=1)
+    confidence: float = Field(..., ge=0.0, le=1.0)
     requires_immediate_action: bool
     summary: str
     summary_de: str
@@ -310,136 +248,115 @@ class LLMClassification(BaseModel):
     potential_consequences_de: str
 ```
 
-### Was das Schema für dich tut
+What the schema buys:
+- Server-side enforcement — OpenAI refuses malformed outputs before we see them.
+- Type safety — `completion.choices[0].message.parsed` is a validated instance or `None`.
+- Enum validation — an invented severity is refused.
+- Refusal handling — `msg.refusal` signals a safety-based decline.
 
-- **Server-side Schema-Enforcement** — OpenAI wirft KEINE malformed JSON zurück. Niemals.
-- **Type Safety** — `completion.choices[0].message.parsed` ist eine validierte `LLMClassification`-Instanz (oder None bei Fehler).
-- **Enum-Validierung** — wenn das LLM `severity: "extreme"` zurückgeben wollte, wird der Call abgelehnt.
-- **Refusal-Handling** — `msg.refusal` ist gesetzt, wenn OpenAI den Call aus Safety-Gründen ablehnt.
-
-### Der Code dazu (auswendig)
+The handler:
 
 ```python
 msg = completion.choices[0].message
 
 if msg.refusal:
-    return None  # OpenAI hat aus Safety-Gründen abgelehnt
+    return None
 
-llm_result = msg.parsed  # Pydantic-Instanz oder None
+llm_result = msg.parsed
 if llm_result is None:
     return None
 
-# Mapping LLM-Enum → Domain-Modell
 return _to_domain(llm_result)
 ```
 
-## Typische Tutor-Frage: "Warum Structured Outputs statt manuellem JSON-Parsing?"
+### Likely questions
 
-> *"Weil das LLM auch mit gutem Prompt manchmal Markdown-Code-Fences (```) um das JSON schreibt, oder ein Feld vergisst, oder ein Enum-Value erfindet. Strukturierte Outputs sind Server-seitig Schema-enforced — OpenAI weigert sich, ein ungültiges Objekt zurückzugeben. Keine defensiven `try: json.loads(); except:` mehr. Entweder ich bekomme ein valides Pydantic-Objekt oder None."*
+**"Do you use RAG?"**
 
-## Typische Tutor-Frage: "Was wenn OpenAI das Objekt nicht bauen kann?"
+Yes, in one place. The classifier does not — it's prompt-in, structured-out, single-turn. RAG lives in `services/legal_ai.py`: when a case has multiple evidence items, we retrieve them all plus their classifications from the database, structure them as a context block inside the prompt, and send the aggregate to Claude for legal reasoning across the whole case. That's the Week 9–10 deliverable. The split is deliberate: classification must be deterministic and single-input; case-level legal analysis is reasoning across a set of facts — that's where retrieval earns its place.
 
-> *"Zwei Möglichkeiten. Erstens `msg.refusal` — OpenAI hat aus Safety-Gründen abgelehnt (passiert bei extremen Inhalten manchmal). Zweitens `msg.parsed is None` — OpenAI wollte, hat aber kein valides Schema produziert. In beiden Fällen loggen wir und returnen None. Der Orchestrator (`classifier.py`) wirft dann `ClassifierUnavailableError` — der Router macht daraus ein 503 mit 'bitte später versuchen'. Besser als ein schwacher Fallback."*
+**"Why Structured Outputs instead of manual JSON parsing?"**
 
-## Typische Tutor-Frage: "Warum temperature=0?"
+The model sometimes wraps JSON in markdown fences, or omits a field, or invents an enum value. Structured Outputs enforces the schema server-side — OpenAI refuses to return an invalid object. No defensive try/except, no code-fence stripping. I get a validated Pydantic instance or `None`.
 
-> *"Legal-Kontext. Wenn derselbe Text 'Women should shut up' morgen als Severity MEDIUM und übermorgen als HIGH klassifiziert wird, verlieren wir Vertrauen und Gerichts-Tauglichkeit. Temperature 0 heißt: gleicher Input → gleicher Output. Deterministisch. Wir geben Kreativität auf, gewinnen Reproduzierbarkeit. Die Classification ist kein kreativer Akt, sondern ein Mapping."*
+**"What if OpenAI can't produce the object?"**
 
-## Die komplette Flow-Grafik (siehe TUTOR_PREP.md Section 6)
+Two cases. `msg.refusal` — safety decline. `msg.parsed is None` — conformance failure. Both log and return `None`. The orchestrator in `classifier.py` raises `ClassifierUnavailableError`; the router returns 503 with "please try again." Better than a weak fallback.
+
+**"Why temperature = 0?"**
+
+Legal content must be reproducible. Same input today and next month must produce the same classification, or we lose court-admissibility and user trust. We give up creativity, we gain determinism. Classification is a mapping task, not a creative one.
+
+### The full flow
 
 ```
-USER                          BACKEND                         OPENAI
-  │                              │                               │
-  │  paste text / URL / image    │                               │
-  ├─────────────────────────────►│                               │
-  │                              │  (if URL: scrape content)     │
-  │                              │  (if image: OCR extract text) │
-  │                              │                               │
-  │                              │  system_prompt + user_text    │
-  │                              ├──────────────────────────────►│
-  │                              │                               │
-  │                              │     Pydantic-parsed object    │
-  │                              │◄──────────────────────────────┤
-  │                              │                               │
-  │                              │  _to_domain() map → ORM save  │
-  │                              │  hash content (SHA-256)       │
-  │                              │  timestamp (UTC)              │
-  │                              │                               │
-  │   severity + categories      │                               │
-  │   + laws + summaries         │                               │
-  │◄─────────────────────────────┤                               │
+USER                    BACKEND                             OPENAI
+  │                        │                                   │
+  │  text / URL / image    │                                   │
+  ├───────────────────────►│                                   │
+  │                        │  if URL: scrape                   │
+  │                        │  if image: OCR                    │
+  │                        │                                   │
+  │                        │  system_prompt + user_text        │
+  │                        ├──────────────────────────────────►│
+  │                        │                                   │
+  │                        │        Pydantic-parsed object     │
+  │                        │◄──────────────────────────────────┤
+  │                        │                                   │
+  │                        │  _to_domain → ORM save            │
+  │                        │  hash (SHA-256)                   │
+  │                        │  timestamp (UTC)                  │
+  │                        │                                   │
+  │  severity + categories │                                   │
+  │  + laws + summaries    │                                   │
+  │◄───────────────────────┤                                   │
 ```
 
 ---
 
-# Was ist OFFEN für nächste Woche
+## Open for next week
 
-Ehrliche Liste — **sag das dem Tutor so**:
+State this directly to Zisis:
 
-## Open (P1 — Should do)
-
-1. **Cleanup-Job für 7-Tage-Soft-Delete.** Der Code setzt `deleted_at`, aber es gibt noch keinen Background-Job, der nach 7 Tagen hard-löscht. Ich will das mit einem einfachen Cron-Task lösen.
-
-2. **Art. 20 GDPR — Data-Export-Endpoint.** Die Datenschutzerklärung verspricht es, es gibt noch keinen Endpoint. Plan: `GET /auth/me/export` → JSON mit allen User-Daten.
-
-3. **Magic-Link via echten Email-Provider.** Aktuell gibt der MVP den Token direkt im Response zurück — für die Demo praktisch, für Production muss das über Resend/Sendgrid.
-
-4. **Session-Cookie statt LocalStorage.** HttpOnly + SameSite=Strict + Secure, damit XSS den Token nicht stehlen kann.
-
-5. **Cleanup Tests für Bulk-Import (CSV).** NGO-Partner werden das nutzen, aktuell gibt es nur Minimal-Tests.
-
-## Open (Docs — schon gefixt heute)
-
-- ✅ CLAUDE.md aktualisiert (in-memory → real DB)
-- ✅ TUTOR_PREP.md aktualisiert (3-tier → single-tier mit Begründung)
-- ✅ TUTOR_PREP.md erweitert (Multi-Tenancy Section)
-- ✅ DEPLOY.md geschrieben (Railway + VITE_OPERATOR_* + HTTPS)
-
-## Roadmap — was kommt danach
-
-- **Tier-2-Classifier reaktivieren** (HuggingFace, lokaler Fallback für Privacy-sensitive NGOs) — ggf.
-- **Partner-API ausbauen** — Case-Assignment-Workflow
-- **Offender-DB** — Wiedererkennung von Tätern über Cases hinweg
-- **Echte Deployment auf Railway** (aktuell nur lokal getestet)
+1. **Cleanup job for the 7-day soft delete.** The code sets `deleted_at`; no background job hard-deletes after the window. Plan: a simple cron task.
+2. **Art. 20 GDPR data export.** The privacy policy promises it; the endpoint doesn't exist. Plan: `GET /auth/me/export` returning JSON of all user data.
+3. **Magic link via a real email provider.** The MVP returns the token in the response for convenience; production needs Resend or equivalent.
+4. **HttpOnly session cookie replacing LocalStorage.** SameSite=Strict, Secure, to neutralise XSS.
+5. **Bulk-import CSV integration tests.** NGO partners will use this path; current coverage is minimal.
 
 ---
 
-# Red-Flag-Fragen — was sagst du bei Unsicherheit
+## Red-flag questions and honest answers
 
-## "Wie viele Tests hast du?"
+**"How many tests do you have?"**
 
-Schau in die Datei: `tests/` hat 22 Test-Files. Laut COURSE_SUBMISSION (Week 11) waren es 452 Tests — das ist der letzte dokumentierte Stand. Heute kannst du es verifizieren mit `pytest --tb=no -q` (aber Audit hat's nicht ausgeführt mangels venv-Permission). Sag ehrlich: *"Ungefähr 450, ich checke das heute abend nochmal."*
+Last verified count: 533 passing out of 534 as of yesterday's run. One LLM-integration test is flaky — temperature drift at the model level, not a code bug. You can verify tonight with `pytest --tb=no -q`.
 
-## "Läuft es auf Railway?"
+**"Is it running on Railway?"**
 
-**Nein, noch nicht deployed.** Railway-Config ist da, DEPLOY.md steht seit heute. *"Deployment ist Docker-ready, Railway.json konfiguriert, aber noch nicht live — das ist für diese Woche geplant. Ich will erst sicherstellen, dass alle VITE_OPERATOR_* Env-Vars gesetzt sind, weil die Impressum davon abhängt."*
+Yes, live at `https://safevoice-production-0847.up.railway.app`. Deployed yesterday. The `VITE_OPERATOR_*` build-time env vars still need to be set before the Impressum and Datenschutz pages stop showing "— nicht konfiguriert —" placeholders.
 
-## "Warum kein Transformer-Fallback mehr?"
+**"Why no transformer fallback anymore?"**
 
-Die Antwort ist in TUTOR_PREP.md Section 5 jetzt ausführlich. Kurz: *"Schwache Klassifikation ist schlimmer als keine. Ein MEDIUM-Severity-Badge bei einer echten Todesdrohung würde das Opfer in Sicherheit wiegen — das ist schlimmer als ein ehrliches 503 'bitte später versuchen'."*
+A weak classification is worse than no classification. A MEDIUM badge on a real death threat could lead the victim to close the tab thinking the case is minor — that's harm we caused. An honest 503 "try again" is safer than a misleading result.
 
-## "Wie gehst du mit Bias in GPT-4o-mini um?"
+**"How do you handle bias in gpt-4o-mini?"**
 
-Ehrlich: *"Ich hab es noch nicht systematisch evaluiert. Die Victim-Centered-Regel im Prompt ('im Zweifel fürs Opfer') ist der stärkste Hebel aktuell. Bias-Evaluation mit einem Test-Set aus echten Fällen kommt auf die Roadmap — vielleicht können wir das nächste Woche diskutieren?"*
+Not yet evaluated systematically. The strongest current mitigation is the victim-centred rule in the prompt. A bias evaluation against a gold-standard set of real cases is on the roadmap — a topic I'd like to discuss with you.
 
-Dem Tutor zeigst du damit: (1) du bist dir des Problems bewusst, (2) du hast einen aktuellen Mitigator, (3) du willst mehr — und eröffnest einen Gesprächspunkt.
+**"How do you validate classification correctness?"**
 
-## "Wie validierst du, dass die Classification korrekt ist?"
-
-Aktuell: manuelle Checks gegen bekannte Fälle in `data/mock_data.py`. Kein automatisierter Accuracy-Test. *"Ich hab Test-Daten mit erwarteten Klassifikationen — aber ein Confusion-Matrix-Test gegen ein Gold-Standard-Set ist ein offener Punkt."*
+Manual checks against known cases in `data/mock_data.py`. No automated accuracy test against a gold standard yet — that's an open item.
 
 ---
 
-# Abschließende Checkliste — vor dem Meeting
+## Checklist — before the meeting
 
-- [ ] `cd backend && source venv/bin/activate && pytest --tb=no -q` — wie viele Tests passen aktuell?
-- [ ] Demo lokal durchspielen — alle 3 Schritte funktionieren?
-- [ ] `OPENAI_API_KEY` in der .env ist gesetzt?
-- [ ] `git push` — die 14 ungepushten Commits auf GitHub hoch
-- [ ] Chrome mit 2 Tabs offen: `http://localhost:5173` und `http://localhost:8000/docs`
-- [ ] Terminal mit `uvicorn` + `npm run dev` am Laufen haben
-- [ ] Diese Datei + TUTOR_PREP.md nochmal durchlesen
-
----
-
-**Du bist bereit. Atme. Die Arbeit ist solide. Morgen ist ein Gespräch, keine Prüfung.**
+- [ ] Run `pytest --tb=no -q` and note the count
+- [ ] Walk the demo locally once end-to-end
+- [ ] Confirm `OPENAI_API_KEY` in `.env`
+- [ ] Confirm the 14 recent commits are on origin/main (they are — pushed yesterday)
+- [ ] Two browser tabs: `http://localhost:5173` and `http://localhost:8000/docs`
+- [ ] Two terminals running `uvicorn` and `npm run dev`
+- [ ] Read this sheet and `DEMO_EN.md` once more
+- [ ] Take the quiz in `QUIZ.html`

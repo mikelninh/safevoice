@@ -217,6 +217,69 @@ class BulkImportResult(BaseModel):
     errors: list[str] = []
 
 
+# ── GDPR Art. 20 data portability export ──
+
+class ExportClassification(BaseModel):
+    severity: str = "none"
+    confidence: float = 0.0
+    summary: Optional[str] = None
+    summary_de: Optional[str] = None
+    potential_consequences: Optional[str] = None
+    potential_consequences_de: Optional[str] = None
+    categories: list[str] = []  # names only; reference data not included
+    laws: list[str] = []  # paragraph strings only; reference data not included
+    classified_at: Optional[str] = None
+
+
+class ExportEvidence(BaseModel):
+    id: str
+    content_type: str
+    raw_content: str
+    content_hash: Optional[str] = None
+    hash_chain_previous: Optional[str] = None
+    platform: Optional[str] = None
+    source_url: Optional[str] = None
+    archived_url: Optional[str] = None
+    timestamp_utc: Optional[str] = None
+    classification: Optional[ExportClassification] = None
+
+
+class ExportCase(BaseModel):
+    id: str
+    title: Optional[str] = None
+    status: str = "open"
+    overall_severity: str = "none"
+    visibility: Optional[str] = None
+    org_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    evidence_items: list[ExportEvidence] = []
+
+
+class ExportOrgMembership(BaseModel):
+    org_id: str
+    org_slug: str
+    role: str
+    joined_at: Optional[str] = None
+
+
+class ExportUser(BaseModel):
+    id: str
+    email: str
+    display_name: Optional[str] = None
+    language: Optional[str] = None
+    created_at: Optional[str] = None
+    deleted_at: Optional[str] = None
+
+
+class UserExport(BaseModel):
+    export_version: str = "1.0"
+    exported_at: str
+    user: ExportUser
+    cases: list[ExportCase] = []
+    org_memberships: list[ExportOrgMembership] = []
+
+
 class EmlBuildRequest(BaseModel):
     """Request to build a downloadable .eml file for a case."""
     recipient_email: str

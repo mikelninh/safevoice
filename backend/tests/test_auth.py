@@ -10,6 +10,15 @@ from app.services.auth import (
     soft_delete_user, emergency_delete_user, get_user, cleanup_expired,
 )
 from app.models.user import UserStatus
+from app.database import (
+    SessionLocal,
+    Case as DBCase,
+    EvidenceItem as DBEvidence,
+    Classification as DBClassification,
+    Category as DBCategory,
+    Law as DBLaw,
+    gen_uuid,
+)
 from datetime import datetime, timezone, timedelta
 
 
@@ -177,3 +186,94 @@ class TestDeletion:
 
         # Session should be gone too
         assert get_user_by_session(session.token) is None
+
+
+class TestDataExport:
+    """GDPR Art. 20 — Right to data portability."""
+
+    def test_export_happy_path(self, client):
+        session_token, user_id = _login_flow(client)
+
+        # Seed a case + two evidence + classifications owned by this user
+        db = SessionLocal()
+        try:
+            case = DBCase(
+                id=gen_uuid(),
+                user_id=user_id,
+                title="Exported case",
+                status="open",
+                overall_severity="high",
+                visibility="private",
+            )
+            db.add(case)
+            db.flush()
+
+            cat = db.query(DBCategory).filter_by(id="threat").first()
+            law = db.query(DBLaw).filter_by(id="stgb-241").first()
+
+            for i in range(2):
+                ev = DBEvidence(
+                    id=gen_uuid(),
+                    case_id=case.id,
+                    content_type="text",
+                    raw_content=f"threat text {i}",
+                    content_hash=f"hash{i}",
+                    timestamp_utc=datetime.now(timezone.utc),
+                )
+                db.add(ev)
+                db.flush()
+                cl = DBClassification(
+                    id=gen_uuid(),
+                    evidence_item_id=ev.id,
+                    severity="high",
+                    confidence=0.9,
+                    summary="A threat",
+                    summary_de="Eine Drohung",
+                )
+                db.add(cl)
+                db.flush()
+                if cat:
+                    cl.categories.append(cat)
+                if law:
+                    cl.laws.append(law)
+            db.commit()
+            case_id = case.id
+        finally:
+            db.close()
+
+        resp = client.get(
+            "/auth/me/export",
+            headers={"Authorization": f"Bearer {session_token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/json")
+        cd = resp.headers.get("content-disposition", "")
+        assert "attachment" in cd
+        assert f"safevoice-export-{user_id}" in cd
+        assert ".json" in cd
+
+        data = resp.json()
+        assert data["export_version"] == "1.0"
+        assert "exported_at" in data and data["exported_at"].endswith("Z")
+        assert data["user"]["id"] == user_id
+        assert "email" in data["user"]
+        assert "language" in data["user"]
+        assert isinstance(data["cases"], list)
+        exported = [c for c in data["cases"] if c["id"] == case_id]
+        assert len(exported) == 1
+        ec = exported[0]
+        assert ec["title"] == "Exported case"
+        assert ec["overall_severity"] == "high"
+        assert len(ec["evidence_items"]) == 2
+        for ev in ec["evidence_items"]:
+            assert ev["raw_content"].startswith("threat text")
+            assert ev["classification"]["severity"] == "high"
+            assert ev["classification"]["confidence"] == 0.9
+            # laws exposed by name only — no reference-data bodies
+            assert any("241" in law for law in ev["classification"]["laws"])
+            assert "Threat" in ev["classification"]["categories"]
+        assert isinstance(data["org_memberships"], list)
+
+    def test_export_unauthenticated(self, client):
+        resp = client.get("/auth/me/export")
+        assert resp.status_code == 401
