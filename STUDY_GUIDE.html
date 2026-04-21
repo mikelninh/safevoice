@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SafeVoice · Step-by-Step Implementation Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
+  <style>
+    :root {
+      --bg:        #0a0a0c;
+      --bg-2:     #11111a;
+      --surface:  #161621;
+      --border:   #1f1f2c;
+      --border-hi: #2e2e3c;
+      --text:     #edeef2;
+      --text-2:   #a6a7b0;
+      --text-3:   #65656f;
+      --gold:     #d4ac6b;
+      --blue:     #60a5fa;
+      --green:    #4ade80;
+      --red:      #ef4444;
+      --font-sans:  "Inter", system-ui, -apple-system, sans-serif;
+      --font-serif: "Fraunces", "New York", Georgia, serif;
+      --font-mono:  "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.003em;
+      line-height: 1.65;
+    }
+    .wrap {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      max-width: 1200px;
+      margin: 0 auto;
+      gap: 48px;
+      padding: 60px 32px 120px;
+    }
+    aside {
+      position: sticky;
+      top: 40px;
+      align-self: start;
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+    aside .title {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 18px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    aside .sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-3);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    aside ol { list-style: none; counter-reset: toc; }
+    aside ol li {
+      counter-increment: toc;
+      padding: 6px 0;
+      border-left: 1px solid var(--border);
+      padding-left: 14px;
+      margin-left: 2px;
+    }
+    aside ol li a {
+      display: block;
+      font-size: 13.5px;
+      color: var(--text-2);
+      text-decoration: none;
+      line-height: 1.4;
+      transition: color 150ms ease;
+    }
+    aside ol li a::before {
+      content: "0" counter(toc) " · ";
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+    }
+    aside ol li a:hover { color: var(--gold); }
+    aside ol li.active { border-left-color: var(--gold); }
+    aside ol li.active a { color: var(--gold); }
+    main { max-width: 780px; }
+
+    .kicker {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-weight: 300;
+      font-size: 54px;
+      line-height: 1.06;
+      letter-spacing: -0.024em;
+      margin-bottom: 18px;
+      text-wrap: balance;
+    }
+    h1 em { color: var(--gold); font-style: normal; font-weight: 400; }
+    h2 {
+      font-family: var(--font-serif);
+      font-weight: 400;
+      font-size: 34px;
+      letter-spacing: -0.018em;
+      margin: 60px 0 18px;
+      text-wrap: balance;
+    }
+    h2 em { color: var(--gold); font-style: normal; font-weight: 500; }
+    h3 {
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 17px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 32px 0 10px;
+      color: var(--text-2);
+    }
+    h4 {
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 15px;
+      margin: 24px 0 8px;
+      color: var(--text);
+    }
+    p, li {
+      font-size: 16.5px;
+      color: var(--text-2);
+      margin-bottom: 14px;
+      max-width: 42em;
+    }
+    p strong { color: var(--text); font-weight: 500; }
+    li strong { color: var(--text); font-weight: 500; }
+    em { color: var(--gold); font-style: normal; }
+    ul, ol { padding-left: 22px; margin-bottom: 14px; }
+    ul li, ol li { margin-bottom: 6px; }
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      padding: 1px 6px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--gold);
+    }
+    pre {
+      font-family: var(--font-mono);
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 22px;
+      font-size: 13.5px;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin: 14px 0;
+    }
+    pre code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--text);
+    }
+    .step {
+      position: relative;
+      padding: 14px 18px 14px 50px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+    .step::before {
+      content: attr(data-step);
+      position: absolute;
+      left: 14px; top: 14px;
+      width: 24px; height: 24px;
+      display: grid; place-items: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--bg);
+      background: var(--gold);
+      border-radius: 50%;
+      font-weight: 600;
+    }
+    .callout {
+      padding: 14px 18px;
+      border-left: 2px solid var(--gold);
+      background: rgba(212, 172, 107, 0.04);
+      margin: 16px 0;
+      font-size: 15px;
+    }
+    .callout.why { border-left-color: var(--blue); background: rgba(96, 165, 250, 0.04); }
+    .callout.watch { border-left-color: var(--red); background: rgba(239, 68, 68, 0.04); }
+    .callout .tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+      font-weight: 500;
+      margin-right: 8px;
+    }
+    .callout.why .tag { color: var(--blue); }
+    .callout.watch .tag { color: var(--red); }
+    .meta {
+      display: flex; gap: 28px; flex-wrap: wrap;
+      margin: 10px 0 30px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+    }
+    .meta .k { color: var(--text-2); font-weight: 500; }
+    hr {
+      border: none;
+      height: 1px;
+      background: var(--border);
+      margin: 48px 0;
+    }
+    .intro p { font-size: 18px; color: var(--text); max-width: 36em; }
+    @media (max-width: 900px) {
+      .wrap { grid-template-columns: 1fr; }
+      aside { position: static; max-height: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <aside>
+    <div class="title">Implementation Guide</div>
+    <div class="sub">SafeVoice · rebuild from zero</div>
+    <ol id="toc">
+      <li><a href="#setup">Setup — FastAPI + SQLAlchemy skeleton</a></li>
+      <li><a href="#db">Database — attributes as user / AI / system</a></li>
+      <li><a href="#user">User CRUD — magic link, no passwords</a></li>
+      <li><a href="#case">Case CRUD — implicit creation</a></li>
+      <li><a href="#ai-flow">AI flow — input, context, system prompt</a></li>
+      <li><a href="#classify">Classification endpoints — one brain, four entries</a></li>
+      <li><a href="#parse">Structured Outputs — <code>.parse()</code> + Pydantic</a></li>
+      <li><a href="#rag">RAG — case-level analysis (bonus)</a></li>
+    </ol>
+  </aside>
+
+  <main>
+
+    <div class="kicker">Step-by-step · Mikel · April 2026</div>
+    <h1>How to build <em>SafeVoice</em> — from an empty folder.</h1>
+
+    <div class="intro">
+      <p>If I had to rebuild this tomorrow, in order, this is what I would do. Each chapter follows one shape: <strong>why</strong> (the design decision), <strong>what</strong> (what to build), <strong>how</strong> (the code, step by step), and <strong>gotchas</strong> (mistakes I already made, so you don't have to).</p>
+    </div>
+
+    <div class="meta">
+      <span><span class="k">Stack</span> · FastAPI · SQLAlchemy · OpenAI gpt-4o-mini · Pydantic</span>
+      <span><span class="k">Time to rebuild</span> · a focused weekend</span>
+      <span><span class="k">Skill level</span> · one year of Python</span>
+    </div>
+
+    <hr>
+
+    <!-- ═══════════════════════ 0 · SETUP ═══════════════════════ -->
+    <section id="setup">
+    <h2>01 · Setup — <em>FastAPI + SQLAlchemy skeleton.</em></h2>
+
+    <div class="callout why">
+      <span class="tag">Why</span>
+      FastAPI gives you automatic OpenAPI docs at <code>/docs</code>, Pydantic validation for free, and async if you ever need it. SQLAlchemy gives you a real ORM that works with both SQLite (local, zero setup) and Postgres (production). Pick these two and you can move fast without painting yourself into a corner.
+    </div>
+
+    <h3>Steps</h3>
+
+    <div class="step" data-step="1">Create the project folder and a virtual environment.
+      <pre><code class="language-bash">mkdir safevoice &amp;&amp; cd safevoice
+mkdir backend &amp;&amp; cd backend
+python3 -m venv venv
+source venv/bin/activate</code></pre>
+    </div>
+
+    <div class="step" data-step="2">Install the core dependencies.
+      <pre><code class="language-bash">pip install fastapi uvicorn sqlalchemy alembic openai pydantic python-dotenv
+pip freeze &gt; requirements.txt</code></pre>
+    </div>
+
+    <div class="step" data-step="3">Create the app skeleton. Folder structure:
+      <pre><code class="language-text">backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # FastAPI entry point
+│   ├── database.py          # SQLAlchemy setup + models + seed
+│   ├── routers/             # one file per resource (auth, cases, analyze)
+│   │   └── __init__.py
+│   └── services/            # business logic (classifier, legal_ai)
+│       └── __init__.py
+├── .env                     # OPENAI_API_KEY (NEVER committed)
+├── .gitignore               # venv/, .env, __pycache__/
+└── requirements.txt</code></pre>
+    </div>
+
+    <div class="step" data-step="4">Minimal <code>main.py</code> that wires routers.
+      <pre><code class="language-python">from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.routers import auth, cases, analyze
+from app.database import init_db, seed_categories_and_laws
+
+app = FastAPI(title="SafeVoice API", version="1.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"])
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
+    seed_categories_and_laws()
+
+app.include_router(auth.router,    prefix="/auth",    tags=["auth"])
+app.include_router(cases.router,   prefix="/cases",   tags=["cases"])
+app.include_router(analyze.router, prefix="/analyze", tags=["analyze"])
+
+@app.get("/health")
+def health():
+    return {"ok": True}</code></pre>
+    </div>
+
+    <div class="step" data-step="5">Run it.
+      <pre><code class="language-bash">uvicorn app.main:app --reload
+# → http://localhost:8000/docs</code></pre>
+    </div>
+
+    <div class="callout watch">
+      <span class="tag">Gotcha</span>
+      Never commit <code>.env</code>. Add it to <code>.gitignore</code> <em>before</em> your first commit. If you do commit a key by accident, rotate it immediately — scanning bots index public repos within minutes.
+    </div>
+
+    </section>
+    <hr>
+
+    <!-- ═══════════════════════ 1 · DATABASE ═══════════════════════ -->
+    <section id="db">
+    <h2>02 · Database — <em>label every column.</em></h2>
+
+    <div class="callout why">
+      <span class="tag">Why</span>
+      Zisis's first question is <em>"which columns did the user fill in, and which did the AI?"</em> — and it is the right question. If you can't answer it in one glance, your schema is not trustworthy. The fix is a convention: <strong>every column is either <span style="color: var(--blue)">user input</span>, <span style="color: var(--gold)">AI populated</span>, or <span style="color: var(--text-3)">system generated</span></strong>. Nothing else. The labels live as inline comments in <code>database.py</code> and as <code>note:</code> entries in <code>schema.dbml</code>.
+    </div>
+
+    <h3>Steps</h3>
+
+    <div class="step" data-step="1">Sketch the <em>six tables</em> on paper before writing a line of SQL.
+      <pre><code class="language-text">users            — who was harassed?
+evidence_items   — what exactly happened?
+cases            — which incidents belong together?
+classifications  — what did the AI think?
+categories       — what counts as "harassment"?
+laws             — what counts as "§ 241 StGB"?
++ two M:N junction tables (classification_categories, classification_laws)</code></pre>
+    </div>
+
+    <div class="step" data-step="2">Write <code>database.py</code> with one model per table. Use a comment on every column.
+      <pre><code class="language-python">class Classification(Base):
+    __tablename__ = "classifications"
+
+    id                = Column(String, primary_key=True, default=gen_uuid)         # system_generated
+    evidence_item_id  = Column(String, ForeignKey("evidence_items.id"), unique=True)  # 1-to-1 link
+    severity          = Column(String, default="none")       # AI_POPULATED
+    confidence        = Column(Float,  default=0.0)          # AI_POPULATED 0-1
+    summary           = Column(Text)                         # AI_POPULATED (en)
+    summary_de        = Column(Text)                         # AI_POPULATED (de)
+    classified_at     = Column(DateTime, default=datetime.utcnow)  # system_generated</code></pre>
+    </div>
+
+    <div class="step" data-step="3">Add junction tables for the many-to-many relationships.
+      <pre><code class="language-python">classification_categories = Table(
+    "classification_categories", Base.metadata,
+    Column("classification_id", String, ForeignKey("classifications.id"), primary_key=True),
+    Column("category_id",       String, ForeignKey("categories.id"),       primary_key=True),
+)</code></pre>
+    </div>
+
+    <div class="step" data-step="4">Seed reference data on startup, so a fresh DB ships with categories and laws already in it.
+      <pre><code class="language-python">def seed_categories_and_laws():
+    db = SessionLocal()
+    for id_name, name, name_de in CATEGORY_SEEDS:
+        if not db.query(Category).filter_by(id=id_name).first():
+            db.add(Category(id=id_name, name=name, name_de=name_de))
+    for id_name, code, section, name, name_de, penalty in LAW_SEEDS:
+        if not db.query(Law).filter_by(id=id_name).first():
+            db.add(Law(id=id_name, code=code, section=section,
+                       name=name, name_de=name_de, max_penalty=penalty))
+    db.commit(); db.close()</code></pre>
+    </div>
+
+    <div class="step" data-step="5">Export a DBML mirror at <code>schema.dbml</code> for <code>dbdiagram.io</code>.
+      <pre><code class="language-text">Table classifications {
+  id varchar [pk]
+  severity varchar [note: 'AI POPULATED']
+  confidence float [note: 'AI POPULATED — 0.0-1.0']
+  summary text [note: 'AI POPULATED — English']
+  ...
+}</code></pre>
+    </div>
+
+    <div class="callout watch">
+      <span class="tag">Gotcha</span>
+      Don't store categories or laws as a comma-separated string on <code>classifications</code>. You'll regret it the first time you try <em>"show me every case citing § 241 StGB"</em> — a JOIN on a junction table is one query; a LIKE on a string is a nightmare.
+    </div>
+
+    </section>
+    <hr>
+
+    <!-- ═══════════════════════ 2 · USER CRUD ═══════════════════════ -->
+    <section id="user">
+    <h2>03 · User CRUD — <em>magic link, zero passwords.</em></h2>
+
+    <div class="callout why">
+      <span class="tag">Why</span>
+      A victim under stress forgets passwords. A password database we don't have cannot leak. Magic link is a <em>15-minute single-use token</em> sent by email — log in by clicking a link, no password round-trip. Safer, kinder, and simpler to build.
+    </div>
+
+    <h3>Steps</h3>
+
+    <div class="step" data-step="1">Create <code>routers/auth.py</code>. Plan 8 endpoints upfront — you will thank yourself later.
+      <pre><code class="language-python"># routers/auth.py
+POST   /auth/login           # request magic link (creates user on first login)
+POST   /auth/verify          # exchange token for session
+GET    /auth/me              # read current user
+PUT    /auth/me              # update display_name, language
+POST   /auth/logout          # end session
+DELETE /auth/me              # soft delete (GDPR Art. 17)
+DELETE /auth/me/emergency    # hard delete (purge cases + evidence)
+GET    /auth/me/export       # Art. 20 data export</code></pre>
+    </div>
+
+    <div class="step" data-step="2">Implement <code>/auth/login</code> — create user on first touch, issue a token.
+      <pre><code class="language-python">@router.post("/login")
+def login(req: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(email=req.email).first()
+    if not user:
+        user = User(email=req.email, language=req.language or "de")
+        db.add(user); db.commit(); db.refresh(user)
+
+    token = secrets.token_urlsafe(32)       # 256 bits of entropy
+    expires = datetime.utcnow() + timedelta(minutes=15)
+    db.add(MagicLinkToken(user_id=user.id, token=token, expires_at=expires))
+    db.commit()
+
+    # MVP: return the token directly. Production: email it via Resend.
+    return {"ok": True, "token": token}</code></pre>
+    </div>
+
+    <div class="step" data-step="3">Implement <code>/auth/verify</code> — one-shot exchange, token → session.
+      <pre><code class="language-python">@router.post("/verify")
+def verify(req: VerifyRequest, db: Session = Depends(get_db)):
+    row = db.query(MagicLinkToken).filter_by(token=req.token).first()
+    if not row or row.used_at or row.expires_at &lt; datetime.utcnow():
+        raise HTTPException(401, "invalid_or_expired")
+
+    row.used_at = datetime.utcnow()          # single-use
+    session = Session_(
+        user_id=row.user_id,
+        token=secrets.token_urlsafe(32),
+        expires_at=datetime.utcnow() + timedelta(days=30),
+    )
+    db.add(session); db.commit()
+    return {"session_token": session.token, "user": user_to_dict(row.user)}</code></pre>
+    </div>
+
+    <div class="step" data-step="4">Write a <code>current_user</code> FastAPI dependency. Every protected route uses it.
+      <pre><code class="language-python">def current_user(authorization: str = Header(...), db: Session = Depends(get_db)):
+    token = authorization.replace("Bearer ", "")
+    session = db.query(Session_).filter_by(token=token).first()
+    if not session or session.expires_at &lt; datetime.utcnow():
+        raise HTTPException(401, "invalid_session")
+    return session.user</code></pre>
+    </div>
+
+    <div class="step" data-step="5">Add soft and hard delete for GDPR.
+      <pre><code class="language-python">@router.delete("/me")        # Art. 17 — soft delete, grace period
+def soft_delete(user = Depends(current_user), db = Depends(get_db)):
+    user.deleted_at = datetime.utcnow()
+    db.commit(); return {"ok": True, "grace_period_days": 7}
+
+@router.delete("/me/emergency")   # immediate purge — victim under threat
+def hard_delete(user = Depends(current_user), db = Depends(get_db)):
+    db.query(Case).filter_by(user_id=user.id).delete()
+    db.query(User).filter_by(id=user.id).delete()
+    db.commit(); return {"ok": True}</code></pre>
+    </div>
+
+    <div class="callout watch">
+      <span class="tag">Gotcha</span>
+      Make the session token a <em>separate value</em> from the magic-link token. Magic-link tokens are short-lived (15 min) and single-use; session tokens are long-lived (30 days) and reusable. Mixing them means a stolen magic link gives the attacker 30 days of access.
+    </div>
+
+    </section>
+    <hr>
+
+    <!-- ═══════════════════════ 3 · CASE CRUD ═══════════════════════ -->
+    <section id="case">
+    <h2>04 · Case CRUD — <em>never created by the user.</em></h2>
+
+    <div class="callout why">
+      <span class="tag">Why</span>
+      A harassment victim is already doing enough emotional work. Asking them to <em>also</em> think <em>"do I create a new case, or add to an existing one?"</em> is a cliff between pain and help. So: we expose <code>POST /cases/</code> for completeness, but the real flow creates cases <strong>implicitly</strong> inside <code>POST /analyze/ingest</code>. One paste, one transaction.
+    </div>
+
+    <h3>Steps</h3>
+
+    <div class="step" data-step="1">Implement the standard six CRUD endpoints in <code>routers/cases.py</code>.
+      <pre><code class="language-python">GET    /cases/               # list (current user's cases)
+GET    /cases/{id}           # detail + evidence + classifications
+POST   /cases/               # explicit create — rarely used directly
+PUT    /cases/{id}           # update title, status, notes
+DELETE /cases/{id}           # delete (cascade to evidence + classifications)
+POST   /cases/{id}/evidence  # "filling" — attach evidence to an existing case</code></pre>
+    </div>
+
+    <div class="step" data-step="2">Implement the <em>real</em> entry point in <code>routers/analyze.py</code> — the one the UI calls.
+      <pre><code class="language-python">@router.post("/ingest")
+def ingest(req: IngestRequest, user = Depends(current_user), db = Depends(get_db)):
+    # 1. create the evidence record first (hashed + timestamped)
+    ev = EvidenceItem(
+        raw_content=req.content,
+        content_hash=sha256(req.content.encode()).hexdigest(),
+        hash_chain_previous=_latest_hash_for(user.id, db),
+        timestamp_utc=datetime.utcnow(),
+    )
+
+    # 2. classify the content (one LLM call — see chapter 05)
+    result = classifier.classify(req.content, victim_context=req.victim_context)
+
+    # 3. create the case FROM the classification (not before)
+    case = Case(user_id=user.id,
+                title=result.summary[:80],
+                overall_severity=result.severity,
+                status="open")
+    db.add(case); db.flush()             # get the case.id
+    ev.case_id = case.id
+    db.add(ev)
+    db.add(Classification(evidence_item_id=ev.id, **result.as_dict()))
+    db.commit()
+    return {"case_id": case.id, "severity": result.severity}</code></pre>
+    </div>
+
+    <div class="step" data-step="3">When the user comes back with a related comment, route to <code>/cases/{id}/evidence</code> instead — same classification pipeline, but attach to the existing case.</div>
+
+    <div class="callout watch">
+      <span class="tag">Gotcha</span>
+      The order in <code>ingest</code> matters. <strong>Hash the evidence BEFORE you classify it</strong>, so the hash covers the exact text that entered the system — not whatever comes back from the classifier. The hash chain's whole point is: <em>if anyone tampers with past evidence, the next verify breaks.</em>
+    </div>
+
+    </section>
+    <hr>
+
+    <!-- ═══════════════════════ 4 · AI FLOW ═══════════════════════ -->
+    <section id="ai-flow">
+    <h2>05 · AI flow — <em>input, context, system prompt.</em></h2>
+
+    <div class="callout why">
+      <span class="tag">Why</span>
+      This is the action item with three exclamation marks. Get it wrong and the whole app is guessing; get it right and the whole app has a spine. Three questions to answer, in this order: <strong>what is the input?</strong>, <strong>what is the context?</strong>, <strong>what is the system prompt?</strong>
+    </div>
+
+    <h3>Answers</h3>
+
+    <h4>1 · Input — always a string</h4>
+    <p>Text arrives three ways: paste, URL scrape (served by <code>services/scraper.py</code>), screenshot OCR (served by <code>services/upload.py</code>). By the time <code>classify()</code> runs, it's plain UTF-8 text. <strong>One format, one path.</strong> If you build three classifiers for three inputs, you'll debug three bugs.</p>
+
+    <h4>2 · Context — lives in the system prompt</h4>
+    <p>No RAG at this layer. The classifier's context is the stable list of categories, laws, severity definitions, and the ethical rule — <em>"when in doubt, err on the side of the victim."</em> Because these rules don't change per request, they belong in the system prompt, not retrieved documents.</p>
+
+    <h4>3 · System prompt — the three rules</h4>
+    <pre><code class="language-text">Du bist SafeVoice — Klassifikator für digitale Gewalt in Deutschland.
+
+WICHTIG:
+- Verstehe Tippfehler, Slang, absichtliche Verschleierung
+- Wenn unklar: im Zweifel FÜR das Opfer entscheiden
+- NetzDG § 3 gilt IMMER bei Social Media Inhalten
+
+SEVERITY:
+- low     — Grenzwertig, ggf. Plattform-Verstoß
+- medium  — Wahrscheinlicher Rechtsverstoß
+- high    — Klarer Rechtsverstoß, Anzeige empfohlen
+- critical — Schwere Straftat, sofortige Anzeige</code></pre>
+
+    <div class="callout watch">
+      <span class="tag">Gotcha</span>
+      Keep the system prompt in a <strong>constant at the top of your classifier module</strong> (<code>SYSTEM_PROMPT = """..."""</code>), not buried inside a function. You will want to diff it when you re-tune. If it ends up as an f-string with dynamic fields, you have accidentally built a prompt-injection hole.
+    </div>
+
+    </section>
+    <hr>
+
+    <!-- ═══════════════════════ 5 · CLASSIFICATION ═══════════════════════ -->
+    <section id="classify">
+    <h2>06 · Classification endpoints — <em>four entries, one brain.</em></h2>
+
+    <div class="callout why">
+      <span class="tag">Why</span>
+      Different inputs (free text, URL, screenshot) and different intents (classify-only vs persist) need different HTTP endpoints — but they all call the <em>same</em> classifier function. Keep the classifier stateless and pure; put side-effects in the router. This keeps unit tests fast and one-bug-one-place honest.
+    </div>
+
+    <h3>Steps</h3>
+
+    <div class="step" data-step="1">Declare the four entry points in <code>routers/analyze.py</code>.
+      <pre><code class="language-python">POST /analyze/text    — classify a string, NO DB write (fastest path)
+POST /analyze/ingest  — classify + persist evidence + create case
+POST /analyze/url     — scrape URL → classify
+POST /analyze/case    — case-level RAG across N evidence items (chapter 08)</code></pre>
+    </div>
+
+    <div class="step" data-step="2">Each route normalises its input to a string, then calls the classifier.
+      <pre><code class="language-python">@router.post("/text")
+def classify_text(req: TextRequest):
+    result = classifier.classify(req.content, victim_context=req.victim_context)
+    return result.as_dict()            # pure — no DB
+
+@router.post("/url")
+def classify_url(req: UrlRequest):
+    text = scraper.scrape(req.url)     # → string
+    return classifier.classify(text).as_dict()</code></pre>
+    </div>
+
+    <div class="step" data-step="3">The classifier itself lives in <code>services/classifier.py</code> — one public function, stateless.
+      <pre><code class="language-python">def classify(text: str, *, victim_context: str | None = None) -&gt; ClassificationResult:
+    result = classifier_llm_v2.classify_with_llm(text, victim_context=victim_context)
+    if result is None:
+        raise ClassifierUnavailableError()   # → 503 in the router
+    return result</code></pre>
+    </div>
+
+    <div class="callout watch">
+      <span class="tag">Gotcha</span>
+      Resist the urge to do "one endpoint, a union type input." You'll end up with a Pydantic model with five optional fields and a router that branches on <code>if req.url:... elif req.text: ...</code>. Four small endpoints is cleaner than one fat one.
+    </div>
+
+    </section>
+    <hr>
+
+    <!-- ═══════════════════════ 6 · PARSE OUTPUT ═══════════════════════ -->
+    <section id="parse">
+    <h2>07 · Structured Outputs — <em><code>.parse()</code> + Pydantic.</em></h2>
+
+    <div class="callout why">
+      <span class="tag">Why</span>
+      The older pattern was: ask the model for JSON, hope it returns JSON, <code>json.loads</code>, catch five kinds of exceptions, regex-strip markdown code fences, retry. OpenAI's <strong>Structured Outputs</strong> eliminates all of that. You give the API a Pydantic schema; the API validates the response <em>server-side</em>; you either get a typed Pydantic instance, or you get <code>None</code>. One call, one branch, zero defensive parsing.
+    </div>
+
+    <h3>Steps</h3>
+
+    <div class="step" data-step="1">Define the shape of the answer as a Pydantic model.
+      <pre><code class="language-python">from pydantic import BaseModel, Field, ConfigDict
+from enum import Enum
+
+class LLMSeverity(str, Enum):
+    low = "low"; medium = "medium"; high = "high"; critical = "critical"
+
+class LLMCategory(str, Enum):
+    harassment = "harassment"
+    threat     = "threat"
+    misogyny   = "misogyny"
+    # ... 15 total, exhaustive
+
+class LLMLaw(str, Enum):
+    stgb_185  = "§ 185 StGB"
+    stgb_241  = "§ 241 StGB"
+    netzdg_3  = "NetzDG § 3"
+    # ... 11 total, exhaustive
+
+class LLMClassification(BaseModel):
+    model_config = ConfigDict(extra="forbid")        # reject unknown keys
+
+    severity:                 LLMSeverity
+    categories:               list[LLMCategory] = Field(..., min_length=1)
+    confidence:               float = Field(..., ge=0.0, le=1.0)
+    requires_immediate_action: bool
+    summary:                  str
+    summary_de:               str
+    applicable_laws:          list[LLMLaw]
+    potential_consequences:    str
+    potential_consequences_de: str</code></pre>
+    </div>
+
+    <div class="step" data-step="2">Call <code>client.chat.completions.parse()</code>, not <code>.create()</code>.
+      <pre><code class="language-python">from openai import OpenAI
+client = OpenAI()
+
+completion = client.chat.completions.parse(
+    model="gpt-4o-mini",
+    temperature=0,                     # legal work: deterministic
+    max_tokens=1024,
+    messages=[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": f"Klassifiziere diesen Inhalt:\n\n{text}"},
+    ],
+    response_format=LLMClassification, # ← Pydantic, server-enforced
+)</code></pre>
+    </div>
+
+    <div class="step" data-step="3">Handle the two failure modes — refusal and schema failure — <em>explicitly</em>.
+      <pre><code class="language-python">msg = completion.choices[0].message
+
+if msg.refusal:
+    logger.warning(f"LLM refused: {msg.refusal}")
+    return None                        # clean 503 from orchestrator
+
+parsed = msg.parsed                    # Pydantic instance OR None
+if parsed is None:
+    return None                        # same — clean 503
+
+return _to_domain(parsed)              # map enums to internal types</code></pre>
+    </div>
+
+    <div class="callout watch">
+      <span class="tag">Gotcha</span>
+      Use <strong>enums, not plain strings</strong>, for categories and laws. A plain <code>str</code> field would let the model invent a new category ("hate-speech-ish-maybe") and Pydantic would accept it. An <code>Enum</code> with exhaustive members makes the API refuse the response before it ever reaches your code.
+    </div>
+    <div class="callout watch">
+      <span class="tag">Gotcha 2</span>
+      Structured Outputs requires <strong>every field to be required</strong>. If a field is optional, model it as <code>MyField | None</code> — do not leave it out of <code>required</code>.
+    </div>
+
+    </section>
+    <hr>
+
+    <!-- ═══════════════════════ 7 · RAG ═══════════════════════ -->
+    <section id="rag">
+    <h2>08 · RAG at case level — <em>where retrieval earns its place.</em></h2>
+
+    <div class="callout why">
+      <span class="tag">Why</span>
+      The classifier doesn't need RAG — it takes one string and returns one verdict. But when the user asks <em>"what does my whole case look like?"</em> — that's reasoning across N evidence items at once. That's exactly what retrieve → augment → generate is for.
+    </div>
+
+    <h3>Steps</h3>
+
+    <div class="step" data-step="1">Create <code>services/legal_ai.py</code>. The function takes a case ID, returns a case-level analysis.
+      <pre><code class="language-python">def analyze_case_legally(case_id: str, db: Session) -&gt; CaseAnalysis:
+    # 1. RETRIEVE — pull evidence + classifications from the relational DB
+    case = db.query(Case).filter_by(id=case_id).first()
+    evidence = db.query(EvidenceItem).filter_by(case_id=case_id).all()
+
+    # 2. AUGMENT — build a context block for the prompt
+    context = _format_evidence_context(case, evidence)
+
+    # 3. GENERATE — structured output, same .parse() pattern
+    completion = client.chat.completions.parse(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": CASE_ANALYSIS_PROMPT},
+            {"role": "user",   "content": context},
+        ],
+        response_format=CaseAnalysis,
+    )
+    return completion.choices[0].message.parsed</code></pre>
+    </div>
+
+    <div class="step" data-step="2">Expose at <code>POST /analyze/case</code>.</div>
+
+    <div class="callout why">
+      <span class="tag">Design note</span>
+      You don't need a vector database to call this RAG. The "retrieval" here is a plain SQL query against the relational DB. The pattern is retrieve-then-generate; the infrastructure is whatever finds the relevant data. A vector DB is one implementation of retrieval, not the definition of RAG.
+    </div>
+
+    </section>
+    <hr>
+
+    <!-- ═══════════════════════ CLOSE ═══════════════════════ -->
+    <section>
+    <h2>That's the whole implementation.</h2>
+    <p>If you've followed the eight chapters above, you have a working backend that answers every one of Zisis's six action items. The code you now have in the repo is the same shape — just with a year of cleanup on top.</p>
+    <p>When you present it: say what it does, show <em>one</em> file per action item (<code>database.py</code> · <code>routers/auth.py</code> · <code>routers/cases.py</code> · <code>routers/analyze.py</code> · <code>classifier_llm_v2.py</code> · <code>legal_ai.py</code>), and stop. Six files, six receipts.</p>
+    <p style="color: var(--text-3); margin-top: 40px; font-size: 14px;">Written 20 April 2026 · revisit before the meeting · <a href="QUIZ.html" style="color: var(--gold);">take the quiz →</a></p>
+    </section>
+
+  </main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+<script>
+  // TOC scroll-spy
+  const links = document.querySelectorAll("aside ol li");
+  const sections = Array.from(document.querySelectorAll("main section[id]"));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const id = e.target.id;
+      links.forEach(li => li.classList.remove("active"));
+      const active = document.querySelector(`aside ol li a[href="#${id}"]`);
+      if (active) active.parentElement.classList.add("active");
+    });
+  }, { rootMargin: "-20% 0px -70% 0px" });
+  sections.forEach(s => io.observe(s));
+</script>
+</body>
+</html>
