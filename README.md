@@ -56,7 +56,7 @@ Add your OpenAI key to `.env`:
 ```
 OPENAI_API_KEY=sk-your-key
 ```
-Without it, the regex classifier (Tier 3) is used automatically.
+Without it, the classifier is unavailable and `/analyze/*` endpoints return `503`. There is **no silent regex fallback by design** — a weak classification (e.g. regex misreading a death threat) would be worse than no classification. The old 3-tier fallback was removed on 13 April 2026.
 
 ---
 
