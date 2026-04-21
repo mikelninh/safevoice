@@ -4,11 +4,11 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://safevoice-production-0847.up.railway.app/:path*"
+      "source": "/api/(.*)",
+      "destination": "https://safevoice-production-0847.up.railway.app/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets|manifest|sw\\.js|workbox).*)",
       "destination": "/index.html"
     }
   ]
