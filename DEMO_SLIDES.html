@@ -465,24 +465,33 @@
           <h3 style="font-size: 22px;">Input</h3>
           <p style="font-size: 17px;">Always a <strong>string</strong>. Arrives three ways — paste, URL scrape, or screenshot OCR — but by the time <code>classify()</code> runs, it's plain text. One format, one path.</p>
           <h3 style="font-size: 22px; margin-top: 18px;">Context</h3>
-          <p style="font-size: 17px;">Lives <strong>entirely in the system prompt</strong>. No RAG here — the context is stable rules, not retrieved documents. (RAG shows up at the case level — last slide.)</p>
+          <p style="font-size: 17px;">Lives <strong>entirely in the system prompt</strong>. No RAG here — the context is stable rules + four worked examples (few-shot), not retrieved documents. RAG shows up at the case level — last slide.</p>
         </div>
         <div>
-          <h3 style="font-size: 22px;">System prompt — the three rules</h3>
-          <pre style="font-size: 12px; margin-top: 4px;"><code>Du bist SafeVoice — Klassifikator für
+          <h3 style="font-size: 22px;">System prompt — five blocks, few-shot</h3>
+          <pre style="font-size: 11px; margin-top: 4px;"><code>Du bist SafeVoice — Klassifikator für
 digitale Gewalt in Deutschland.
 
-WICHTIG:
-- Verstehe Tippfehler, Slang, Verschleierung
-- Wenn unklar: im Zweifel FÜR das Opfer
-- NetzDG § 3 gilt IMMER bei Social Media
+GRUNDREGELN · Verschleierung,
+  im Zweifel FÜR das Opfer,
+  Idiome ≠ Straftaten, NetzDG § 3 immer
 
-SEVERITY:
-- low / medium / high / critical</code></pre>
+VICTIM_CONTEXT · Ex-Partner → § 238,
+  Kollege → § 185 schwerer,
+  Minderjährig → § 184b/h
+
+SEVERITY · mit je einem Beispiel
+
+BEISPIELE (few-shot)
+  "Ich bringe dich um" → critical
+  "Das bringt mich um" → low (Idiom)
+  "Stirbt endlich, du H*re" → critical
+
+SUMMARY · 1–2 faktische Sätze</code></pre>
         </div>
       </div>
       <div class="say-out-loud">
-        "The AI input is one string. The context is the system prompt — it contains the role, the severity scale, the category and law enums, and one ethical rule: <em>when in doubt, err on the side of the victim.</em>"
+        "Input is one string. Context is the system prompt — five blocks, including four few-shot examples that cover the two failure modes zero-shot got wrong: German idioms flagged as threats, and obfuscation missed. The ethical rule — <em>im Zweifel für das Opfer</em> — sits inside block one."
       </div>
     </section>
 

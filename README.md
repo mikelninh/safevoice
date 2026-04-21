@@ -74,6 +74,14 @@ Outputs** via `client.chat.completions.parse()`. Detects **15 offense
 categories** and returns: severity, confidence, applicable German paragraphs,
 bilingual summary (DE + EN), and recommended actions.
 
+**Prompt strategy: few-shot with victim_context handling.** The system
+prompt contains four worked examples (including a false-positive idiom
+*"Das bringt mich um"* and an obfuscation case *"Stirbt endlich, du H\*re"*),
+plus explicit rules for how `victim_context` — if provided — should change
+the classification (e.g. *"Ex-Partner → § 238 StGB (Stalking)"* instead of
+just § 241 StGB). This is the same content documented in the Comparison
+Table.
+
 Schema enforcement is server-side. Categories and laws are exhaustive Python
 enums, so the model cannot invent a category or a paragraph. If the model
 refuses on safety grounds or a response fails schema validation, the API
@@ -101,10 +109,13 @@ to OpenAI remains on the roadmap.
 
 ## Database Schema
 
-8 tables following the core flow: **user → case → evidence → classification → categories + laws**
+10 tables. Core flow: **user → case → evidence → classification → categories + laws.**
+Auth state (`magic_link_tokens`, `session_tokens`) persisted so Railway cold-starts don't log users out.
 
 ```
-users                     — who is documenting
+users                     — who is documenting (email + status + last_login)
+magic_link_tokens         — single-use login tokens · 15 min TTL · DB-backed
+session_tokens            — long-lived session tokens · 30 day TTL · DB-backed
 cases                     — one incident (groups related evidence)
 evidence_items            — one piece of content with SHA-256 hash chain
 classifications           — AI output: severity, confidence, summary (DE+EN)
@@ -118,8 +129,8 @@ classification_laws       — many-to-many junction
 
 ## API Endpoints
 
-The core trio — **auth**, **cases**, **analyze** — is what Zisis's action
-items map to. A dozen more routers cover reports, the Partner API, policy
+The core trio — **auth**, **cases**, **analyze** — is what the tutor
+action items map to. A dozen more routers cover reports, the Partner API, policy
 exports, the hash chain, and dashboards.
 
 ```

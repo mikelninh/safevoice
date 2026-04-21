@@ -6,6 +6,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://safevoice-production-0847.up.railway.app/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

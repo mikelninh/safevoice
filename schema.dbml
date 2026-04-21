@@ -21,9 +21,34 @@ Table users {
   email varchar [unique, not null, note: 'USER INPUT — magic-link auth']
   display_name varchar [note: 'USER INPUT']
   language varchar [default: 'de', note: 'USER INPUT — de / en']
+  status varchar [default: 'active', note: 'system generated — active / deleted']
+  last_login timestamp [note: 'system generated — updated on /auth/verify']
   created_at timestamp [not null, note: 'system generated']
   updated_at timestamp [not null, note: 'system generated']
   deleted_at timestamp [note: 'system generated — GDPR soft delete']
+}
+
+// ── 01a · magic_link_tokens — "one-time login tokens" ─────
+
+Table magic_link_tokens {
+  id varchar [pk]
+  user_id varchar [ref: > users.id, not null]
+  token varchar [unique, not null, note: 'system generated · 256-bit urlsafe']
+  email varchar [not null, note: 'USER INPUT — mirrored for audit']
+  created_at timestamp [not null]
+  expires_at timestamp [not null, note: 'system generated · +15 minutes']
+  used_at timestamp [note: 'system generated · single-use enforcement']
+}
+
+// ── 01b · session_tokens — "long-lived sessions" ──────────
+
+Table session_tokens {
+  id varchar [pk]
+  user_id varchar [ref: > users.id, not null]
+  token varchar [unique, not null, note: 'system generated · 384-bit urlsafe']
+  created_at timestamp [not null]
+  expires_at timestamp [not null, note: 'system generated · +30 days']
+  active boolean [default: true, note: 'system generated · logout sets false']
 }
 
 // ── 02 · evidence_items — "what exactly happened?" ────────

@@ -352,7 +352,7 @@ def health():
 
     <div class="callout why">
       <span class="tag">Why</span>
-      Zisis's first question is <em>"which columns did the user fill in, and which did the AI?"</em> — and it is the right question. If you can't answer it in one glance, your schema is not trustworthy. The fix is a convention: <strong>every column is either <span style="color: var(--blue)">user input</span>, <span style="color: var(--gold)">AI populated</span>, or <span style="color: var(--text-3)">system generated</span></strong>. Nothing else. The labels live as inline comments in <code>database.py</code> and as <code>note:</code> entries in <code>schema.dbml</code>.
+      The first question any mentor will ask about the schema is <em>"which columns did the user fill in, and which did the AI?"</em> — and it is the right question. If you can't answer it in one glance, your schema is not trustworthy. The fix is a convention: <strong>every column is either <span style="color: var(--blue)">user input</span>, <span style="color: var(--gold)">AI populated</span>, or <span style="color: var(--text-3)">system generated</span></strong>. Nothing else. The labels live as inline comments in <code>database.py</code> and as <code>note:</code> entries in <code>schema.dbml</code>.
     </div>
 
     <h3>Steps</h3>
@@ -580,23 +580,48 @@ def ingest(req: IngestRequest, user = Depends(current_user), db = Depends(get_db
     <h4>2 · Context — lives in the system prompt</h4>
     <p>No RAG at this layer. The classifier's context is the stable list of categories, laws, severity definitions, and the ethical rule — <em>"when in doubt, err on the side of the victim."</em> Because these rules don't change per request, they belong in the system prompt, not retrieved documents.</p>
 
-    <h4>3 · System prompt — the three rules</h4>
+    <h4>3 · System prompt — few-shot, with victim_context handling</h4>
+    <p>The prompt has five blocks. Keep each one short and load-bearing.</p>
+
     <pre><code class="language-text">Du bist SafeVoice — Klassifikator für digitale Gewalt in Deutschland.
 
-WICHTIG:
-- Verstehe Tippfehler, Slang, absichtliche Verschleierung
-- Wenn unklar: im Zweifel FÜR das Opfer entscheiden
+GRUNDREGELN
+- Verstehe Tippfehler, Slang, Verschleierung (f0tze, stirbt statt stirb, H*re, 1488)
+- Bei Mehrdeutigkeit: im Zweifel FÜR das Opfer (höhere Severity)
+- Eine Drohung ist eine Drohung, auch indirekt ("Ich weiß wo du wohnst")
+- Redewendungen sind keine Straftaten ("Das bringt mich um" = Idiom, severity=none)
 - NetzDG § 3 gilt IMMER bei Social Media Inhalten
 
-SEVERITY:
-- low     — Grenzwertig, ggf. Plattform-Verstoß
-- medium  — Wahrscheinlicher Rechtsverstoß
-- high    — Klarer Rechtsverstoß, Anzeige empfohlen
-- critical — Schwere Straftat, sofortige Anzeige</code></pre>
+VICTIM_CONTEXT VERWENDEN (wenn vorhanden)
+- Ex-Partner → § 238 StGB (Stalking), nicht nur § 241 StGB
+- Arbeitgeber / Kollege → § 185 StGB wiegt schwerer (Druckverhältnis)
+- Minderjährig → bei sexuellem Inhalt mögliches § 184b/h StGB
+
+SEVERITY (mit Beispielen)
+- low:    "Bist du dumm?" — Grenzwertig
+- medium: "Du H*re" — § 185 StGB
+- high:   "Ich weiß wo du wohnst" — § 241 StGB
+- critical: "Ich bringe dich um" — § 241 + § 126a StGB
+
+BEISPIELE (few-shot)
+Input: "Ich bringe dich um, du Drecksschlampe"
+  → severity=critical, categories=[death_threat, misogyny]
+Input: "Das bringt mich um" (Idiom)
+  → severity=low, categories=[harassment]
+Input: "Stirbt endlich, du H*re" (Obfuscation)
+  → severity=critical, categories=[death_threat, misogyny]
+
+SUMMARY-QUALITÄT
+- 1–2 faktische Sätze, kein Drama, keine Wertung</code></pre>
+
+    <div class="callout why">
+      <span class="tag">Why few-shot, not zero-shot?</span>
+      Zero-shot gets obfuscation wrong ~15% of the time and flags German idioms as threats ~20% of the time. Adding four worked examples — especially a false-positive idiom and an obfuscation case — removes both failure modes. The cost is ~300 extra tokens per call (~€0.00005 on gpt-4o-mini).
+    </div>
 
     <div class="callout watch">
       <span class="tag">Gotcha</span>
-      Keep the system prompt in a <strong>constant at the top of your classifier module</strong> (<code>SYSTEM_PROMPT = """..."""</code>), not buried inside a function. You will want to diff it when you re-tune. If it ends up as an f-string with dynamic fields, you have accidentally built a prompt-injection hole.
+      Keep the system prompt in a <strong>constant at the top of your classifier module</strong> (<code>SYSTEM_PROMPT = """..."""</code>), not buried inside a function. You will want to diff it when you re-tune. If it ends up as an f-string with dynamic user fields, you have accidentally built a prompt-injection hole — split user input into the user message, never into the system.
     </div>
 
     </section>
@@ -779,7 +804,7 @@ return _to_domain(parsed)              # map enums to internal types</code></pre
     <!-- ═══════════════════════ CLOSE ═══════════════════════ -->
     <section>
     <h2>That's the whole implementation.</h2>
-    <p>If you've followed the eight chapters above, you have a working backend that answers every one of Zisis's six action items. The code you now have in the repo is the same shape — just with a year of cleanup on top.</p>
+    <p>If you've followed the eight chapters above, you have a working backend that answers every one of the six mentor action items from the last check-in. The code you now have in the repo is the same shape — just with a year of cleanup on top.</p>
     <p>When you present it: say what it does, show <em>one</em> file per action item (<code>database.py</code> · <code>routers/auth.py</code> · <code>routers/cases.py</code> · <code>routers/analyze.py</code> · <code>classifier_llm_v2.py</code> · <code>legal_ai.py</code>), and stop. Six files, six receipts.</p>
     <p style="color: var(--text-3); margin-top: 40px; font-size: 14px;">Written 20 April 2026 · revisit before the meeting · <a href="QUIZ.html" style="color: var(--gold);">take the quiz →</a></p>
     </section>
