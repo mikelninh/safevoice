@@ -84,6 +84,8 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     display_name = Column(String)
     language = Column(String, default="de")
+    status = Column(String, default="active")  # active / deleted
+    last_login = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)  # GDPR soft delete
@@ -95,6 +97,31 @@ class User(Base):
         back_populates="user",
         foreign_keys="OrgMember.user_id",  # disambiguate from invited_by
     )
+
+
+class MagicLinkToken(Base):
+    """Magic-link auth token — single-use, short-lived. Persisted to survive restarts."""
+    __tablename__ = "magic_link_tokens"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    token = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)  # single-use enforcement
+
+
+class SessionToken(Base):
+    """Session token — long-lived (30 days), persisted so Railway cold-starts don't log users out."""
+    __tablename__ = "session_tokens"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    token = Column(String, unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    active = Column(Boolean, default=True, nullable=False)
 
 
 class Org(Base):

@@ -52,12 +52,20 @@ export default function Login({ lang, onLogin }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: magicToken }),
       })
-      if (!res.ok) throw new Error(`Token ungültig (${res.status})`)
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        throw new Error(`HTTP ${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ''}`)
+      }
       const data = await res.json()
+      if (!data.session_token) throw new Error('Response missing session_token')
       localStorage.setItem('sv_session', data.session_token)
       onLogin(data.session_token, data.user)
-    } catch {
-      setError(isDE ? 'Login-Link ungültig oder abgelaufen. Bitte neuen Link anfordern.' : 'Login link invalid or expired. Please request a new one.')
+      // Redirect to cases so the user lands somewhere meaningful.
+      window.location.href = '/cases'
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[verify]', err)
+      setError((isDE ? 'Login fehlgeschlagen: ' : 'Sign-in failed: ') + msg)
       setStep('error')
     } finally {
       setLoading(false)
@@ -71,12 +79,12 @@ export default function Login({ lang, onLogin }: Props) {
           <span className="text-white text-2xl font-bold">SV</span>
         </div>
         <h1 className="text-2xl font-bold text-white mb-2">
-          {isDE ? 'Anmelden' : 'Sign in'}
+          {isDE ? 'Ein-Klick-Login (MVP)' : 'One-click sign-in (MVP)'}
         </h1>
         <p className="text-slate-400 text-sm">
           {isDE
-            ? 'Kein Passwort nötig. Wir senden dir einen Login-Link per E-Mail.'
-            : 'No password needed. We\'ll send you a login link by email.'}
+            ? 'Email-Versand per Resend ist geplant. Im Moment: Email eingeben, ein Klick — fertig.'
+            : 'Email delivery via Resend is on the roadmap. For now: enter your email, one click — done.'}
         </p>
       </div>
 
@@ -117,14 +125,13 @@ export default function Login({ lang, onLogin }: Props) {
 
       {step === 'check' && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center space-y-4">
-          <div className="text-4xl mb-2">📧</div>
           <h2 className="text-white font-semibold">
-            {isDE ? 'Prüfe dein Postfach' : 'Check your inbox'}
+            {isDE ? `Token für ${email} erstellt` : `Token created for ${email}`}
           </h2>
           <p className="text-slate-400 text-sm">
             {isDE
-              ? `Wir haben einen Login-Link an ${email} gesendet. Klicke den Link um dich anzumelden.`
-              : `We sent a login link to ${email}. Click the link to sign in.`}
+              ? 'Email-Versand ist noch nicht live (Resend-Integration geplant). Im MVP wird dein Konto direkt erstellt — ein Klick, fertig.'
+              : 'Email delivery is not yet wired (Resend integration planned). In the MVP your account is created directly — one click, done.'}
           </p>
 
           {/* MVP: direct verify button since we have the token */}
@@ -135,8 +142,17 @@ export default function Login({ lang, onLogin }: Props) {
           >
             {loading
               ? (isDE ? 'Token wird verifiziert…' : 'Verifying token…')
-              : (isDE ? 'Anmelden (Demo)' : 'Sign in (Demo)')}
+              : (isDE ? 'Jetzt einloggen' : 'Sign in now')}
           </button>
+
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+            <span className="text-green-300 text-xs">
+              {isDE
+                ? 'Dein Konto wird sofort erstellt — kein Email-Link nötig solange wir MVP sind.'
+                : 'Your account is created instantly — no email link needed while we are MVP.'}
+            </span>
+          </div>
 
           <button
             onClick={() => { setStep('email'); setMagicToken(null) }}
