@@ -334,42 +334,48 @@
     <!-- 3 · The whole database, one page -->
     <section class="slide">
       <div class="label">the database at a glance</div>
-      <h2>Six tables, <em>six reasons.</em></h2>
-      <table style="margin-top: 6px;">
-        <thead><tr><th style="width: 7%;">#</th><th style="width: 24%;">Table</th><th style="width: 34%;">Question it answers</th><th>Why it's separate</th></tr></thead>
+      <h2>Ten tables, <em>seven reasons.</em></h2>
+      <table style="margin-top: 6px; font-size: clamp(13px, 1.05vw, 16px);">
+        <thead><tr><th style="width: 6%;">#</th><th style="width: 25%;">Table</th><th style="width: 32%;">Question it answers</th><th>Why it's separate</th></tr></thead>
         <tbody>
           <tr>
             <td><strong>01</strong></td>
             <td><code>users</code></td>
             <td><em>Who was harassed?</em></td>
-            <td>Email only — <strong>no passwords</strong>. Magic link + 15-min token.</td>
+            <td>Email only — <strong>no passwords</strong>. user_id on cases is <em>nullable</em> so the quick flow works without an account.</td>
           </tr>
           <tr>
             <td><strong>02</strong></td>
-            <td><code>evidence_items</code></td>
-            <td><em>What exactly happened?</em></td>
-            <td>SHA-256 hash + UTC timestamp + hash chain — court-ready.</td>
+            <td><code>magic_link_tokens</code><br><code>session_tokens</code></td>
+            <td><em>Who is logged in, right now?</em></td>
+            <td>DB-backed so Railway cold-starts don't log users out. Separate from users because tokens come and go; identity doesn't.</td>
           </tr>
           <tr>
             <td><strong>03</strong></td>
+            <td><code>evidence_items</code></td>
+            <td><em>What exactly happened?</em></td>
+            <td>SHA-256 hash + UTC timestamp + hash chain — court-ready, never mutated.</td>
+          </tr>
+          <tr>
+            <td><strong>04</strong></td>
             <td><code>cases</code></td>
             <td><em>Which incidents belong together?</em></td>
             <td>Created <strong>implicitly</strong> — the user never clicks "new case."</td>
           </tr>
           <tr>
-            <td><strong>04</strong></td>
+            <td><strong>05</strong></td>
             <td><code>classifications</code></td>
             <td><em>What did the AI think?</em></td>
             <td>1-to-1 with evidence in its own table — re-classify without losing history.</td>
           </tr>
           <tr>
-            <td><strong>05</strong></td>
+            <td><strong>06</strong></td>
             <td><code>categories</code> · <code>laws</code></td>
             <td><em>What counts as "harassment" or "§ 241 StGB"?</em></td>
             <td>Seeded reference data — 15 categories, 11 paragraphs.</td>
           </tr>
           <tr>
-            <td><strong>06</strong></td>
+            <td><strong>07</strong></td>
             <td><code>classification_categories</code><br><code>classification_laws</code></td>
             <td><em>One comment → many categories + many laws.</em></td>
             <td>M:N junction tables — one JOIN, no substring hacks.</td>
@@ -377,7 +383,7 @@
         </tbody>
       </table>
       <div class="say-out-loud">
-        "Six tables, one story. We remember a person, freeze the evidence, group it into a case, record the AI's verdict separately, and anchor that verdict to a shared vocabulary of categories and German law paragraphs."
+        "Ten tables, two clusters. Eight for content — remember a person, freeze the evidence, group it into a case, record the AI's verdict, anchor it to a shared vocabulary. Two for auth — DB-backed magic-link and session tokens so a Railway cold-start doesn't log anyone out."
       </div>
     </section>
 
