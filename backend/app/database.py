@@ -253,9 +253,42 @@ class Law(Base):
 
 # ── Create all tables ──
 
+def _lightweight_migrations():
+    """Additive migrations for environments without a migration runner.
+
+    For production-grade change we'd use Alembic — but this keeps the MVP
+    truthful: running a fresh column addition against an existing DB should
+    not require manual SQL on Railway. Only ADDS; never drops, never alters
+    data. Safe to run on every boot.
+    """
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return  # create_all will handle it
+
+    existing_cols = {c["name"] for c in inspector.get_columns("users")}
+    statements: list[str] = []
+    if "status" not in existing_cols:
+        statements.append("ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'active'")
+    if "last_login" not in existing_cols:
+        statements.append("ALTER TABLE users ADD COLUMN last_login TIMESTAMP")
+
+    if not statements:
+        return
+
+    with engine.begin() as conn:
+        for stmt in statements:
+            try:
+                conn.execute(text(stmt))
+                print(f"  · applied: {stmt}")
+            except Exception as e:  # pragma: no cover — defensive on mixed schemas
+                print(f"  · skipped ({stmt}): {e}")
+
+
 def init_db():
     """Create all tables. Call once on startup."""
     Base.metadata.create_all(bind=engine)
+    _lightweight_migrations()
     print(f"Database initialized: {DATABASE_URL}")
 
 
