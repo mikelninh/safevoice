@@ -11,11 +11,17 @@ interface Props { lang: Lang }
 export default function Cases({ lang }: Props) {
   const [cases, setCases] = useState<Case[]>([])
   const [loading, setLoading] = useState(true)
+  const [showSyncBanner, setShowSyncBanner] = useState(false)
   const isDE = lang === 'de'
 
   useEffect(() => {
     // Migrate any legacy evidence items from old format
     migrateLegacyEvidence()
+
+    // Show the sync banner if the user has NO session AND has dismissed it before
+    const hasSession = !!localStorage.getItem('sv_session')
+    const dismissed = localStorage.getItem('sv_sync_banner_dismissed') === '1'
+    setShowSyncBanner(!hasSession && !dismissed)
 
     // Load local cases + demo cases from API
     const localCases = getLocalCases()
@@ -33,6 +39,38 @@ export default function Cases({ lang }: Props) {
       .finally(() => setLoading(false))
   }, [])
 
+  const dismissSyncBanner = () => {
+    localStorage.setItem('sv_sync_banner_dismissed', '1')
+    setShowSyncBanner(false)
+  }
+
+  const SyncBanner = () => (
+    <div className="bg-indigo-950/40 border border-indigo-900 rounded-xl px-4 py-3 mb-6 flex items-start gap-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-indigo-200 text-sm font-medium mb-1">
+          {t(lang, 'cases.sync.banner.title')}
+        </p>
+        <p className="text-slate-400 text-xs leading-relaxed">
+          {t(lang, 'cases.sync.banner.body')}
+        </p>
+      </div>
+      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+        <Link
+          to="/login"
+          className="text-indigo-300 hover:text-indigo-200 text-xs font-semibold whitespace-nowrap"
+        >
+          {t(lang, 'cases.sync.banner.cta')}
+        </Link>
+        <button
+          onClick={dismissSyncBanner}
+          className="text-slate-500 hover:text-slate-400 text-xs whitespace-nowrap"
+        >
+          {t(lang, 'cases.sync.banner.dismiss')}
+        </button>
+      </div>
+    </div>
+  )
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center text-slate-400">
@@ -43,20 +81,24 @@ export default function Cases({ lang }: Props) {
 
   if (cases.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-slate-400 mb-4">{t(lang, 'cases.empty')}</p>
-        <Link
-          to="/analyze"
-          className="inline-block bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
-        >
-          {t(lang, 'cases.empty.cta')}
-        </Link>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        {showSyncBanner && <SyncBanner />}
+        <div className="text-center py-8">
+          <p className="text-slate-400 mb-4">{t(lang, 'cases.empty')}</p>
+          <Link
+            to="/analyze"
+            className="inline-block bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+          >
+            {t(lang, 'cases.empty.cta')}
+          </Link>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
+      {showSyncBanner && <SyncBanner />}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">{t(lang, 'cases.title')}</h1>
         <Link

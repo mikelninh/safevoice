@@ -10,6 +10,13 @@ const translations: Record<Lang, Record<string, string>> = {
     'nav.cases': 'Meine Fälle',
     'nav.new': 'Neuer Fall',
     'nav.about': 'Über SafeVoice',
+    'nav.login': 'Anmelden',
+    'nav.account': 'Mein Konto',
+
+    'cases.sync.banner.title': 'Deine Fälle sind lokal gespeichert.',
+    'cases.sync.banner.body': 'Um sie über mehrere Geräte zu synchronisieren oder zu exportieren, melde dich mit deiner Email-Adresse an. Kein Passwort nötig — nur ein Link per Mail.',
+    'cases.sync.banner.cta': 'Anmelden →',
+    'cases.sync.banner.dismiss': 'Später',
 
     'home.hero.title': 'Ein Werkzeug für das, was dir passiert ist.',
     'home.hero.subtitle': 'SafeVoice hilft dir, digitale Belästigung zu dokumentieren, rechtlich einzuordnen und Anzeige zu erstatten.',
@@ -103,6 +110,13 @@ const translations: Record<Lang, Record<string, string>> = {
     'app.tagline': 'Document digital violence. Enable justice.',
 
     'nav.cases': 'My Cases',
+    'nav.login': 'Sign in',
+    'nav.account': 'My Account',
+
+    'cases.sync.banner.title': 'Your cases are stored locally.',
+    'cases.sync.banner.body': 'To sync them across devices or export them, sign in with your email address. No password needed — just a one-time link by email.',
+    'cases.sync.banner.cta': 'Sign in →',
+    'cases.sync.banner.dismiss': 'Later',
     'nav.new': 'New Case',
     'nav.about': 'About SafeVoice',
 

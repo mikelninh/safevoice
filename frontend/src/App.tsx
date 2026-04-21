@@ -46,6 +46,7 @@ function NavBar({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
           {navLink('/analyze', t(lang, 'nav.new'))}
           {navLink('/cases', t(lang, 'nav.cases'))}
           {navLink('/dashboard', 'Dashboard')}
+          {navLink('/login', localStorage.getItem('sv_session') ? t(lang, 'nav.account') : t(lang, 'nav.login'))}
           <button
             onClick={() => setLang(lang === 'de' ? 'en' : 'de')}
             className="text-slate-500 hover:text-slate-300 text-xs font-mono border border-slate-700 rounded px-2 py-1 transition-colors"
