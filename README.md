@@ -244,6 +244,25 @@ safevoice/
 
 ---
 
+## Docs
+
+Everything beyond the quick start lives in `docs/`.
+
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) — Railway + Vercel deployment, env vars, DNS
+- [`docs/DESIGN.md`](docs/DESIGN.md) — design system + product principles
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — what's next
+- [`docs/DEMO_EN.md`](docs/DEMO_EN.md) / [`docs/DEMO.md`](docs/DEMO.md) — demo scripts
+- [`docs/AI_FLOW.md`](docs/AI_FLOW.md), [`docs/CASE_CRUD.md`](docs/CASE_CRUD.md), [`docs/USER_CRUD.md`](docs/USER_CRUD.md), [`docs/DB_ATTRIBUTES.md`](docs/DB_ATTRIBUTES.md), [`docs/CLASSIFICATION_API.md`](docs/CLASSIFICATION_API.md) — per-topic deep dives
+
+Meeting + presentation artefacts live in `docs/meeting/`:
+
+- [`docs/meeting/DEMO_SLIDES.html`](docs/meeting/DEMO_SLIDES.html) — 11-slide tutor deck
+- [`docs/meeting/DEMO_CODE_WALKTHROUGH.html`](docs/meeting/DEMO_CODE_WALKTHROUGH.html) — code walkthrough with syntax highlighting
+- [`docs/meeting/STUDY_GUIDE.html`](docs/meeting/STUDY_GUIDE.html) — step-by-step implementation guide
+- [`docs/meeting/QUIZ.html`](docs/meeting/QUIZ.html) — 20 MC questions covering all six action items
+
+---
+
 ## Legal Note
 
 SafeVoice provides legal context as general information, not legal advice. For individual advice, contact [HateAid](https://hateaid.org) or a qualified attorney.

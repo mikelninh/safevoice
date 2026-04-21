@@ -60,11 +60,11 @@ docker-compose up --build    # app on :8000, Postgres on :5432
 - `CORS_ORIGINS` — comma-separated allowed origins (defaults to `localhost:5173,localhost:8000`).
 - `RATE_LIMIT_RPM` — requests per minute (default 120, disabled when `TESTING` env var is set).
 - `TESTING` — set to any value to disable rate limiting in tests.
-- `VITE_OPERATOR_NAME`, `VITE_OPERATOR_EMAIL`, `VITE_OPERATOR_ADDRESS`, `VITE_OPERATOR_CITY` — required on the **frontend** build to populate Impressum (§5 TMG). See `DEPLOY.md`.
+- `VITE_OPERATOR_NAME`, `VITE_OPERATOR_EMAIL`, `VITE_OPERATOR_ADDRESS`, `VITE_OPERATOR_CITY` — required on the **frontend** build to populate Impressum (§5 TMG). See `docs/DEPLOY.md`.
 
 ## Schema
 
-Database schema lives both in `schema.dbml` (paste into dbdiagram.io to visualize) and as real SQLAlchemy models in `models/db.py`. Tables: `users`, `cases`, `evidence_items`, `classifications`, `categories`, `laws` + junction tables `classification_categories`, `classification_laws` + multi-tenancy tables `orgs`, `org_members`. Alembic migration history lives in `alembic/versions/` — apply with `alembic upgrade head` (the Docker entrypoint runs this automatically).
+Database schema lives both in `schema.dbml` (paste into dbdiagram.io to visualize) and as real SQLAlchemy models in `app/database.py`. Content tables: `users`, `cases`, `evidence_items`, `classifications`, `categories`, `laws` + junction tables `classification_categories`, `classification_laws`. Auth tables: `magic_link_tokens`, `session_tokens` (DB-backed so Railway cold-starts don't log users out). Alembic migration history lives in `alembic/versions/`. A lightweight additive migration runs at `init_db()` startup for missing columns.
 
 ## Multilingual
 
