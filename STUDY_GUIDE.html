@@ -357,14 +357,22 @@ def health():
 
     <h3>Steps</h3>
 
-    <div class="step" data-step="1">Sketch the <em>six tables</em> on paper before writing a line of SQL.
-      <pre><code class="language-text">users            — who was harassed?
-evidence_items   — what exactly happened?
-cases            — which incidents belong together?
-classifications  — what did the AI think?
-categories       — what counts as "harassment"?
-laws             — what counts as "§ 241 StGB"?
-+ two M:N junction tables (classification_categories, classification_laws)</code></pre>
+    <div class="step" data-step="1">Sketch <em>ten tables in two clusters</em> on paper before writing a line of SQL.
+      <pre><code class="language-text">CONTENT (8 tables)
+  users            — who was harassed?
+  evidence_items   — what exactly happened?
+  cases            — which incidents belong together?
+  classifications  — what did the AI think?
+  categories       — what counts as "harassment"?
+  laws             — what counts as "§ 241 StGB"?
+  + two M:N junctions (classification_categories, classification_laws)
+
+AUTH (2 tables)
+  magic_link_tokens — one-time login tokens (15-min TTL, single-use)
+  session_tokens    — long-lived sessions (30-day TTL, revocable)
+
+The split matters: you could replace the whole auth cluster with OAuth
+or Auth0 tomorrow and not touch a single content-cluster table.</code></pre>
     </div>
 
     <div class="step" data-step="2">Write <code>database.py</code> with one model per table. Use a comment on every column.
@@ -421,11 +429,16 @@ laws             — what counts as "§ 241 StGB"?
 
     <!-- ═══════════════════════ 2 · USER CRUD ═══════════════════════ -->
     <section id="user">
-    <h2>03 · User CRUD — <em>magic link, zero passwords.</em></h2>
+    <h2>03 · User CRUD — <em>magic link, zero passwords, DB-backed.</em></h2>
 
     <div class="callout why">
-      <span class="tag">Why</span>
+      <span class="tag">Why magic-link?</span>
       A victim under stress forgets passwords. A password database we don't have cannot leak. Magic link is a <em>15-minute single-use token</em> sent by email — log in by clicking a link, no password round-trip. Safer, kinder, and simpler to build.
+    </div>
+
+    <div class="callout watch">
+      <span class="tag">Why DB-backed?</span>
+      Tokens and sessions MUST live in a database, not a Python dict. The earliest version of this service stored them in <code>_magic_links: dict = {}</code> at module scope. It worked locally. In production on Railway's free tier, the instance sleeps after ~5 min of inactivity; the dict evaporates; every user is logged out; every in-flight magic link becomes "invalid or expired" with no explanation. The lesson isn't <em>"Railway is flaky"</em> — it's that auth state is <em>application state</em>, not <em>cache state</em>, and belongs in Postgres.
     </div>
 
     <h3>Steps</h3>
