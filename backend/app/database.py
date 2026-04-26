@@ -182,6 +182,7 @@ class Case(Base):
     assignee = relationship("User", foreign_keys=[assigned_to])
     org = relationship("Org", back_populates="cases")
     evidence_items = relationship("EvidenceItem", back_populates="case")
+    case_analyses = relationship("CaseAnalysisRow", back_populates="case", order_by="CaseAnalysisRow.generated_at.desc()")
 
 
 class EvidenceItem(Base):
@@ -251,6 +252,35 @@ class Law(Base):
     jurisdiction = Column(String, default="DE")
 
 
+class CaseAnalysisRow(Base):
+    """Persisted case-level legal analysis. One row per analysis run, so re-
+    analyses preserve history rather than mutate it. The case row caches the
+    latest summary fields for fast read; this table holds the full audit trail.
+    """
+    __tablename__ = "case_analyses"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    case_id = Column(String, ForeignKey("cases.id"), nullable=False, index=True)
+
+    # AI_POPULATED — the structured output of analyze_case_legally
+    legal_assessment_de = Column(Text, nullable=False)
+    legal_assessment_en = Column(Text, nullable=False)
+    strongest_charges_json = Column(Text, nullable=False)        # JSON array of Charge dicts
+    recommended_actions_json = Column(Text, nullable=False)      # JSON array of Action dicts
+    risk_assessment_json = Column(Text, nullable=False)          # JSON object: {escalation_risk, reason_de, reason_en}
+    evidence_gaps_json = Column(Text, nullable=False)            # JSON array of EvidenceGap dicts
+    cross_references = Column(Text, nullable=False)
+    disclaimer_de = Column(Text, nullable=False)
+    disclaimer_en = Column(Text, nullable=False)
+
+    # system_generated — audit trail
+    generated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    model_used = Column(String, nullable=False)                  # e.g. "gpt-4o-mini"
+    prompt_version = Column(String, nullable=False)              # e.g. "v1"
+
+    case = relationship("Case", back_populates="case_analyses")
+
+
 # ── Create all tables ──
 
 def _lightweight_migrations():
@@ -273,11 +303,19 @@ def _lightweight_migrations():
     if "last_login" not in existing_cols:
         statements.append("ALTER TABLE users ADD COLUMN last_login TIMESTAMP")
 
-    if not statements:
+    # case_analyses table — added 2026-04-26 for Legal-AI CRUD demo
+    if "case_analyses" not in inspector.get_table_names():
+        # Will be created by Base.metadata.create_all on first run; this branch
+        # exists for the explicit log message only.
+        statements.append(None)  # sentinel — handled by create_all
+
+    if not [s for s in statements if s]:
         return
 
     with engine.begin() as conn:
         for stmt in statements:
+            if stmt is None:
+                continue
             try:
                 conn.execute(text(stmt))
                 print(f"  · applied: {stmt}")

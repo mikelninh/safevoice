@@ -113,6 +113,82 @@ def is_available() -> bool:
     return _openai_installed and bool(os.environ.get("OPENAI_API_KEY"))
 
 
+# Bumped whenever the system prompt or schema materially changes.
+# Stored on each case_analyses row so historical runs remain auditable.
+LEGAL_PROMPT_VERSION = "v1"
+
+
+def analyze_and_persist_case(case_id: str, db) -> dict | None:
+    """RETRIEVE + AUGMENT + GENERATE + WRITE + UPDATE — the CRUD-demonstrating path.
+
+    1. Read the case + all evidence + classifications from Postgres
+    2. Format as context, send to OpenAI with Pydantic schema
+    3. INSERT a new `case_analyses` row (full audit trail, model + prompt version recorded)
+    4. UPDATE `cases.summary`, `summary_de`, `overall_severity` from the analysis
+    5. Commit, return the structured analysis as a dict
+
+    Re-running this on the same case INSERTS a new analysis row (history preserved)
+    and UPDATEs the case's cached summary fields — never duplicates, never mutates
+    history. Mirrors the same Structured Outputs pattern as the single-evidence
+    classifier; the difference is granularity.
+    """
+    import json as _json
+    from app.database import Case as DBCase, CaseAnalysisRow
+    from app.services.db_helpers import case_to_pydantic
+
+    db_case = db.query(DBCase).filter_by(id=case_id).first()
+    if db_case is None:
+        return None
+
+    # Convert DB shape → Pydantic Case shape so the read-only analyze_case_legally
+    # (which expects content_text, captured_at, applicable_laws) sees the right fields.
+    pydantic_case = case_to_pydantic(db_case)
+
+    # Reuse the existing read-only function for retrieve + augment + generate.
+    # Then layer the write on top so the read path stays callable in isolation.
+    analysis = analyze_case_legally(pydantic_case)
+    if analysis is None:
+        return None
+
+    risk = analysis.get("risk_assessment") or {}
+    row = CaseAnalysisRow(
+        case_id=case_id,
+        legal_assessment_de=analysis.get("legal_assessment_de", ""),
+        legal_assessment_en=analysis.get("legal_assessment_en", ""),
+        strongest_charges_json=_json.dumps(analysis.get("strongest_charges", []), ensure_ascii=False),
+        recommended_actions_json=_json.dumps(analysis.get("recommended_actions", []), ensure_ascii=False),
+        risk_assessment_json=_json.dumps(risk, ensure_ascii=False),
+        evidence_gaps_json=_json.dumps(analysis.get("evidence_gaps", []), ensure_ascii=False),
+        cross_references=analysis.get("cross_references", ""),
+        disclaimer_de=analysis.get("disclaimer_de", ""),
+        disclaimer_en=analysis.get("disclaimer_en", ""),
+        model_used="gpt-4o-mini" if is_available() else "fallback",
+        prompt_version=LEGAL_PROMPT_VERSION,
+    )
+    db.add(row)
+
+    # UPDATE the case's cached summary fields — the human-facing surface.
+    # This is what makes the AI's imprint visible on a plain GET /cases/{id}.
+    db_case.summary_de = analysis.get("legal_assessment_de", db_case.summary_de)
+    db_case.summary = analysis.get("legal_assessment_en", db_case.summary)
+    escalation = (risk.get("escalation_risk") or "").lower()
+    if escalation in ("low", "medium", "high"):
+        db_case.overall_severity = escalation
+
+    db.commit()
+    db.refresh(row)
+
+    return {
+        **analysis,
+        "_persisted": {
+            "case_analysis_id": row.id,
+            "generated_at": row.generated_at.isoformat(),
+            "model_used": row.model_used,
+            "prompt_version": row.prompt_version,
+        },
+    }
+
+
 def analyze_case_legally(case: Case) -> dict | None:
     """Deep legal analysis of an entire case.
 

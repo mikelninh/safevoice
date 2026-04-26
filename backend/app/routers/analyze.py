@@ -286,3 +286,23 @@ def analyze_case(req: AnalyzeCaseRequest):
         overall_severity=overall_severity,
         evidence_count=len(req.evidence_items),
     )
+
+
+@router.post("/case/{case_id}/legal")
+def analyze_case_legal(case_id: str, db: Session = Depends(get_db)):
+    """Run case-level Legal-AI analysis and PERSIST the result.
+
+    Reads case + all evidence + classifications, calls the Legal-AI service
+    with Pydantic-enforced output, INSERTS a `case_analyses` row (audit trail),
+    UPDATES `case.summary` / `summary_de` / `overall_severity`, and returns the
+    structured analysis. Re-running this endpoint on the same case appends a
+    new analysis row (history preserved), never duplicates evidence.
+
+    Demonstrates: read → think (LLM) → write (insert) → update (case fields).
+    """
+    from app.services.legal_ai import analyze_and_persist_case
+
+    result = analyze_and_persist_case(case_id, db)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Case not found or analysis failed")
+    return result
