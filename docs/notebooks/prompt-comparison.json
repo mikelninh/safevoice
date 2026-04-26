@@ -1,0 +1,697 @@
+[
+  {
+    "case_id": "01-baseline",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.7,
+    "laws": [],
+    "input_tokens": 491,
+    "output_tokens": 101,
+    "latency_ms": 2696,
+    "cost_eur": 0.0001248525,
+    "error": null
+  },
+  {
+    "case_id": "02-soft-insult",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.85,
+    "laws": [
+      "\u00a7 185 StGB"
+    ],
+    "input_tokens": 491,
+    "output_tokens": 97,
+    "latency_ms": 2065,
+    "cost_eur": 0.0001226205,
+    "error": null
+  },
+  {
+    "case_id": "03-obfuscated-insult",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "medium",
+    "categories": [
+      "harassment",
+      "misogyny"
+    ],
+    "confidence": 0.85,
+    "laws": [
+      "\u00a7 185 StGB"
+    ],
+    "input_tokens": 490,
+    "output_tokens": 133,
+    "latency_ms": 2537,
+    "cost_eur": 0.00014256900000000002,
+    "error": null
+  },
+  {
+    "case_id": "04-implicit-threat",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "medium",
+    "categories": [
+      "stalking"
+    ],
+    "confidence": 0.85,
+    "laws": [
+      "\u00a7 238 StGB"
+    ],
+    "input_tokens": 492,
+    "output_tokens": 161,
+    "latency_ms": 2818,
+    "cost_eur": 0.000158472,
+    "error": null
+  },
+  {
+    "case_id": "05-death-threat",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "critical",
+    "categories": [
+      "threat",
+      "death_threat",
+      "misogyny"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 185 StGB",
+      "\u00a7 241 StGB"
+    ],
+    "input_tokens": 498,
+    "output_tokens": 137,
+    "latency_ms": 2701,
+    "cost_eur": 0.00014591700000000002,
+    "error": null
+  },
+  {
+    "case_id": "06-obfuscated-death",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "high",
+    "categories": [
+      "threat",
+      "death_threat",
+      "harassment"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 185 StGB",
+      "\u00a7 241 StGB"
+    ],
+    "input_tokens": 495,
+    "output_tokens": 130,
+    "latency_ms": 2362,
+    "cost_eur": 0.00014159250000000002,
+    "error": null
+  },
+  {
+    "case_id": "01-baseline",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P2-Production",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1579,
+    "output_tokens": 94,
+    "latency_ms": 16674,
+    "cost_eur": 0.00027272250000000004,
+    "error": null
+  },
+  {
+    "case_id": "02-soft-insult",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P2-Production",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1579,
+    "output_tokens": 104,
+    "latency_ms": 14705,
+    "cost_eur": 0.00027830250000000003,
+    "error": null
+  },
+  {
+    "case_id": "03-obfuscated-insult",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P2-Production",
+    "severity": "medium",
+    "categories": [
+      "misogyny",
+      "harassment"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1578,
+    "output_tokens": 102,
+    "latency_ms": 14588,
+    "cost_eur": 0.00027704700000000005,
+    "error": null
+  },
+  {
+    "case_id": "04-implicit-threat",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P2-Production",
+    "severity": "high",
+    "categories": [
+      "threat"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1580,
+    "output_tokens": 118,
+    "latency_ms": 3266,
+    "cost_eur": 0.000286254,
+    "error": null
+  },
+  {
+    "case_id": "05-death-threat",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P2-Production",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "confidence": 1.0,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1586,
+    "output_tokens": 140,
+    "latency_ms": 15303,
+    "cost_eur": 0.00029936700000000004,
+    "error": null
+  },
+  {
+    "case_id": "06-obfuscated-death",
+    "model": "gpt-4o-mini",
+    "prompt_id": "P2-Production",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1583,
+    "output_tokens": 131,
+    "latency_ms": 15117,
+    "cost_eur": 0.0002939265,
+    "error": null
+  },
+  {
+    "case_id": "01-baseline",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.1,
+    "laws": [],
+    "input_tokens": 491,
+    "output_tokens": 90,
+    "latency_ms": 2357,
+    "cost_eur": 0.000316572,
+    "error": null
+  },
+  {
+    "case_id": "02-soft-insult",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.8,
+    "laws": [
+      "\u00a7 185 StGB"
+    ],
+    "input_tokens": 491,
+    "output_tokens": 137,
+    "latency_ms": 2493,
+    "cost_eur": 0.00038650800000000003,
+    "error": null
+  },
+  {
+    "case_id": "03-obfuscated-insult",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "medium",
+    "categories": [
+      "harassment",
+      "misogyny"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 185 StGB"
+    ],
+    "input_tokens": 490,
+    "output_tokens": 142,
+    "latency_ms": 2475,
+    "cost_eur": 0.00039357600000000003,
+    "error": null
+  },
+  {
+    "case_id": "04-implicit-threat",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "medium",
+    "categories": [
+      "threat"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "\u00a7 241 StGB"
+    ],
+    "input_tokens": 492,
+    "output_tokens": 191,
+    "latency_ms": 2915,
+    "cost_eur": 0.0004672320000000001,
+    "error": null
+  },
+  {
+    "case_id": "05-death-threat",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "confidence": 0.99,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB"
+    ],
+    "input_tokens": 498,
+    "output_tokens": 142,
+    "latency_ms": 1934,
+    "cost_eur": 0.000396552,
+    "error": null
+  },
+  {
+    "case_id": "06-obfuscated-death",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "harassment",
+      "misogyny"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB"
+    ],
+    "input_tokens": 495,
+    "output_tokens": 145,
+    "latency_ms": 2409,
+    "cost_eur": 0.0003999,
+    "error": null
+  },
+  {
+    "case_id": "01-baseline",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P2-Production",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1579,
+    "output_tokens": 110,
+    "latency_ms": 14397,
+    "cost_eur": 0.0007510680000000001,
+    "error": null
+  },
+  {
+    "case_id": "02-soft-insult",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P2-Production",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1579,
+    "output_tokens": 129,
+    "latency_ms": 14230,
+    "cost_eur": 0.00077934,
+    "error": null
+  },
+  {
+    "case_id": "03-obfuscated-insult",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P2-Production",
+    "severity": "medium",
+    "categories": [
+      "misogyny",
+      "harassment"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1578,
+    "output_tokens": 170,
+    "latency_ms": 29736,
+    "cost_eur": 0.0008399760000000001,
+    "error": null
+  },
+  {
+    "case_id": "04-implicit-threat",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P2-Production",
+    "severity": "high",
+    "categories": [
+      "threat"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1580,
+    "output_tokens": 161,
+    "latency_ms": 2707,
+    "cost_eur": 0.0008273280000000002,
+    "error": null
+  },
+  {
+    "case_id": "05-death-threat",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P2-Production",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "confidence": 0.99,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1586,
+    "output_tokens": 139,
+    "latency_ms": 2014,
+    "cost_eur": 0.0007968240000000001,
+    "error": null
+  },
+  {
+    "case_id": "06-obfuscated-death",
+    "model": "gpt-4.1-mini",
+    "prompt_id": "P2-Production",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1583,
+    "output_tokens": 138,
+    "latency_ms": 15001,
+    "cost_eur": 0.0007942200000000001,
+    "error": null
+  },
+  {
+    "case_id": "01-baseline",
+    "model": "gpt-5-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.95,
+    "laws": [],
+    "input_tokens": 490,
+    "output_tokens": 373,
+    "latency_ms": 5293,
+    "cost_eur": 0.0008077050000000001,
+    "error": null
+  },
+  {
+    "case_id": "02-soft-insult",
+    "model": "gpt-5-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.92,
+    "laws": [
+      "\u00a7 185 StGB"
+    ],
+    "input_tokens": 490,
+    "output_tokens": 795,
+    "latency_ms": 8293,
+    "cost_eur": 0.001592625,
+    "error": null
+  },
+  {
+    "case_id": "03-obfuscated-insult",
+    "model": "gpt-5-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "low",
+    "categories": [
+      "harassment",
+      "sexual_harassment"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 489,
+    "output_tokens": 1352,
+    "latency_ms": 15591,
+    "cost_eur": 0.0026284125000000003,
+    "error": null
+  },
+  {
+    "case_id": "04-implicit-threat",
+    "model": "gpt-5-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "high",
+    "categories": [
+      "threat"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 238 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 491,
+    "output_tokens": 1696,
+    "latency_ms": 21975,
+    "cost_eur": 0.0032687174999999997,
+    "error": null
+  },
+  {
+    "case_id": "05-death-threat",
+    "model": "gpt-5-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "harassment"
+    ],
+    "confidence": 0.97,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 497,
+    "output_tokens": 1384,
+    "latency_ms": 15389,
+    "cost_eur": 0.0026897925000000005,
+    "error": null
+  },
+  {
+    "case_id": "06-obfuscated-death",
+    "model": "gpt-5-mini",
+    "prompt_id": "P1-Minimalist",
+    "severity": "high",
+    "categories": [
+      "death_threat",
+      "harassment",
+      "sexual_harassment"
+    ],
+    "confidence": 0.9,
+    "laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 494,
+    "output_tokens": 1628,
+    "latency_ms": 18527,
+    "cost_eur": 0.0031429350000000003,
+    "error": null
+  },
+  {
+    "case_id": "01-baseline",
+    "model": "gpt-5-mini",
+    "prompt_id": "P2-Production",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.98,
+    "laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1578,
+    "output_tokens": 661,
+    "latency_ms": 7906,
+    "cost_eur": 0.001596345,
+    "error": null
+  },
+  {
+    "case_id": "02-soft-insult",
+    "model": "gpt-5-mini",
+    "prompt_id": "P2-Production",
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "confidence": 0.88,
+    "laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1578,
+    "output_tokens": 781,
+    "latency_ms": 9417,
+    "cost_eur": 0.001819545,
+    "error": null
+  },
+  {
+    "case_id": "03-obfuscated-insult",
+    "model": "gpt-5-mini",
+    "prompt_id": "P2-Production",
+    "severity": "medium",
+    "categories": [
+      "misogyny",
+      "harassment"
+    ],
+    "confidence": 0.92,
+    "laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1577,
+    "output_tokens": 786,
+    "latency_ms": 9366,
+    "cost_eur": 0.0018286125000000002,
+    "error": null
+  },
+  {
+    "case_id": "04-implicit-threat",
+    "model": "gpt-5-mini",
+    "prompt_id": "P2-Production",
+    "severity": "high",
+    "categories": [
+      "threat"
+    ],
+    "confidence": 0.92,
+    "laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1579,
+    "output_tokens": 1447,
+    "latency_ms": 15971,
+    "cost_eur": 0.0030585375,
+    "error": null
+  },
+  {
+    "case_id": "05-death-threat",
+    "model": "gpt-5-mini",
+    "prompt_id": "P2-Production",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "confidence": 0.96,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1585,
+    "output_tokens": 786,
+    "latency_ms": 10564,
+    "cost_eur": 0.0018304725,
+    "error": null
+  },
+  {
+    "case_id": "06-obfuscated-death",
+    "model": "gpt-5-mini",
+    "prompt_id": "P2-Production",
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "confidence": 0.95,
+    "laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "input_tokens": 1582,
+    "output_tokens": 1177,
+    "latency_ms": 16630,
+    "cost_eur": 0.0025570350000000005,
+    "error": null
+  }
+]
