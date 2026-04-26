@@ -128,12 +128,20 @@ def add_evidence_with_classification(
     db.flush()  # get evidence.id before creating classification
 
     # Create classification
+    # Source the prompt version from the classifier module so it stays in
+    # lockstep with whatever SYSTEM_PROMPT actually produced this output.
+    try:
+        from app.services.classifier_llm_v2 import PROMPT_VERSION as _classifier_prompt_version
+    except Exception:
+        _classifier_prompt_version = "v1"
+
     classification = DBClassification(
         id=gen_uuid(),
         evidence_item_id=evidence.id,
         severity=classification_result.severity.value,
         confidence=classification_result.confidence,
         classifier_tier=classifier_tier,
+        prompt_version=_classifier_prompt_version,
         summary=classification_result.summary,
         summary_de=classification_result.summary_de,
         potential_consequences=classification_result.potential_consequences,

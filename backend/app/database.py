@@ -214,6 +214,7 @@ class Classification(Base):
     severity = Column(String, default="none")  # AI_POPULATED
     confidence = Column(Float, default=0.0)  # AI_POPULATED: 0.0-1.0
     classifier_tier = Column(Integer)  # system_generated: 1=LLM, 2=transformer, 3=regex
+    prompt_version = Column(String, default="v1")  # system_generated — the system-prompt version that produced this classification. Bumped when the prompt materially changes; lets us re-run history and detect drift.
     summary = Column(Text)  # AI_POPULATED
     summary_de = Column(Text)  # AI_POPULATED
     potential_consequences = Column(Text)  # AI_POPULATED
@@ -277,6 +278,7 @@ class CaseAnalysisRow(Base):
     generated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     model_used = Column(String, nullable=False)                  # e.g. "gpt-4o-mini"
     prompt_version = Column(String, nullable=False)              # e.g. "v1"
+    cited_law_sources_json = Column(Text, default="[]")          # AI_POPULATED — provenance of authoritative statute texts injected into the prompt; each entry has paragraph, source_path, last_updated, text_sha256
 
     case = relationship("Case", back_populates="case_analyses")
 
@@ -302,6 +304,18 @@ def _lightweight_migrations():
         statements.append("ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'active'")
     if "last_login" not in existing_cols:
         statements.append("ALTER TABLE users ADD COLUMN last_login TIMESTAMP")
+
+    # classifications.prompt_version — added 2026-04-26 for prompt audit trail
+    if "classifications" in inspector.get_table_names():
+        cls_cols = {c["name"] for c in inspector.get_columns("classifications")}
+        if "prompt_version" not in cls_cols:
+            statements.append("ALTER TABLE classifications ADD COLUMN prompt_version VARCHAR DEFAULT 'v1'")
+
+    # case_analyses.cited_law_sources_json — added 2026-04-26 for GitLaw RAG provenance
+    if "case_analyses" in inspector.get_table_names():
+        ca_cols = {c["name"] for c in inspector.get_columns("case_analyses")}
+        if "cited_law_sources_json" not in ca_cols:
+            statements.append("ALTER TABLE case_analyses ADD COLUMN cited_law_sources_json TEXT DEFAULT '[]'")
 
     # case_analyses table — added 2026-04-26 for Legal-AI CRUD demo
     if "case_analyses" not in inspector.get_table_names():

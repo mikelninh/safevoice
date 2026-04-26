@@ -127,6 +127,13 @@ _LAW_MAP: dict[LLMLaw, GermanLaw] = {
 }
 
 
+# Bumped whenever SYSTEM_PROMPT or the few-shot examples change materially.
+# Stored on every Classification row so historical classifications remain
+# attributable to a specific prompt revision — lets us re-run history when
+# the prompt changes and detect drift.
+PROMPT_VERSION = "v1"
+
+
 SYSTEM_PROMPT = """Du bist SafeVoice — ein juristischer Klassifikator für digitale Gewalt in Deutschland.
 
 Du analysierst Texte aus sozialen Medien (Kommentare, DMs, Posts) und klassifizierst sie nach deutschem Strafrecht.

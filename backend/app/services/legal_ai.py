@@ -151,6 +151,35 @@ def analyze_and_persist_case(case_id: str, db) -> dict | None:
         return None
 
     risk = analysis.get("risk_assessment") or {}
+
+    # Capture provenance of authoritative statute texts the analyzer grounded
+    # in — fetched from GitLaw via app.services.law_text. Stored as JSON on
+    # the case_analyses row so a defense lawyer can verify exactly which
+    # version of which paragraph this analysis cited.
+    cited_law_sources = []
+    try:
+        from app.services.law_text import get_law_text
+        seen = set()
+        for ev in pydantic_case.evidence_items:
+            if not ev.classification:
+                continue
+            for law in ev.classification.applicable_laws:
+                if law.paragraph in seen:
+                    continue
+                seen.add(law.paragraph)
+                lt = get_law_text(law.paragraph)
+                if lt is not None:
+                    cited_law_sources.append({
+                        "paragraph": lt.paragraph,
+                        "title": lt.title,
+                        "law_abbr": lt.law_abbr,
+                        "source_path": lt.source_path,
+                        "last_updated": lt.last_updated,
+                        "text_sha256": lt.text_sha256,
+                    })
+    except Exception as _e:  # pragma: no cover — provenance is best-effort
+        pass
+
     row = CaseAnalysisRow(
         case_id=case_id,
         legal_assessment_de=analysis.get("legal_assessment_de", ""),
@@ -164,6 +193,7 @@ def analyze_and_persist_case(case_id: str, db) -> dict | None:
         disclaimer_en=analysis.get("disclaimer_en", ""),
         model_used="gpt-4o-mini" if is_available() else "fallback",
         prompt_version=LEGAL_PROMPT_VERSION,
+        cited_law_sources_json=_json.dumps(cited_law_sources, ensure_ascii=False),
     )
     db.add(row)
 
@@ -204,6 +234,7 @@ def analyze_case_legally(case: Case) -> dict | None:
 
         # RETRIEVE + AUGMENT — pull evidence + classifications, structure as context
         evidence_summary = []
+        cited_laws: list[str] = []  # collect for authoritative-text grounding
         for ev in case.evidence_items:
             entry = {
                 "author": ev.author_username,
@@ -215,9 +246,23 @@ def analyze_case_legally(case: Case) -> dict | None:
                 entry["severity"] = ev.classification.severity.value
                 entry["categories"] = [c.value for c in ev.classification.categories]
                 entry["laws"] = [l.paragraph for l in ev.classification.applicable_laws]
+                for l in ev.classification.applicable_laws:
+                    if l.paragraph not in cited_laws:
+                        cited_laws.append(l.paragraph)
             evidence_summary.append(entry)
 
+        # AUGMENT (cont'd) — fetch authoritative statute text from the GitLaw
+        # corpus for every cited law. Keeps the analysis grounded in real
+        # current text instead of model-recall. Falls back silently when a
+        # paragraph isn't in the corpus (e.g. NetzDG is in a different file).
+        from app.services.law_text import get_law_text, format_authoritative_block
+        law_texts = [get_law_text(c) for c in cited_laws]
+        law_texts = [lt for lt in law_texts if lt is not None]
+        authoritative_block = format_authoritative_block(law_texts)
+
         user_prompt = f"""Analyze this digital harassment case.
+
+{authoritative_block}
 
 Case ID: {case.id}
 Title: {case.title}
