@@ -237,8 +237,21 @@ def main():
     cases = corpus["cases"]
     print(f"Eval corpus v{corpus.get('version')} · {len(cases)} cases · prompt v{PROMPT_VERSION}\n")
 
+    # gpt-4o-mini tier-1 RPM limit on this project = 5. Throttle to 1 call
+    # every 13s to stop 429 errors from polluting the eval signal. Bypass with
+    # FAST=1 if the project tier ever gets bumped.
+    rate_delay = 0 if os.environ.get("FAST") else 13.0
+    last_call = 0.0
+
     results: list[CaseResult] = []
     for i, case in enumerate(cases, 1):
+        if rate_delay:
+            elapsed_since = time.time() - last_call
+            if elapsed_since < rate_delay:
+                wait = rate_delay - elapsed_since
+                print(f"  [{i:2d}/{len(cases)}] sleeping {wait:.1f}s for OpenAI RPM…")
+                time.sleep(wait)
+        last_call = time.time()
         r = run_one(case)
         mark = "✓" if r.passed else "✗"
         print(f"  [{i:2d}/{len(cases)}] {mark} {r.id:32s} → got {r.got_severity or 'ERR':9s} (exp {r.expected_severity:9s}) {r.latency_ms:5d}ms"

@@ -1,0 +1,1046 @@
+[
+  {
+    "id": "A1-baseline-greeting",
+    "category": "A \u00b7 baseline non-harassment",
+    "text": "Hallo, sch\u00f6ner Post heute",
+    "expected_severity": "low",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "\u00a7 126a StGB"
+    ],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 3294,
+    "error": null
+  },
+  {
+    "id": "A2-baseline-compliment",
+    "category": "A \u00b7 baseline non-harassment",
+    "text": "Tolle Arbeit, ich folge dir schon lange",
+    "expected_severity": "low",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [
+      "\u00a7 238 StGB",
+      "\u00a7 241 StGB"
+    ],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 3197,
+    "error": null
+  },
+  {
+    "id": "A3-baseline-disagreement",
+    "category": "A \u00b7 baseline non-harassment",
+    "text": "Ich sehe das anders, deine Argumentation \u00fcberzeugt mich nicht",
+    "expected_severity": "low",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [
+      "\u00a7 185 StGB"
+    ],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 22246,
+    "error": null
+  },
+  {
+    "id": "B1-soft-insult",
+    "category": "B \u00b7 soft / borderline",
+    "text": "Du bist so dumm",
+    "expected_severity": "low",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 2586,
+    "error": null
+  },
+  {
+    "id": "B2-rude-but-not-criminal",
+    "category": "B \u00b7 soft / borderline",
+    "text": "Was ein Schwachsinn, lern erstmal richtig denken",
+    "expected_severity": "low",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 2368,
+    "error": null
+  },
+  {
+    "id": "B3-mild-mockery",
+    "category": "B \u00b7 soft / borderline",
+    "text": "Lol bist du immer so verzweifelt online?",
+    "expected_severity": "low",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 2075,
+    "error": null
+  },
+  {
+    "id": "C1-direct-insult",
+    "category": "C \u00b7 direct insult \u00a7 185",
+    "text": "Du bist eine erb\u00e4rmliche Existenz",
+    "expected_severity": "medium",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": false,
+    "categories_ok": true,
+    "laws_present": false,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 3292,
+    "error": null
+  },
+  {
+    "id": "C2-arschloch",
+    "category": "C \u00b7 direct insult \u00a7 185",
+    "text": "Du bist ein Arschloch",
+    "expected_severity": "medium",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": false,
+    "categories_ok": true,
+    "laws_present": false,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 2760,
+    "error": null
+  },
+  {
+    "id": "C3-public-defamation",
+    "category": "C \u00b7 direct insult \u00a7 185",
+    "text": "Diese Person ist ein notorischer L\u00fcgner und Betr\u00fcger",
+    "expected_severity": "medium",
+    "got_severity": "medium",
+    "expected_categories": [
+      "defamation"
+    ],
+    "got_categories": [
+      "defamation"
+    ],
+    "expected_laws": [
+      "\u00a7 186 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": false,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 15670,
+    "error": null
+  },
+  {
+    "id": "C4-knowingly-false-claim",
+    "category": "C \u00b7 direct insult \u00a7 185",
+    "text": "Ich habe gesehen, wie er Geld aus der Kasse genommen hat \u2014 das wissen alle",
+    "expected_severity": "high",
+    "got_severity": "medium",
+    "expected_categories": [
+      "verleumdung"
+    ],
+    "got_categories": [
+      "defamation"
+    ],
+    "expected_laws": [
+      "\u00a7 187 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": false,
+    "categories_ok": false,
+    "laws_present": false,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 16155,
+    "error": null
+  },
+  {
+    "id": "D1-misogyny-slur",
+    "category": "D \u00b7 misogyny + obfuscation",
+    "text": "Du Hure",
+    "expected_severity": "medium",
+    "got_severity": "medium",
+    "expected_categories": [
+      "misogyny"
+    ],
+    "got_categories": [
+      "misogyny",
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 3298,
+    "error": null
+  },
+  {
+    "id": "D2-misogyny-obfuscated-asterisk",
+    "category": "D \u00b7 misogyny + obfuscation",
+    "text": "Du H*re",
+    "expected_severity": "medium",
+    "got_severity": "medium",
+    "expected_categories": [
+      "misogyny"
+    ],
+    "got_categories": [
+      "misogyny",
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 14813,
+    "error": null
+  },
+  {
+    "id": "D3-misogyny-leetspeak",
+    "category": "D \u00b7 misogyny + obfuscation",
+    "text": "Du f0tze",
+    "expected_severity": "medium",
+    "got_severity": "medium",
+    "expected_categories": [
+      "misogyny"
+    ],
+    "got_categories": [
+      "misogyny",
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 15413,
+    "error": null
+  },
+  {
+    "id": "D4-misogyny-coded-slut",
+    "category": "D \u00b7 misogyny + obfuscation",
+    "text": "Geh wieder auf den Strich, du Schlampe",
+    "expected_severity": "medium",
+    "got_severity": "medium",
+    "expected_categories": [
+      "misogyny"
+    ],
+    "got_categories": [
+      "misogyny",
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 15369,
+    "error": null
+  },
+  {
+    "id": "E1-implicit-threat-address",
+    "category": "E \u00b7 implicit threats \u00a7 241",
+    "text": "Ich wei\u00df wo du wohnst",
+    "expected_severity": "high",
+    "got_severity": "high",
+    "expected_categories": [
+      "threat"
+    ],
+    "got_categories": [
+      "threat"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 3415,
+    "error": null
+  },
+  {
+    "id": "E2-implicit-threat-workplace",
+    "category": "E \u00b7 implicit threats \u00a7 241",
+    "text": "Ich wei\u00df wo du arbeitest und wann du Feierabend hast",
+    "expected_severity": "high",
+    "got_severity": "high",
+    "expected_categories": [
+      "threat"
+    ],
+    "got_categories": [
+      "stalking",
+      "threat"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 238 StGB",
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 14750,
+    "error": null
+  },
+  {
+    "id": "E3-implicit-threat-family",
+    "category": "E \u00b7 implicit threats \u00a7 241",
+    "text": "Hoffentlich ist deinen Kindern auf dem Schulweg nichts passiert",
+    "expected_severity": "high",
+    "got_severity": "low",
+    "expected_categories": [
+      "threat"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": false,
+    "categories_ok": false,
+    "laws_present": false,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 14396,
+    "error": null
+  },
+  {
+    "id": "E4-conditional-threat",
+    "category": "E \u00b7 implicit threats \u00a7 241",
+    "text": "Wenn du das nochmal postest, wird etwas passieren",
+    "expected_severity": "high",
+    "got_severity": "high",
+    "expected_categories": [
+      "threat"
+    ],
+    "got_categories": [
+      "threat"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 14695,
+    "error": null
+  },
+  {
+    "id": "F1-explicit-death-threat",
+    "category": "F \u00b7 explicit death threats",
+    "text": "Ich bringe dich um",
+    "expected_severity": "critical",
+    "got_severity": "critical",
+    "expected_categories": [
+      "death_threat"
+    ],
+    "got_categories": [
+      "death_threat"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 2045,
+    "error": null
+  },
+  {
+    "id": "F2-death-threat-with-misogyny",
+    "category": "F \u00b7 explicit death threats",
+    "text": "Ich bringe dich um, du Drecksschlampe",
+    "expected_severity": "critical",
+    "got_severity": "critical",
+    "expected_categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "got_categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 14911,
+    "error": null
+  },
+  {
+    "id": "F3-death-threat-obfuscated",
+    "category": "F \u00b7 explicit death threats",
+    "text": "Stirbt endlich, du H*re",
+    "expected_severity": "critical",
+    "got_severity": "critical",
+    "expected_categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "got_categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 14950,
+    "error": null
+  },
+  {
+    "id": "F4-suicide-incitement",
+    "category": "F \u00b7 explicit death threats",
+    "text": "Bring dich endlich um, niemand w\u00fcrde dich vermissen",
+    "expected_severity": "critical",
+    "got_severity": "critical",
+    "expected_categories": [
+      "death_threat"
+    ],
+    "got_categories": [
+      "death_threat",
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 15728,
+    "error": null
+  },
+  {
+    "id": "G1-idiom-bringt-mich-um",
+    "category": "G \u00b7 idiom traps",
+    "text": "Das bringt mich um",
+    "expected_severity": "low",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB"
+    ],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 2267,
+    "error": null
+  },
+  {
+    "id": "G2-idiom-koennte-sterben",
+    "category": "G \u00b7 idiom traps",
+    "text": "Ich k\u00f6nnte sterben vor Lachen \u00fcber deinen Post",
+    "expected_severity": "low",
+    "got_severity": "low",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [
+      "\u00a7 241 StGB"
+    ],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 15439,
+    "error": null
+  },
+  {
+    "id": "G3-idiom-tot-fuer-mich",
+    "category": "G \u00b7 idiom traps",
+    "text": "Du bist tot f\u00fcr mich",
+    "expected_severity": "low",
+    "got_severity": "medium",
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB"
+    ],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": false,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 15908,
+    "error": null
+  },
+  {
+    "id": "G4-hyperbole-headshot",
+    "category": "G \u00b7 idiom traps",
+    "text": "Diese Niederlage hat mich umgehauen, voll der Headshot",
+    "expected_severity": "low",
+    "got_severity": null,
+    "expected_categories": [
+      "harassment"
+    ],
+    "got_categories": [],
+    "expected_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [
+      "\u00a7 241 StGB"
+    ],
+    "got_laws": [],
+    "severity_match": false,
+    "categories_ok": false,
+    "laws_present": false,
+    "forbidden_absent": false,
+    "passed": false,
+    "latency_ms": 25471,
+    "error": "classifier returned None (no API key, refusal, or parse failure)"
+  },
+  {
+    "id": "H1-nazi-88",
+    "category": "H \u00b7 Nazi dog-whistles \u00b7 \u00a7 130",
+    "text": "Sieg, Br\u00fcder. 88!",
+    "expected_severity": "high",
+    "got_severity": "medium",
+    "expected_categories": [
+      "volksverhetzung"
+    ],
+    "got_categories": [
+      "volksverhetzung"
+    ],
+    "expected_laws": [
+      "\u00a7 130 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 130 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": false,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 16167,
+    "error": null
+  },
+  {
+    "id": "H2-nazi-1488",
+    "category": "H \u00b7 Nazi dog-whistles \u00b7 \u00a7 130",
+    "text": "1488 forever, white pride",
+    "expected_severity": "high",
+    "got_severity": "medium",
+    "expected_categories": [
+      "volksverhetzung"
+    ],
+    "got_categories": [
+      "volksverhetzung"
+    ],
+    "expected_laws": [
+      "\u00a7 130 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 130 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": false,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 3367,
+    "error": null
+  },
+  {
+    "id": "H3-nazi-14-words",
+    "category": "H \u00b7 Nazi dog-whistles \u00b7 \u00a7 130",
+    "text": "We must secure the existence of our people and a future for white children",
+    "expected_severity": "high",
+    "got_severity": "high",
+    "expected_categories": [
+      "volksverhetzung"
+    ],
+    "got_categories": [
+      "volksverhetzung"
+    ],
+    "expected_laws": [
+      "\u00a7 130 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 130 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 15602,
+    "error": null
+  },
+  {
+    "id": "H4-volksverhetzung-direct",
+    "category": "H \u00b7 Nazi dog-whistles \u00b7 \u00a7 130",
+    "text": "Diese Migranten sind alle Vergewaltiger und geh\u00f6ren vergast",
+    "expected_severity": "critical",
+    "got_severity": "critical",
+    "expected_categories": [
+      "volksverhetzung",
+      "death_threat"
+    ],
+    "got_categories": [
+      "volksverhetzung"
+    ],
+    "expected_laws": [
+      "\u00a7 130 StGB",
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 130 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": false,
+    "laws_present": false,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 14929,
+    "error": null
+  },
+  {
+    "id": "I1-stalking-ex-partner",
+    "category": "I \u00b7 stalking \u00a7 238 with victim_context",
+    "text": "Ich wei\u00df wo du wohnst",
+    "expected_severity": "high",
+    "got_severity": "high",
+    "expected_categories": [
+      "stalking",
+      "threat"
+    ],
+    "got_categories": [
+      "stalking",
+      "threat"
+    ],
+    "expected_laws": [
+      "\u00a7 238 StGB",
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 238 StGB",
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 2702,
+    "error": null
+  },
+  {
+    "id": "I2-stalking-pattern",
+    "category": "I \u00b7 stalking \u00a7 238 with victim_context",
+    "text": "Wieder so ein s\u00fc\u00dfes Foto. Ich sehe dich auch gerne im roten Mantel.",
+    "expected_severity": "high",
+    "got_severity": "low",
+    "expected_categories": [
+      "stalking"
+    ],
+    "got_categories": [
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 238 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": false,
+    "categories_ok": false,
+    "laws_present": false,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 14920,
+    "error": null
+  },
+  {
+    "id": "I3-coworker-pressure",
+    "category": "I \u00b7 stalking \u00a7 238 with victim_context",
+    "text": "Wenn du bei der n\u00e4chsten Sitzung wieder etwas sagst, das mir nicht passt, wei\u00df ich, was zu tun ist",
+    "expected_severity": "high",
+    "got_severity": "high",
+    "expected_categories": [
+      "threat",
+      "harassment"
+    ],
+    "got_categories": [
+      "threat",
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 185 StGB",
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 15384,
+    "error": null
+  },
+  {
+    "id": "J1-english-death-threat",
+    "category": "J \u00b7 cross-language",
+    "text": "I will find you and kill you, bitch",
+    "expected_severity": "critical",
+    "got_severity": "critical",
+    "expected_categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "got_categories": [
+      "death_threat",
+      "harassment"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": false,
+    "laws_present": false,
+    "forbidden_absent": true,
+    "passed": false,
+    "latency_ms": 14900,
+    "error": null
+  },
+  {
+    "id": "J2-mixed-de-en",
+    "category": "J \u00b7 cross-language",
+    "text": "Du f**ng Hure, kill yourself",
+    "expected_severity": "critical",
+    "got_severity": "critical",
+    "expected_categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "got_categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "expected_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "forbidden_laws": [],
+    "got_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "severity_match": true,
+    "categories_ok": true,
+    "laws_present": true,
+    "forbidden_absent": true,
+    "passed": true,
+    "latency_ms": 3115,
+    "error": null
+  }
+]

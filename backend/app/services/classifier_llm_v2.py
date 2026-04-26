@@ -131,7 +131,14 @@ _LAW_MAP: dict[LLMLaw, GermanLaw] = {
 # Stored on every Classification row so historical classifications remain
 # attributable to a specific prompt revision — lets us re-run history when
 # the prompt changes and detect drift.
-PROMPT_VERSION = "v1"
+#
+# v2 (2026-04-26): added 4 few-shot examples + 1 system rule to close the
+# gaps surfaced by the v1 eval run (66% → target 80%+):
+#   - direct insult ("Du bist ein Arschloch") → medium § 185 (was misclassified low)
+#   - Nazi-coded numbers (88, 1488, 14 words) → high § 130 (was missed)
+#   - oblique threat to family ("Hoffentlich ist deinen Kindern…") → high § 241
+#   - idiom counter-example ("Du bist tot für mich") → low (was over-classified medium)
+PROMPT_VERSION = "v2"
 
 
 SYSTEM_PROMPT = """Du bist SafeVoice — ein juristischer Klassifikator für digitale Gewalt in Deutschland.
@@ -172,7 +179,10 @@ KATEGORIEN (Kurz-Definition, Auswahl)
 - misogyny: frauenfeindliche Angriffe, geschlechtsspezifisch.
 - body_shaming: Abwertung Aussehen, Körper, Gewicht.
 - sexual_harassment: sexualisierte Belästigung, non-consent Inhalte.
-- volksverhetzung: Aufstachelung gegen Gruppen (§ 130).
+- volksverhetzung: Aufstachelung gegen Gruppen (§ 130). Beachte rechtsextreme Zahlencodes:
+  88 = HH = Heil Hitler · 1488 = "14 words" + 88 · "14 words" / "14 W" = David-Lane-Slogan ("We must
+  secure the existence of our people…"). Wenn solche Codes erkennbar verwendet werden, ist § 130 in
+  der Regel einschlägig und severity ≥ high.
 - stalking: wiederholte Annäherung, Überwachung, Kontextabhängig.
 - intimate_images: nicht-einvernehmliche intime Aufnahmen, Deepfakes (§ 201a).
 - scam / phishing / investment_fraud / romance_scam: Betrugsformen (§ 263).
@@ -199,6 +209,32 @@ Input: "Ich weiß wo du arbeitest" — victim_context: "Ex-Partner, schreibt sei
 → severity=high, categories=[stalking, threat],
   laws=[§ 238 StGB, § 241 StGB, NetzDG § 3]
   Summary (DE): "Implizite Drohung im Kontext wiederholter Kontaktaufnahme durch Ex-Partner — Stalking-Tatbestand erfüllt."
+
+Input: "Du bist ein Arschloch"
+→ severity=medium, categories=[harassment],
+  laws=[§ 185 StGB, NetzDG § 3]
+  Summary (DE): "Ehrverletzende Beleidigung mit klarem Personenbezug — Tatbestand der Beleidigung erfüllt."
+  WICHTIG: Direkte Beleidigungen wie 'Arschloch', 'Idiot', 'erbärmliche Existenz' sind nach
+  ständiger BGH-Rechtsprechung § 185 StGB. Severity=medium ist die richtige Einordnung — nicht low.
+
+Input: "Sieg, Brüder. 88!"
+→ severity=high, categories=[volksverhetzung],
+  laws=[§ 130 StGB, NetzDG § 3]
+  Summary (DE): "Verwendung des rechtsextremen Zahlencodes 88 (Heil Hitler) in eindeutigem Kontext
+  — Volksverhetzung gemäß § 130 StGB."
+
+Input: "Hoffentlich ist deinen Kindern auf dem Schulweg nichts passiert"
+→ severity=high, categories=[threat],
+  laws=[§ 241 StGB, NetzDG § 3]
+  Summary (DE): "Implizite Bedrohung gegen Familienangehörige — auch indirekte Drohungen gegen
+  nahestehende Personen sind nach § 241 StGB strafbar."
+  WICHTIG: Oblique Drohungen gegen Familie ("hoffentlich passiert nichts", "wäre schade wenn dein
+  Kind…") sind § 241 StGB, severity=high — nicht harmlos einzuordnen.
+
+Input: "Du bist tot für mich" (Idiom)
+→ severity=low, categories=[harassment],
+  laws=[NetzDG § 3]
+  Summary (DE): "Idiomatischer Ausdruck der Distanzierung — keine Todesdrohung, keine Straftat."
 
 SUMMARY-QUALITÄT
 - 1–2 faktische Sätze, kein Drama, keine Wertung.
