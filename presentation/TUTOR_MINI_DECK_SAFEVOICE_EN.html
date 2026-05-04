@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SafeVoice Tutor Update</title>
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --paper: #fffdf8;
+      --ink: #191919;
+      --muted: #67615a;
+      --line: #ddd5c8;
+      --accent: #8b3a32;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    .deck {
+      padding: 24px 0 48px;
+    }
+    .slide {
+      width: 1280px;
+      min-height: 720px;
+      margin: 0 auto 28px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 44px 52px;
+      box-shadow: 0 18px 40px rgba(40, 25, 10, 0.05);
+      page-break-after: always;
+    }
+    .kicker {
+      font: 700 13px/1.2 system-ui, sans-serif;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0 0 16px 0;
+      font-size: 64px;
+      line-height: 0.95;
+      font-weight: 700;
+      max-width: 900px;
+    }
+    h2 {
+      margin: 0 0 20px 0;
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 700;
+    }
+    p.lead {
+      margin: 0;
+      max-width: 920px;
+      font: 400 28px/1.35 system-ui, sans-serif;
+      color: var(--muted);
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-top: 26px;
+    }
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-top: 26px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 22px 22px 24px;
+      background: #fff;
+    }
+    .label {
+      font: 700 12px/1.2 system-ui, sans-serif;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .big {
+      font-size: 34px;
+      line-height: 1.05;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .body, li {
+      font: 400 21px/1.45 system-ui, sans-serif;
+      color: var(--ink);
+    }
+    ul {
+      margin: 8px 0 0;
+      padding-left: 22px;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 26px;
+    }
+    .step {
+      border-top: 2px solid var(--accent);
+      padding-top: 16px;
+    }
+    .step .num {
+      font: 700 12px/1.2 system-ui, sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .step strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1.05;
+      margin-bottom: 8px;
+    }
+    .quote {
+      margin-top: 28px;
+      padding: 22px 24px;
+      border-left: 4px solid var(--accent);
+      background: #fcf8f3;
+      font-size: 30px;
+      line-height: 1.25;
+    }
+    @media print {
+      body { background: white; }
+      .deck { padding: 0; }
+      .slide {
+        margin: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        width: auto;
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="slide">
+      <div class="kicker">SafeVoice · Weekly Tutor Update</div>
+      <h1>Second AI layer: from classification to legal PDF</h1>
+      <p class="lead">
+        This week’s task was to make the second AI layer useful in the final legal document, not just produce another intermediate AI output.
+      </p>
+      <div class="flow">
+        <div class="step">
+          <div class="num">Step 1</div>
+          <strong>Classifier</strong>
+          <div class="body">Evidence is structured by severity, category, and applicable law.</div>
+        </div>
+        <div class="step">
+          <div class="num">Step 2</div>
+          <strong>Legal AI</strong>
+          <div class="body">The case-level layer produces legal assessment, strongest charges, actions, risk, and evidence gaps.</div>
+        </div>
+        <div class="step">
+          <div class="num">Step 3</div>
+          <strong>Legal PDF</strong>
+          <div class="body">The final export now includes the second AI layer in a visible and auditable way.</div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="label">Main change</div>
+          <div class="big">The legal analysis is now part of the final PDF</div>
+          <div class="body">
+            The output is stored as a case analysis row and then surfaced in the export, instead of remaining a detached backend result.
+          </div>
+        </div>
+        <div class="card">
+          <div class="label">Note</div>
+          <div class="big">ReportLab is the PDF stack</div>
+          <div class="body">
+            I did not switch to pypdf. ReportLab is sufficient here because the main need is generating final legal documents, not manipulating existing PDFs.
+          </div>
+        </div>
+      </div>
+      <div class="quote">
+        The key change is simple: the second AI layer now reaches the actual document.
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="kicker">Side Work</div>
+      <h2>Other things I worked on this week</h2>
+      <div class="three-col">
+        <div class="card">
+          <div class="label">Agent SDK</div>
+          <div class="big">Exploration, not adoption</div>
+          <ul>
+            <li>I spent some time exploring the OpenAI Agent SDK.</li>
+            <li>My current impression is that it is only partly useful for SafeVoice.</li>
+            <li>SafeVoice benefits more from controlled and auditable pipelines.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="label">GitLaw</div>
+          <div class="big">Real legal side project</div>
+          <ul>
+            <li>I also experimented with GitLaw for a lawyer friend.</li>
+            <li>We are trying a supervised multi-agent workflow rather than one generic chat agent.</li>
+            <li>Main agents: intake, document/OCR, translation, research, drafting, and memory.</li>
+            <li>The idea is simple: each agent handles one narrow step, and the lawyer remains the reviewer.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="label">Mock interview</div>
+          <div class="big">Preparation</div>
+          <ul>
+            <li>I prepared for the mock interview in parallel.</li>
+            <li>I focused on trade-offs, architecture, and how to explain technical decisions clearly.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

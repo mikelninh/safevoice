@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { fetchCase } from '../services/api'
+import { downloadLegalPdf, fetchCase, fetchLegalAnalysis } from '../services/api'
 import { t, type Lang } from '../i18n'
-import type { Case } from '../types'
+import type { Case, LegalAnalysisPayload } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
 import EvidenceCard from '../components/EvidenceCard'
 import PatternFlagCard from '../components/PatternFlagCard'
@@ -16,6 +16,9 @@ interface Props { lang: Lang }
 export default function CaseDetail({ lang }: Props) {
   const { id } = useParams<{ id: string }>()
   const [caseData, setCaseData] = useState<Case | null>(null)
+  const [legalAnalysis, setLegalAnalysis] = useState<LegalAnalysisPayload | null>(null)
+  const [legalLoading, setLegalLoading] = useState(false)
+  const [legalError, setLegalError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showReport, setShowReport] = useState(false)
   const isDE = lang === 'de'
@@ -33,6 +36,16 @@ export default function CaseDetail({ lang }: Props) {
       .then(setCaseData)
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (!caseData?.id) return
+    setLegalLoading(true)
+    setLegalError(null)
+    fetchLegalAnalysis(caseData.id)
+      .then(res => setLegalAnalysis(res.analysis))
+      .catch(err => setLegalError(err instanceof Error ? err.message : 'Legal analysis unavailable'))
+      .finally(() => setLegalLoading(false))
+  }, [caseData?.id])
 
   if (loading) {
     return (
@@ -121,6 +134,92 @@ export default function CaseDetail({ lang }: Props) {
           </div>
         </div>
       )}
+
+      {/* Legal AI summary */}
+      <div className="mb-6 bg-slate-900 border border-slate-700 rounded-xl p-4">
+        <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+          <div>
+            <h2 className="text-slate-300 text-xs uppercase tracking-wider mb-1">
+              {isDE ? 'Juristische Gesamteinschätzung' : 'Legal case assessment'}
+            </h2>
+            <p className="text-slate-500 text-sm">
+              {isDE
+                ? 'Der zweite AI-Layer bündelt alle Belege zu einer Fallanalyse mit Risiken und nächsten Schritten.'
+                : 'The second AI layer turns all evidence into one case-level legal assessment.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => downloadLegalPdf(caseData.id)}
+            className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 transition-colors"
+          >
+            {isDE ? 'Legal PDF laden' : 'Download legal PDF'}
+          </button>
+        </div>
+
+        {legalLoading && (
+          <p className="text-slate-400 text-sm">{isDE ? 'Analyse wird geladen…' : 'Loading legal analysis…'}</p>
+        )}
+
+        {!legalLoading && legalError && (
+          <p className="text-amber-300 text-sm">{legalError}</p>
+        )}
+
+        {!legalLoading && legalAnalysis && (
+          <div className="space-y-4">
+            <div className="text-slate-100 leading-relaxed">
+              {isDE ? legalAnalysis.legal_assessment_de : legalAnalysis.legal_assessment_en}
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+                <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
+                  {isDE ? 'Eskalationsrisiko' : 'Escalation risk'}
+                </div>
+                <div className="text-white font-semibold mb-1">
+                  {String(legalAnalysis.risk_assessment.escalation_risk).toUpperCase()}
+                </div>
+                <div className="text-slate-300 text-sm">
+                  {isDE ? legalAnalysis.risk_assessment.reason_de : legalAnalysis.risk_assessment.reason_en}
+                </div>
+              </div>
+
+              <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+                <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
+                  {isDE ? 'Stärkste Vorwürfe' : 'Strongest charges'}
+                </div>
+                <ul className="space-y-2">
+                  {legalAnalysis.strongest_charges.slice(0, 3).map((charge, i) => (
+                    <li key={i} className="text-sm text-slate-200">
+                      <span className="font-semibold">{charge.paragraph}</span>{' '}
+                      <span className="text-slate-400">({charge.strength})</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+              <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
+                {isDE ? 'Empfohlene nächste Schritte' : 'Recommended next steps'}
+              </div>
+              <ul className="space-y-2">
+                {legalAnalysis.recommended_actions.slice(0, 4).map((action, i) => (
+                  <li key={i} className="text-sm text-slate-200">
+                    <span className="font-semibold">
+                      {action.priority}
+                      {action.deadline !== 'none' ? ` · ${action.deadline}` : ''}
+                    </span>
+                    <div className="text-slate-300 mt-0.5">
+                      {isDE ? action.action_de : action.action_en}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Evidence */}
       <div className="mb-6">

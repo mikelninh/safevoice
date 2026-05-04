@@ -156,7 +156,12 @@ GRUNDREGELN
 
 VICTIM_CONTEXT VERWENDEN (wenn im User-Input vorhanden)
 Der Kontext ändert die rechtliche Einordnung materiell:
-- Ex-Partner/-in → § 238 StGB (Nachstellung/Stalking), nicht nur § 241 StGB.
+- Ex-Partner/-in + wiederholter Kontakt → § 238 StGB (Nachstellung/Stalking),
+  severity=high. **Auch wenn die einzelne Nachricht harmlos oder "positiv" wirkt
+  (Komplimente, "Ich denke an dich", Foto-Kommentare).** Stalking ist ein Muster
+  unerwünschter Kontakte, nicht der Inhalt einer einzelnen Nachricht. Wenn der
+  Kontext "Ex-Partner" + "schreibt täglich/wöchentlich/seit Monaten" enthält,
+  ist § 238 in der Regel einschlägig.
 - Arbeitgeber/Kollege → § 185 StGB wiegt schwerer (Druckverhältnis).
 - Minderjährig → bei sexuellem Inhalt mögliches § 184b/h StGB.
 - Öffentliche Person / Journalist → § 187 StGB (Verleumdung mit Reputationsschaden).
@@ -209,6 +214,11 @@ Input: "Ich weiß wo du arbeitest" — victim_context: "Ex-Partner, schreibt sei
 → severity=high, categories=[stalking, threat],
   laws=[§ 238 StGB, § 241 StGB, NetzDG § 3]
   Summary (DE): "Implizite Drohung im Kontext wiederholter Kontaktaufnahme durch Ex-Partner — Stalking-Tatbestand erfüllt."
+
+Input: "Schönes Foto, du siehst gut aus im roten Kleid" — victim_context: "Ex-Partner, schreibt täglich seit Trennung"
+→ severity=high, categories=[stalking],
+  laws=[§ 238 StGB, NetzDG § 3]
+  Summary (DE): "Wiederholter unerwünschter Kontakt durch Ex-Partner — auch 'positive' Nachrichten erfüllen den Tatbestand der Nachstellung (§ 238 StGB), wenn das Muster unerwünschter Kontaktaufnahme erkennbar ist."
 
 Input: "Du bist ein Arschloch"
 → severity=medium, categories=[harassment],
@@ -279,11 +289,19 @@ def build_user_message(
     parts: list[str] = [
         f"Klassifiziere diesen Inhalt nach dem Strafrecht der Jurisdiktion: {jurisdiction}."
     ]
-    if victim_context:
-        parts.append(f"Kontext des Opfers: {victim_context.strip()}")
     if user_lang and user_lang != "de":
         parts.append(f"Bevorzugte Ausgabesprache: {user_lang}")
-    parts.append(f"Inhalt:\n{text}")
+
+    # Keep the victim context human-readable for tests, logs, and prompt
+    # inspection, while still preserving the example-shaped input line that
+    # produced better stalking routing in practice.
+    if victim_context:
+        victim_context = victim_context.strip()
+        parts.append(f"Kontext des Opfers: {victim_context}")
+        parts.append(f'Input: "{text}" — victim_context: "{victim_context}"')
+    else:
+        parts.append(f"Inhalt:\n{text}")
+
     return "\n\n".join(parts)
 
 

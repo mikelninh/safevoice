@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SafeVoice Tutor Update</title>
+  <style>
+    :root {
+      --bg: #f6f2ea;
+      --ink: #1d1d1f;
+      --muted: #66615a;
+      --card: #fffdf8;
+      --line: #ddd3c5;
+      --accent: #8a2f2f;
+      --accent-soft: #f4e6e3;
+      --ok: #1f6b45;
+      --ok-soft: #e6f3ec;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background: radial-gradient(circle at top left, #fffdf8 0, var(--bg) 55%);
+      color: var(--ink);
+    }
+    .slide {
+      width: 1400px;
+      min-height: 788px;
+      margin: 0 auto;
+      padding: 44px 48px;
+    }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    .eyebrow {
+      font: 700 14px/1.2 system-ui, sans-serif;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 58px;
+      line-height: 0.95;
+      font-weight: 700;
+      max-width: 820px;
+    }
+    .subtitle {
+      margin-top: 14px;
+      font: 400 24px/1.35 system-ui, sans-serif;
+      color: var(--muted);
+      max-width: 900px;
+    }
+    .badge {
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 18px;
+      padding: 18px 20px;
+      min-width: 220px;
+      box-shadow: 0 12px 28px rgba(30, 20, 10, 0.06);
+    }
+    .badge .label {
+      font: 700 13px/1.2 system-ui, sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .badge .value {
+      margin-top: 8px;
+      font-size: 42px;
+      font-weight: 700;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 22px;
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 24px 26px;
+      box-shadow: 0 14px 30px rgba(30, 20, 10, 0.05);
+    }
+    .panel h2 {
+      margin: 0 0 14px 0;
+      font-size: 30px;
+      line-height: 1.05;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 14px 16px;
+      background: #fff;
+    }
+    .step .n {
+      font: 700 12px/1.2 system-ui, sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .step strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1.05;
+      margin-bottom: 8px;
+    }
+    .step p,
+    .panel p,
+    .panel li {
+      font: 400 18px/1.45 system-ui, sans-serif;
+      color: var(--ink);
+      margin: 0;
+    }
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+    .metric {
+      border-radius: 18px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .metric.ok {
+      background: var(--ok-soft);
+      border-color: #b7dcc7;
+    }
+    .metric.warn {
+      background: var(--accent-soft);
+      border-color: #e2c2bc;
+    }
+    .metric .k {
+      font: 700 13px/1.2 system-ui, sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .metric .v {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    ul {
+      margin: 10px 0 0 0;
+      padding-left: 20px;
+    }
+    .footer {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .small {
+      font: 400 16px/1.45 system-ui, sans-serif;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="slide">
+    <section class="top">
+      <div>
+        <div class="eyebrow">SafeVoice · Weekly Tutor Update</div>
+        <h1>Zweiter AI-Layer laeuft jetzt bis ins Legal PDF</h1>
+        <div class="subtitle">
+          Strukturierte Klassifikation, juristische Fallanalyse, persistierte Audit-Spur und rechtssicheres PDF sind jetzt als ein zusammenhaengender Pfad abgesichert.
+        </div>
+      </div>
+      <aside class="badge">
+        <div class="label">Teststatus</div>
+        <div class="value">49 / 49</div>
+        <div class="small">alle relevanten Tests gruen</div>
+      </aside>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Was diese Woche umgesetzt wurde</h2>
+        <p>Der zweite AI-Layer erzeugt jetzt nicht nur strukturierte Legal Analysis, sondern landet sichtbar und pruefbar im finalen NGO-/Counsel-PDF.</p>
+        <div class="flow">
+          <div class="step">
+            <div class="n">01</div>
+            <strong>Classifier</strong>
+            <p>Evidence wird strukturiert nach Schwere, Kategorien und Gesetzen klassifiziert.</p>
+          </div>
+          <div class="step">
+            <div class="n">02</div>
+            <strong>Legal AI</strong>
+            <p>Case-level Analyse mit Charges, Actions, Risk und Evidence Gaps.</p>
+          </div>
+          <div class="step">
+            <div class="n">03</div>
+            <strong>Legal PDF</strong>
+            <p>Juristische Gesamteinschaetzung und Handlungsempfehlungen direkt im Export.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Was jetzt nachweisbar funktioniert</h2>
+        <div class="stack">
+          <div class="metric ok">
+            <div class="k">End-to-End</div>
+            <div class="v">Case -> Analysis -> PDF</div>
+            <div class="small">Neuer Integrationstest prueft Persistenz und PDF-Inhalt.</div>
+          </div>
+          <div class="metric ok">
+            <div class="k">PDF-Stack</div>
+            <div class="v">ReportLab, nicht pypdf</div>
+            <div class="small">Fuer Generierung passend und aktuell ausreichend.</div>
+          </div>
+          <div class="metric warn">
+            <div class="k">Noch offen</div>
+            <div class="v">Produktionshaertung</div>
+            <div class="small">Mehr echte Falltests und spaeter strengere Signatur-/Exportkette.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="footer">
+      <div class="panel">
+        <h2>Nebenbei gelernt</h2>
+        <ul>
+          <li>OpenAI Agent SDK angeschaut</li>
+          <li>fuer SafeVoice nur begrenzt sinnvoll</li>
+          <li>hier sind kontrollierte Pipelines wichtiger als offene Agenten</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>GitLaw als Real-Case</h2>
+        <ul>
+          <li>Nebenprojekt fuer einen Anwalt</li>
+          <li>hilfreich zum Testen agentischer Workflows</li>
+          <li>praxisnaeherer juristischer Use Case</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>Mock Interview</h2>
+        <ul>
+          <li>Vorbereitung auf technische Entscheidungen</li>
+          <li>Trade-offs und Teststrategie wiederholt</li>
+          <li>gute Uebung fuer die Erklaerung der Architektur</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

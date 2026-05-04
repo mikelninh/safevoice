@@ -76,3 +76,44 @@ export interface Case {
   /** Backend (server-side) case ID, populated after sync. */
   backend_id?: string
 }
+
+export interface LegalAction {
+  priority: 'immediate' | 'soon' | 'when_ready'
+  action_de: string
+  action_en: string
+  deadline: '24h' | '7d' | 'none'
+}
+
+export interface LegalRiskAssessment {
+  escalation_risk: 'low' | 'medium' | 'high'
+  reason_de: string
+  reason_en: string
+}
+
+export interface LegalAnalysisPayload {
+  legal_assessment_de: string
+  legal_assessment_en: string
+  strongest_charges: Array<{
+    paragraph: string
+    strength: 'strong' | 'medium' | 'weak'
+    reason_de: string
+    reason_en: string
+  }>
+  recommended_actions: LegalAction[]
+  risk_assessment: LegalRiskAssessment
+  evidence_gaps: Array<{
+    gap_de: string
+    gap_en: string
+    how_to_fill_de: string
+    how_to_fill_en: string
+  }>
+  cross_references: string
+  disclaimer_de: string
+  disclaimer_en: string
+}
+
+export interface LegalAnalysisResponse {
+  case_id: string
+  ai_available: boolean
+  analysis: LegalAnalysisPayload
+}

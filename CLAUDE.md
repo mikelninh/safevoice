@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SafeVoice is a bilingual (DE/EN) web app that helps victims document digital harassment, classify it under German criminal law, and generate court-ready reports. Flow: paste text / URL / screenshot → AI classifies → evidence preserved with SHA-256 hash → PDF report generated.
 
+## Project Guidance
+
+- Repo-level priorities and collaboration style live in [AGENTS.md](/Users/mikel/safevoice/AGENTS.md).
+- Company/operating context lives in:
+  - [SAFEVOICE_COMPANY_THESIS_DE.md](/Users/mikel/safevoice/SAFEVOICE_COMPANY_THESIS_DE.md)
+  - [SAFEVOICE_EXECUTION_PLAN_DE.md](/Users/mikel/safevoice/SAFEVOICE_EXECUTION_PLAN_DE.md)
+
 ## Commands
 
 ### Backend
