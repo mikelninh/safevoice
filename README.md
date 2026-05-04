@@ -1,5 +1,10 @@
 # SafeVoice
 
+See also:
+- [AGENTS.md](/Users/mikel/safevoice/AGENTS.md) — repo priorities and low-interruption collaboration rules
+- [SAFEVOICE_COMPANY_THESIS_DE.md](/Users/mikel/safevoice/SAFEVOICE_COMPANY_THESIS_DE.md)
+- [SAFEVOICE_EXECUTION_PLAN_DE.md](/Users/mikel/safevoice/SAFEVOICE_EXECUTION_PLAN_DE.md)
+
 > **🧪 Status: Closed Beta · NGO-Partner-Pilot · April 2026**
 > Funktionsfähig und im Test mit ersten NGO-Partnern. **Noch kein Produktivbetrieb** —
 > Datenschutzerklärung & Impressum sind Vorab-Versionen, nicht anwaltlich geprüft. Wir
@@ -27,6 +32,19 @@ Paste text, a URL, or upload a screenshot → AI classifies it under German crim
 PASTE → CLASSIFY → PRESERVE → REPORT
  10s       3s      instant    1 click
 ```
+
+## Operating Direction
+
+SafeVoice should be understood as a controlled evidence-to-action workflow, not a generic AI app:
+
+- evidence capture
+- classification
+- case-level legal analysis
+- report / legal PDF / action output
+
+The current company/operating docs live in:
+- [SAFEVOICE_COMPANY_THESIS_DE.md](/Users/mikel/safevoice/SAFEVOICE_COMPANY_THESIS_DE.md)
+- [SAFEVOICE_EXECUTION_PLAN_DE.md](/Users/mikel/safevoice/SAFEVOICE_EXECUTION_PLAN_DE.md)
 
 ---
 
@@ -279,4 +297,3 @@ Dieses Projekt ist Teil eines Open-Source-Ökosystems für digitale Demokratie:
 | **SafeVoice** | Wer wird online angegriffen? | [GitHub](https://github.com/mikelninh/safevoice) |
 
 Alle Projekte: [github.com/mikelninh](https://github.com/mikelninh) · Unterstützen: [Ko-fi](https://ko-fi.com/mikel777) · [GitHub Sponsors](https://github.com/sponsors/mikelninh)
-

@@ -147,6 +147,86 @@ def _case_summary_block(case: Case, org: Org | None) -> list:
     return elements
 
 
+def _latest_case_analysis(case: Case):
+    """Return the newest persisted case analysis row if present."""
+    try:
+        analyses = case.case_analyses or []
+        return analyses[0] if analyses else None
+    except Exception:
+        return None
+
+
+def _legal_analysis_block(case: Case) -> list:
+    """Render the second AI layer as a concrete, auditable report section."""
+    row = _latest_case_analysis(case)
+    if row is None:
+        return []
+
+    elements = [
+        Spacer(1, 0.4 * cm),
+        Paragraph("Juristische Gesamteinschaetzung", _H2),
+    ]
+
+    if row.legal_assessment_de:
+        elements.append(Paragraph(row.legal_assessment_de, _BODY))
+
+    try:
+        charges = json.loads(row.strongest_charges_json or "[]")
+    except json.JSONDecodeError:
+        charges = []
+    if charges:
+        elements.append(Spacer(1, 0.2 * cm))
+        elements.append(Paragraph("<b>Staerkste Vorwuerfe</b>", _H3))
+        for charge in charges[:5]:
+            paragraph = charge.get("paragraph", "—")
+            strength = charge.get("strength", "—")
+            reason_de = charge.get("reason_de", "")
+            elements.append(Paragraph(
+                f"<b>{paragraph}</b> ({strength})<br/>{reason_de}",
+                _BODY,
+            ))
+
+    try:
+        actions = json.loads(row.recommended_actions_json or "[]")
+    except json.JSONDecodeError:
+        actions = []
+    if actions:
+        elements.append(Spacer(1, 0.2 * cm))
+        elements.append(Paragraph("<b>Empfohlene naechste Schritte</b>", _H3))
+        for action in actions[:5]:
+            priority = action.get("priority", "—")
+            deadline = action.get("deadline", "—")
+            action_de = action.get("action_de", "")
+            elements.append(Paragraph(
+                f"<b>{priority}</b> (Frist: {deadline})<br/>{action_de}",
+                _BODY,
+            ))
+
+    try:
+        risk = json.loads(row.risk_assessment_json or "{}")
+    except json.JSONDecodeError:
+        risk = {}
+    if risk:
+        risk_rows = [
+            ["Eskalationsrisiko", str(risk.get("escalation_risk", "—")).upper()],
+            ["Begruendung", risk.get("reason_de", "—")],
+        ]
+        t = Table(risk_rows, colWidths=[4 * cm, 12 * cm])
+        t.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f0f0")),
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#dddddd")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(Spacer(1, 0.2 * cm))
+        elements.append(t)
+
+    return elements
+
+
 def _extract_screenshot(ev: EvidenceItem) -> tuple[bytes, str] | None:
     """
     Return (image_bytes, mime_type) if the evidence carries an embedded
@@ -399,11 +479,13 @@ def generate_legal_pdf(case: Case, org: Org | None = None) -> bytes:
         rightMargin=2 * cm,
         title=f"SafeVoice Report - {case.title or case.id[:8]}",
         author=org.display_name if org else "SafeVoice",
+        pageCompression=0,
     )
 
     story: list = []
     story += _letterhead_block(org)
     story += _case_summary_block(case, org)
+    story += _legal_analysis_block(case)
 
     if case.evidence_items:
         story.append(PageBreak())

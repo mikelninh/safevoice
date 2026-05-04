@@ -1,4 +1,4 @@
-import type { Case, ClassificationResult, EvidenceItem } from '../types'
+import type { Case, ClassificationResult, EvidenceItem, LegalAnalysisResponse } from '../types'
 
 const BASE = '/api'
 
@@ -18,6 +18,15 @@ export async function fetchCases(): Promise<Case[]> {
 export async function fetchCase(id: string): Promise<Case> {
   const res = await fetch(`${BASE}/cases/${id}`)
   if (!res.ok) throw new Error('Case not found')
+  return res.json()
+}
+
+export async function fetchLegalAnalysis(caseId: string): Promise<LegalAnalysisResponse> {
+  const res = await fetch(`${BASE}/legal/${caseId}`, { cache: 'no-store' })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Legal analysis unavailable (${res.status}): ${body.slice(0, 200)}`)
+  }
   return res.json()
 }
 
