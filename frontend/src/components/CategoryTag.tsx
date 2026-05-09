@@ -16,6 +16,11 @@ const colors: Record<Category, string> = {
   investment_fraud: 'bg-yellow-900 text-yellow-200',
   romance_scam: 'bg-pink-900 text-pink-200',
   impersonation: 'bg-cyan-900 text-cyan-200',
+  volksverhetzung: 'bg-red-950 text-red-200',
+  verleumdung: 'bg-purple-950 text-purple-200',
+  stalking: 'bg-orange-950 text-orange-200',
+  doxxing: 'bg-rose-950 text-rose-200',
+  intimate_images: 'bg-fuchsia-950 text-fuchsia-200',
 }
 
 interface Props {

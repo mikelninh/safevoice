@@ -43,12 +43,12 @@ export default function OnlinewachePanel({ lang, reportText }: Props) {
   }
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+    <div className="bg-slate-800/60 rounded-xl p-5 space-y-4">
       <div>
         <h3 className="text-white font-semibold mb-1">
           {isDE ? 'Online-Strafanzeige erstatten' : 'File police report online'}
         </h3>
-        <p className="text-slate-400 text-sm">
+        <p className="text-slate-400 text-sm leading-relaxed">
           {isDE
             ? 'Bundesland wählen, vorbereiteten Text kopieren, in das Onlinewache-Formular einfügen.'
             : 'Select the state, copy the prepared text, paste it into the Onlinewache form.'}

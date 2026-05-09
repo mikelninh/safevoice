@@ -131,21 +131,21 @@ export default function Cases({ lang }: Props) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-4 py-10">
       {showSyncBanner && <SyncBanner />}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-        <h1 className="text-2xl font-bold text-white">{t(lang, 'cases.title')}</h1>
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{t(lang, 'cases.title')}</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={handleExport}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border border-slate-700"
+            className="text-slate-400 hover:text-slate-200 text-xs font-medium px-2.5 py-2 rounded-lg transition-colors"
             title={isDE ? 'Backup als JSON herunterladen' : 'Download backup as JSON'}
           >
             {isDE ? '↓ Export' : '↓ Export'}
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border border-slate-700"
+            className="text-slate-400 hover:text-slate-200 text-xs font-medium px-2.5 py-2 rounded-lg transition-colors"
             title={isDE ? 'JSON-Backup importieren' : 'Import JSON backup'}
           >
             {isDE ? '↑ Import' : '↑ Import'}
@@ -175,12 +175,12 @@ export default function Cases({ lang }: Props) {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {cases.map(c => (
-          <Link key={c.id} to={`/cases/${c.id}`} className="block">
-            <div className="bg-slate-800 border border-slate-700 hover:border-slate-500 rounded-xl p-4 transition-colors">
+          <Link key={c.id} to={`/cases/${c.id}`} className="block group">
+            <div className="bg-slate-800/60 hover:bg-slate-800 rounded-xl p-4 transition-colors">
               <div className="flex items-start justify-between gap-3 mb-2">
-                <h2 className="text-white font-semibold text-sm">{c.title}</h2>
+                <h2 className="text-white font-semibold text-sm leading-snug">{c.title}</h2>
                 <SeverityBadge severity={c.overall_severity} lang={lang} />
               </div>
 
@@ -189,8 +189,8 @@ export default function Cases({ lang }: Props) {
                   {c.evidence_items.length} {t(lang, 'cases.evidence')}
                 </span>
                 {c.pattern_flags.length > 0 && (
-                  <span className="text-yellow-400">
-                    ⚑ {c.pattern_flags.length} {t(lang, 'cases.patterns')}
+                  <span className="text-amber-400/90">
+                    {c.pattern_flags.length} {t(lang, 'cases.patterns')}
                   </span>
                 )}
                 <span className="ml-auto">
@@ -199,7 +199,7 @@ export default function Cases({ lang }: Props) {
               </div>
 
               {c.victim_context && (
-                <p className="text-slate-400 text-xs mt-2 line-clamp-2">
+                <p className="text-slate-400 text-xs mt-2.5 line-clamp-2 leading-relaxed">
                   {c.victim_context}
                 </p>
               )}

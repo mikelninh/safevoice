@@ -54,27 +54,38 @@ async function resolveBackendCaseId(caseId: string): Promise<string> {
 export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [reportType, setReportType] = useState<ReportType>('police')
   const [victim, setVictim] = useState<VictimInfo>(() => loadVictim())
+  // Separate "applied" victim that the API uses — debounced from `victim` so
+  // a user typing in the form doesn't refetch the report on every keystroke.
+  const [appliedVictim, setAppliedVictim] = useState<VictimInfo>(() => loadVictim())
   const [showVictimForm, setShowVictimForm] = useState(false)
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadedFor, setDownloadedFor] = useState<ReportType | null>(null)
   const [backendId, setResolvedBackendId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const isDE = lang === 'de'
+
+  // Debounce victim → appliedVictim by 700ms
+  useEffect(() => {
+    const handle = setTimeout(() => setAppliedVictim(victim), 700)
+    return () => clearTimeout(handle)
+  }, [victim.name, victim.address, victim.phone, victim.email])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
     setReport(null)
+    setDownloadedFor(null)
 
     // Step 1: ensure case exists on backend, then fetch the report.
     resolveBackendCaseId(caseId)
       .then(async (resolvedId) => {
         if (cancelled) return
         setResolvedBackendId(resolvedId)
-        const r = await fetchReport(resolvedId, reportType, lang, victim)
+        const r = await fetchReport(resolvedId, reportType, lang, appliedVictim)
         if (!cancelled) setReport(r)
       })
       .catch((e: Error) => {
@@ -89,14 +100,17 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
     return () => {
       cancelled = true
     }
-  }, [caseId, reportType, lang, victim.name, victim.address, victim.phone, victim.email])
+  }, [caseId, reportType, lang, appliedVictim.name, appliedVictim.address, appliedVictim.phone, appliedVictim.email])
 
   const handleDownload = async () => {
     setDownloadError(null)
     try {
       const resolved = backendId ?? (await resolveBackendCaseId(caseId))
       if (!backendId) setResolvedBackendId(resolved)
+      // Force-flush: if the user clicks Download before the 700ms debounce has
+      // fired, use the live `victim` instead of the stale `appliedVictim`.
       await downloadPdf(resolved, reportType, lang, victim)
+      setDownloadedFor(reportType)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[ReportModal] downloadPdf failed:', e)
@@ -367,6 +381,92 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
               )}
             </div>
           ) : null}
+          {downloadedFor && !downloadError && (
+            <div className="mt-4 bg-emerald-950/40 border border-emerald-900/60 rounded-xl p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-emerald-400 text-lg leading-none mt-0.5">✓</span>
+                <div className="flex-1">
+                  <div className="text-emerald-100 font-semibold text-sm">
+                    {isDE ? 'PDF heruntergeladen — was jetzt?' : 'PDF downloaded — what next?'}
+                  </div>
+                  <p className="text-emerald-200/80 text-xs mt-0.5">
+                    {isDE
+                      ? 'Hier sind die nächsten Schritte für diesen Berichtstyp.'
+                      : 'Here are the next steps for this report type.'}
+                  </p>
+                </div>
+              </div>
+              {downloadedFor === 'police' && (
+                <ol className="space-y-2.5 text-sm text-slate-200">
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">1.</span>
+                    <span>
+                      {isDE
+                        ? 'Online: Lade die PDF in der '
+                        : 'Online: upload the PDF in your state’s '}
+                      <a href="https://www.onlinewache.polizei.de" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">
+                        Onlinewache
+                      </a>{' '}
+                      {isDE ? 'deines Bundeslands hoch.' : 'police portal.'}
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">2.</span>
+                    <span>
+                      {isDE
+                        ? 'Persönlich: Bring die PDF + dein Lichtbildausweis zur nächsten Polizeidienststelle.'
+                        : 'In person: bring the PDF + photo ID to your nearest police station.'}
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">3.</span>
+                    <span>
+                      {isDE
+                        ? 'Beratung: Ruf vorher die kostenlose HateAid-Hotline an: '
+                        : 'Get advice first via the free HateAid hotline: '}
+                      <span className="font-mono text-slate-100">030 252 953 21</span>
+                      {isDE ? ' (Mo-Fr 10–18 Uhr).' : ' (Mon-Fri 10am–6pm).'}
+                    </span>
+                  </li>
+                </ol>
+              )}
+              {downloadedFor === 'netzdg' && (
+                <ol className="space-y-2.5 text-sm text-slate-200">
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">1.</span>
+                    <span>
+                      {isDE
+                        ? 'Reiche die PDF im NetzDG-Meldeformular der jeweiligen Plattform ein (Instagram, X/Twitter, TikTok haben eigene Formulare).'
+                        : 'Submit the PDF via the platform’s NetzDG complaint form (Instagram, X/Twitter, TikTok all have one).'}
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">2.</span>
+                    <span>
+                      {isDE
+                        ? 'Plattformen müssen offensichtlich rechtswidrige Inhalte innerhalb von 24 Stunden löschen. Komplexere Fälle: 7 Tage.'
+                        : 'Platforms must remove obviously illegal content within 24 hours. More complex cases: 7 days.'}
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">3.</span>
+                    <span>
+                      {isDE
+                        ? 'Wenn die Plattform nicht reagiert: zusätzlich Strafanzeige stellen (Tab "Strafanzeige").'
+                        : 'If the platform ignores the report: also file a criminal complaint (Strafanzeige tab).'}
+                    </span>
+                  </li>
+                </ol>
+              )}
+              {downloadedFor === 'general' && (
+                <p className="text-sm text-slate-200">
+                  {isDE
+                    ? 'Behalte diese PDF als deine eigene Beweissicherung. Sie enthält SHA-256-Prüfsummen aller Belege — das ist dein zeitlich verifizierter Backup, falls die Originalinhalte später gelöscht werden.'
+                    : 'Keep this PDF as your own evidence backup. It includes SHA-256 checksums of every piece of evidence — your time-verified backup if the originals get deleted later.'}
+                </p>
+              )}
+            </div>
+          )}
           {downloadError && (
             <div className="mt-4 bg-red-900/40 border border-red-800 text-red-200 rounded-lg p-3 text-xs">
               <div className="font-semibold mb-1">

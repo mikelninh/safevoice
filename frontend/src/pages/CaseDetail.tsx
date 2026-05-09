@@ -93,34 +93,35 @@ export default function CaseDetail({ lang }: Props) {
   )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-4 py-10">
       {/* Back nav */}
-      <Link to="/cases" className="text-slate-400 hover:text-slate-200 text-sm flex items-center gap-1 mb-6 transition-colors">
+      <Link to="/cases" className="text-slate-400 hover:text-slate-200 text-sm inline-flex items-center gap-1 mb-8 transition-colors">
         ← {isDE ? 'Alle Fälle' : 'All cases'}
       </Link>
 
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <h1 className="text-2xl font-bold text-white">{caseData.title}</h1>
+      <div className="mb-8">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">{caseData.title}</h1>
           <SeverityBadge severity={caseData.overall_severity} lang={lang} />
         </div>
 
         {caseData.victim_context && (
-          <p className="text-slate-400 text-sm bg-slate-800 border border-slate-700 rounded-lg p-3">
-            <span className="text-slate-500 text-xs uppercase tracking-wider block mb-1">
+          <div className="bg-slate-800/60 rounded-lg p-4">
+            <span className="text-slate-500 text-xs uppercase tracking-wider block mb-1.5">
               {isDE ? 'Kontext' : 'Context'}
             </span>
-            {caseData.victim_context}
-          </p>
+            <p className="text-slate-300 text-sm leading-relaxed">{caseData.victim_context}</p>
+          </div>
         )}
       </div>
 
       {/* Immediate action banner */}
       {hasCritical && (
-        <div className="bg-red-900 border border-red-600 rounded-xl p-4 mb-6">
-          <div className="font-bold text-red-200 mb-2">
-            ⚠ {isDE ? 'Sofortiger Handlungsbedarf in diesem Fall' : 'Immediate action required in this case'}
+        <div className="bg-red-950/60 border border-red-800 rounded-xl p-5 mb-6">
+          <div className="font-semibold text-red-100 mb-3 flex items-center gap-2">
+            <span className="text-red-400 text-lg leading-none">⚠</span>
+            {isDE ? 'Sofortiger Handlungsbedarf in diesem Fall' : 'Immediate action required in this case'}
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <a
@@ -158,13 +159,13 @@ export default function CaseDetail({ lang }: Props) {
       )}
 
       {/* Legal AI summary */}
-      <div className="mb-6 bg-slate-900 border border-slate-700 rounded-xl p-4">
-        <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
-          <div>
-            <h2 className="text-slate-300 text-xs uppercase tracking-wider mb-1">
+      <div className="mb-6 bg-slate-800/60 rounded-xl p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-slate-400 text-xs uppercase tracking-wider mb-1.5">
               {isDE ? 'Juristische Gesamteinschätzung' : 'Legal case assessment'}
             </h2>
-            <p className="text-slate-500 text-sm">
+            <p className="text-slate-500 text-sm leading-relaxed">
               {isDE
                 ? 'Der zweite AI-Layer bündelt alle Belege zu einer Fallanalyse mit Risiken und nächsten Schritten.'
                 : 'The second AI layer turns all evidence into one case-level legal assessment.'}
@@ -173,7 +174,7 @@ export default function CaseDetail({ lang }: Props) {
           <button
             type="button"
             onClick={() => downloadLegalPdf(caseData.id)}
-            className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 transition-colors"
+            className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg px-3.5 py-2 transition-colors shrink-0"
           >
             {isDE ? 'Legal PDF laden' : 'Download legal PDF'}
           </button>
@@ -194,7 +195,7 @@ export default function CaseDetail({ lang }: Props) {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+              <div className="bg-slate-900/70 rounded-lg p-4">
                 <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
                   {isDE ? 'Eskalationsrisiko' : 'Escalation risk'}
                 </div>
@@ -206,7 +207,7 @@ export default function CaseDetail({ lang }: Props) {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+              <div className="bg-slate-900/70 rounded-lg p-4">
                 <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
                   {isDE ? 'Stärkste Vorwürfe' : 'Strongest charges'}
                 </div>
@@ -275,7 +276,7 @@ export default function CaseDetail({ lang }: Props) {
       {/* Export report */}
       <button
         onClick={() => setShowReport(true)}
-        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-4 rounded-xl transition-colors text-lg"
+        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-4 rounded-xl transition-colors text-base shadow-lg shadow-indigo-900/30"
       >
         {t(lang, 'cases.report')} →
       </button>
