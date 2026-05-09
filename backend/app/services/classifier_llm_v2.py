@@ -19,18 +19,27 @@ from enum import Enum
 
 try:
     from openai import OpenAI
+
     _openai_installed = True
 except ImportError:
     _openai_installed = False
 
 from pydantic import BaseModel, Field, ConfigDict
 
-from app.models.evidence import (
-    ClassificationResult, Severity, Category, GermanLaw
-)
+from app.models.evidence import ClassificationResult, Severity, Category, GermanLaw
 from app.data.mock_data import (
-    LAW_185, LAW_186, LAW_187, LAW_241, LAW_126A, LAW_130, LAW_201A, LAW_238,
-    NETZ_DG, LAW_263, LAW_263A, LAW_269
+    LAW_185,
+    LAW_186,
+    LAW_187,
+    LAW_241,
+    LAW_126A,
+    LAW_130,
+    LAW_201A,
+    LAW_238,
+    NETZ_DG,
+    LAW_263,
+    LAW_263A,
+    LAW_269,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,6 +48,7 @@ logger = logging.getLogger(__name__)
 # ── Schema classes for OpenAI structured output ──
 # These are a FLAT subset of the full ClassificationResult. The LLM returns
 # enum strings for categories/laws; we map them to domain objects after.
+
 
 class LLMSeverity(str, Enum):
     low = "low"
@@ -49,6 +59,7 @@ class LLMSeverity(str, Enum):
 
 class LLMCategory(str, Enum):
     """Exhaustive list of categories — matches Category enum values 1:1."""
+
     harassment = "harassment"
     threat = "threat"
     death_threat = "death_threat"
@@ -71,6 +82,7 @@ class LLMCategory(str, Enum):
 
 class LLMLaw(str, Enum):
     """Exhaustive list of applicable laws."""
+
     stgb_130 = "§ 130 StGB"
     stgb_185 = "§ 185 StGB"
     stgb_186 = "§ 186 StGB"
@@ -87,6 +99,7 @@ class LLMLaw(str, Enum):
 
 class LLMClassification(BaseModel):
     """Pydantic model for the classifier's structured output. Schema-enforced by OpenAI."""
+
     model_config = ConfigDict(extra="forbid")
 
     severity: LLMSeverity
@@ -190,8 +203,9 @@ KATEGORIEN (Kurz-Definition, Auswahl)
   der Regel einschlägig und severity ≥ high.
 - stalking: wiederholte Annäherung, Überwachung, Kontextabhängig.
 - intimate_images: nicht-einvernehmliche intime Aufnahmen, Deepfakes (§ 201a).
-- scam / phishing / investment_fraud / romance_scam: Betrugsformen (§ 263).
 - impersonation / false_facts / coordinated_attack: Identitätsvortäuschung, vorsätzliche Falschbehauptung, erkennbar abgestimmte Mehr-Account-Angriffe.
+
+Hinweis: Betrugs-Kategorien (scam/phishing/investment_fraud/romance_scam) sind im Schema vorhanden, aber NICHT der aktuelle Fokus von SafeVoice. Klassifiziere nur als scam, wenn der Inhalt eindeutig auf Vermögensschaden des Opfers abzielt — sonst bevorzuge harassment/threat.
 
 BEISPIELE (few-shot)
 
@@ -262,6 +276,7 @@ def is_available() -> bool:
 # output is byte-for-byte identical to the original f-string, so existing tests
 # continue to pass.
 
+
 def build_user_message(
     text: str,
     *,
@@ -279,9 +294,7 @@ def build_user_message(
     (e.g. stalking after a breakup → § 238 StGB).
     """
     uses_defaults = (
-        victim_context is None
-        and jurisdiction == "DE"
-        and user_lang == "de"
+        victim_context is None and jurisdiction == "DE" and user_lang == "de"
     )
     if uses_defaults:
         return f"Klassifiziere diesen Inhalt:\n\n{text}"

@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchCases } from '../services/api'
 import { t, type Lang } from '../i18n'
 import type { Case } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
-import { getLocalCases, migrateLegacyEvidence } from '../services/storage'
+import {
+  exportCasesJson,
+  getLocalCases,
+  importCasesJson,
+  migrateLegacyEvidence,
+} from '../services/storage'
 
 interface Props { lang: Lang }
 
@@ -12,7 +17,36 @@ export default function Cases({ lang }: Props) {
   const [cases, setCases] = useState<Case[]>([])
   const [loading, setLoading] = useState(true)
   const [showSyncBanner, setShowSyncBanner] = useState(false)
+  const [importMessage, setImportMessage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const isDE = lang === 'de'
+
+  const handleExport = () => {
+    const blob = new Blob([exportCasesJson()], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `safevoice-cases-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = async (file: File) => {
+    try {
+      const text = await file.text()
+      const count = importCasesJson(text)
+      setCases(getLocalCases())
+      setImportMessage(
+        isDE ? `${count} Fälle importiert.` : `${count} cases imported.`
+      )
+    } catch (err) {
+      setImportMessage(
+        (isDE ? 'Import fehlgeschlagen: ' : 'Import failed: ') +
+          (err instanceof Error ? err.message : String(err))
+      )
+    }
+    setTimeout(() => setImportMessage(null), 4000)
+  }
 
   useEffect(() => {
     // Migrate any legacy evidence items from old format
@@ -99,15 +133,47 @@ export default function Cases({ lang }: Props) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {showSyncBanner && <SyncBanner />}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-white">{t(lang, 'cases.title')}</h1>
-        <Link
-          to="/analyze"
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-        >
-          + {isDE ? 'Neuer Fall' : 'New case'}
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border border-slate-700"
+            title={isDE ? 'Backup als JSON herunterladen' : 'Download backup as JSON'}
+          >
+            {isDE ? '↓ Export' : '↓ Export'}
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border border-slate-700"
+            title={isDE ? 'JSON-Backup importieren' : 'Import JSON backup'}
+          >
+            {isDE ? '↑ Import' : '↑ Import'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={e => {
+              const file = e.target.files?.[0]
+              if (file) handleImport(file)
+              e.target.value = ''
+            }}
+          />
+          <Link
+            to="/analyze"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            + {isDE ? 'Neuer Fall' : 'New case'}
+          </Link>
+        </div>
       </div>
+      {importMessage && (
+        <div className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 mb-4">
+          {importMessage}
+        </div>
+      )}
 
       <div className="space-y-3">
         {cases.map(c => (

@@ -27,18 +27,17 @@ const PLACEHOLDER = '— nicht konfiguriert —'
 
 const op = {
   name: import.meta.env.VITE_OPERATOR_NAME || PLACEHOLDER,
-  street: import.meta.env.VITE_OPERATOR_STREET || PLACEHOLDER,
+  street: import.meta.env.VITE_OPERATOR_STREET || '',
   city: import.meta.env.VITE_OPERATOR_CITY || PLACEHOLDER,
   country: import.meta.env.VITE_OPERATOR_COUNTRY || 'Deutschland',
   email: import.meta.env.VITE_OPERATOR_EMAIL || PLACEHOLDER,
   phone: import.meta.env.VITE_OPERATOR_PHONE || '',
 }
 
-const isConfigured =
-  op.name !== PLACEHOLDER &&
-  op.street !== PLACEHOLDER &&
-  op.city !== PLACEHOLDER &&
-  op.email !== PLACEHOLDER
+const hasMinimalImprint =
+  op.name !== PLACEHOLDER && op.city !== PLACEHOLDER && op.email !== PLACEHOLDER
+const hasStreet = op.street.length > 0
+const isConfigured = hasMinimalImprint && hasStreet
 
 export default function Impressum({ lang }: Props) {
   const isDE = lang === 'de'
@@ -47,12 +46,20 @@ export default function Impressum({ lang }: Props) {
     <div className="max-w-2xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold mb-6">Impressum</h1>
 
-      {!isConfigured && (
+      {!hasMinimalImprint && (
         <div className="mb-8 rounded border border-yellow-500/40 bg-yellow-500/10 p-4 text-sm text-yellow-200">
           <strong>⚠ Konfiguration unvollständig.</strong>{' '}
           {isDE
-            ? 'Die Betreiber-Angaben sind noch nicht gesetzt. Setze die VITE_OPERATOR_* Umgebungsvariablen in Railway, bevor diese Seite öffentlich erreichbar wird. Ohne vollständiges Impressum drohen Abmahnungen nach § 5 TMG.'
-            : 'Operator details are not yet configured. Set the VITE_OPERATOR_* environment variables in Railway before this page is publicly reachable. An incomplete imprint can trigger formal warnings under § 5 TMG.'}
+            ? 'Die Betreiber-Angaben sind noch nicht gesetzt. Setze VITE_OPERATOR_NAME, VITE_OPERATOR_CITY und VITE_OPERATOR_EMAIL in Vercel, bevor diese Seite öffentlich erreichbar wird.'
+            : 'Operator details are not yet configured. Set VITE_OPERATOR_NAME, VITE_OPERATOR_CITY and VITE_OPERATOR_EMAIL in Vercel before this page is publicly reachable.'}
+        </div>
+      )}
+
+      {hasMinimalImprint && !hasStreet && (
+        <div className="mb-8 rounded border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-200">
+          {isDE
+            ? 'Vorschau / Beta-Phase — diese Instanz wird nicht öffentlich beworben. Eine vollständige Postanschrift gemäß § 5 TMG wird vor dem Live-Gang ergänzt; bis dahin ist die Postanschrift auf Anfrage per E-Mail erhältlich.'
+            : 'Preview / beta phase — this instance is not publicly advertised. A full postal address per § 5 TMG will be added before going live; until then the postal address is available on request by email.'}
         </div>
       )}
 
@@ -63,9 +70,19 @@ export default function Impressum({ lang }: Props) {
         </h2>
         <p className="text-slate-300 leading-relaxed">
           {op.name}<br />
-          {op.street}<br />
+          {hasStreet && <>{op.street}<br /></>}
           {op.city}<br />
           {op.country}
+          {!hasStreet && (
+            <>
+              <br />
+              <span className="text-slate-400 text-sm">
+                {isDE
+                  ? 'Postanschrift auf Anfrage per E-Mail.'
+                  : 'Postal address available on request by email.'}
+              </span>
+            </>
+          )}
         </p>
       </section>
 
@@ -94,7 +111,7 @@ export default function Impressum({ lang }: Props) {
         </h2>
         <p className="text-slate-300 leading-relaxed">
           {op.name}<br />
-          {op.street}<br />
+          {hasStreet && <>{op.street}<br /></>}
           {op.city}
         </p>
       </section>

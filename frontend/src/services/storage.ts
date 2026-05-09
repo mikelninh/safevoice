@@ -66,6 +66,16 @@ export function addEvidenceToCase(caseId: string, evidence: EvidenceItem): Case 
   return cases[idx]
 }
 
+/** Persist the backend-assigned ID back into the local case record. */
+export function updateCaseBackendId(localId: string, backendId: string): void {
+  const cases = readCases()
+  const idx = cases.findIndex(c => c.id === localId)
+  if (idx !== -1) {
+    cases[idx].backend_id = backendId
+    writeCases(cases)
+  }
+}
+
 /** Delete a case. */
 export function deleteCase(caseId: string): boolean {
   const cases = readCases()
@@ -119,6 +129,36 @@ export function setBackendId(localCaseId: string, backendId: string): void {
   if (idx === -1) return
   cases[idx].backend_id = backendId
   writeCases(cases)
+}
+
+/** Serialize all local cases to a JSON blob. */
+export function exportCasesJson(): string {
+  const payload = {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    cases: readCases(),
+  }
+  return JSON.stringify(payload, null, 2)
+}
+
+/**
+ * Import cases from a JSON blob (produced by exportCasesJson).
+ * Strategy: merge by id — incoming wins on conflict.
+ * Returns the number of cases imported.
+ */
+export function importCasesJson(raw: string): number {
+  const parsed = JSON.parse(raw)
+  const incoming: Case[] = Array.isArray(parsed) ? parsed : parsed.cases
+  if (!Array.isArray(incoming)) throw new Error('Invalid backup file')
+
+  const existing = readCases()
+  const byId = new Map(existing.map(c => [c.id, c]))
+  for (const c of incoming) {
+    if (!c?.id) continue
+    byId.set(c.id, c)
+  }
+  writeCases(Array.from(byId.values()))
+  return incoming.length
 }
 
 function computeSeverity(items: EvidenceItem[]): Severity {

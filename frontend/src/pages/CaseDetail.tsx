@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { downloadLegalPdf, fetchCase, fetchLegalAnalysis } from '../services/api'
+import { downloadLegalPdf, ensureBackendCase, fetchCase, fetchLegalAnalysis } from '../services/api'
 import { t, type Lang } from '../i18n'
 import type { Case, LegalAnalysisPayload } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
 import EvidenceCard from '../components/EvidenceCard'
 import PatternFlagCard from '../components/PatternFlagCard'
 import ReportModal from '../components/ReportModal'
-import { getLocalCase } from '../services/storage'
+import { getLocalCase, updateCaseBackendId } from '../services/storage'
 import HateAidReferral from '../components/HateAidReferral'
 import OnlinewachePanel from '../components/OnlinewachePanel'
 
@@ -38,10 +38,21 @@ export default function CaseDetail({ lang }: Props) {
   }, [id])
 
   useEffect(() => {
-    if (!caseData?.id) return
+    if (!caseData) return
     setLegalLoading(true)
     setLegalError(null)
-    fetchLegalAnalysis(caseData.id)
+
+    const isLocal = caseData.id.startsWith('case-local-')
+
+    const getBackendId = isLocal
+      ? ensureBackendCase(caseData).then(backendId => {
+          updateCaseBackendId(caseData.id, backendId)
+          return backendId
+        })
+      : Promise.resolve(caseData.backend_id ?? caseData.id)
+
+    getBackendId
+      .then(backendId => fetchLegalAnalysis(backendId))
       .then(res => setLegalAnalysis(res.analysis))
       .catch(err => setLegalError(err instanceof Error ? err.message : 'Legal analysis unavailable'))
       .finally(() => setLegalLoading(false))
