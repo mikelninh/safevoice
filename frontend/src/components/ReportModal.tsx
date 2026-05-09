@@ -53,11 +53,14 @@ async function resolveBackendCaseId(caseId: string): Promise<string> {
 
 export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [reportType, setReportType] = useState<ReportType>('police')
+  // Live form state (`victim`) is the draft the user types into.
+  // `appliedVictim` is what the API actually uses — only updated when the
+  // user clicks "Speichern" (or auto-flushed on Download). This avoids
+  // refetching the report on every keystroke while still feeling immediate.
   const [victim, setVictim] = useState<VictimInfo>(() => loadVictim())
-  // Separate "applied" victim that the API uses — debounced from `victim` so
-  // a user typing in the form doesn't refetch the report on every keystroke.
   const [appliedVictim, setAppliedVictim] = useState<VictimInfo>(() => loadVictim())
   const [showVictimForm, setShowVictimForm] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,11 +70,18 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [copied, setCopied] = useState(false)
   const isDE = lang === 'de'
 
-  // Debounce victim → appliedVictim by 700ms
-  useEffect(() => {
-    const handle = setTimeout(() => setAppliedVictim(victim), 700)
-    return () => clearTimeout(handle)
-  }, [victim.name, victim.address, victim.phone, victim.email])
+  const isDirty =
+    (victim.name ?? '') !== (appliedVictim.name ?? '') ||
+    (victim.address ?? '') !== (appliedVictim.address ?? '') ||
+    (victim.phone ?? '') !== (appliedVictim.phone ?? '') ||
+    (victim.email ?? '') !== (appliedVictim.email ?? '')
+
+  const handleApplyVictim = () => {
+    setAppliedVictim(victim)
+    saveVictim(victim)
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 1800)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -107,8 +117,12 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
     try {
       const resolved = backendId ?? (await resolveBackendCaseId(caseId))
       if (!backendId) setResolvedBackendId(resolved)
-      // Force-flush: if the user clicks Download before the 700ms debounce has
-      // fired, use the live `victim` instead of the stale `appliedVictim`.
+      // If the user has unsaved form edits when they click Download, treat
+      // that click as an implicit confirm: persist + apply, then download.
+      if (isDirty) {
+        setAppliedVictim(victim)
+        saveVictim(victim)
+      }
       await downloadPdf(resolved, reportType, lang, victim)
       setDownloadedFor(reportType)
     } catch (e) {
@@ -135,9 +149,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
   ]
 
   const updateVictim = (patch: Partial<VictimInfo>) => {
-    const next = { ...victim, ...patch }
-    setVictim(next)
-    saveVictim(next)
+    setVictim(v => ({ ...v, ...patch }))
   }
 
   return (
@@ -303,6 +315,32 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
                           ? 'Wird nur lokal in deinem Browser gespeichert und beim Generieren in den Bericht eingesetzt. Wir speichern keine personenbezogenen Daten serverseitig.'
                           : 'Stored only in your browser and inserted into the report when generated. No personal data is stored on the server.'}
                       </p>
+                      <div className="sm:col-span-2 flex items-center gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleApplyVictim}
+                          disabled={!isDirty}
+                          className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                        >
+                          {isDE ? 'In Bericht übernehmen' : 'Apply to report'}
+                        </button>
+                        {justSaved && !isDirty && (
+                          <span className="text-emerald-300 text-xs flex items-center gap-1">
+                            <span className="text-emerald-400">✓</span>
+                            {isDE ? 'Übernommen' : 'Applied'}
+                          </span>
+                        )}
+                        {!justSaved && !isDirty && appliedVictim.name && (
+                          <span className="text-slate-500 text-xs">
+                            {isDE ? 'Gespeichert.' : 'Saved.'}
+                          </span>
+                        )}
+                        {isDirty && (
+                          <span className="text-amber-300 text-xs">
+                            {isDE ? 'Nicht gespeichert.' : 'Unsaved changes.'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
