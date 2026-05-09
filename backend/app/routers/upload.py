@@ -44,7 +44,7 @@ async def upload_screenshot(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid file type: {content_type}. "
-                   f"Accepted types: PNG, JPEG, WebP."
+            f"Accepted types: PNG, JPEG, WebP.",
         )
 
     # Read and validate size
@@ -53,23 +53,24 @@ async def upload_screenshot(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=400,
             detail=f"File too large ({len(image_bytes)} bytes). "
-                   f"Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB."
+            f"Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB.",
         )
 
     if len(image_bytes) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file is empty."
-        )
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-    # Detect WhatsApp format and extract text
-    whatsapp_meta = detect_whatsapp_format(image_bytes)
+    # Detect WhatsApp format and extract text. Pass the mime type through so
+    # the OpenAI Vision fallback (used on Vercel where Tesseract isn't installed)
+    # can build a correctly-typed data URL.
+    whatsapp_meta = detect_whatsapp_format(image_bytes, mime_type=content_type)
     extracted_text = whatsapp_meta["extracted_text"]
 
     if not extracted_text.strip():
         # Even without OCR text, we can still create evidence
         # with the screenshot itself as proof
-        logger.info("No text extracted from screenshot (OCR unavailable or image has no text)")
+        logger.info(
+            "No text extracted from screenshot (OCR unavailable or image has no text)"
+        )
         extracted_text = "[Screenshot uploaded - no text extracted via OCR]"
 
     # Classify the extracted text
@@ -95,7 +96,9 @@ async def upload_screenshot(file: UploadFile = File(...)):
         "evidence": evidence,
         "classification": classification,
         "ocr_metadata": {
-            "text_extracted": bool(extracted_text and not extracted_text.startswith("[")),
+            "text_extracted": bool(
+                extracted_text and not extracted_text.startswith("[")
+            ),
             "is_whatsapp": whatsapp_meta["is_whatsapp"],
             "timestamps_found": whatsapp_meta["timestamps_found"],
             "has_read_receipts": whatsapp_meta["has_read_receipts"],
