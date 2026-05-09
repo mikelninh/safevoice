@@ -28,6 +28,7 @@ export default function Analyze({ lang }: Props) {
   const [params] = useSearchParams()
   const [url, setUrl] = useState(params.get('url') ?? '')
   const [text, setText] = useState(params.get('text') ?? '')
+  const [victimContext, setVictimContext] = useState('')
   const [author, setAuthor] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<EvidenceItem | null>(null)
@@ -123,7 +124,7 @@ export default function Analyze({ lang }: Props) {
 
   const handleSave = () => {
     if (!result) return
-    createCase(result)
+    createCase(result, undefined, victimContext.trim() || undefined)
     setSaved(true)
   }
 
@@ -139,8 +140,28 @@ export default function Analyze({ lang }: Props) {
         <span className="text-green-300 text-sm">{t(lang, 'analyze.privacy')}</span>
       </div>
 
-      {/* Form */}
+      {/* Form — text first (most common path: paste a message you received) */}
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-6 space-y-4">
+        <div>
+          <label className="block text-slate-300 text-sm font-medium mb-0.5">
+            {t(lang, 'analyze.text.label')}
+          </label>
+          <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.text.hint')}</p>
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder={t(lang, 'analyze.text.placeholder')}
+            rows={4}
+            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 resize-none"
+          />
+        </div>
+
+        <div className="relative flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-700"></div>
+          <span className="text-slate-500 text-xs">{isDE ? 'oder' : 'or'}</span>
+          <div className="flex-1 h-px bg-slate-700"></div>
+        </div>
+
         <div>
           <label className="block text-slate-300 text-sm font-medium mb-0.5">
             {t(lang, 'analyze.url.label')}
@@ -218,22 +239,22 @@ export default function Analyze({ lang }: Props) {
           )}
         </div>
 
-        <div className="relative flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-700"></div>
-          <span className="text-slate-500 text-xs">{isDE ? 'oder' : 'or'}</span>
-          <div className="flex-1 h-px bg-slate-700"></div>
-        </div>
-
         <div>
           <label className="block text-slate-300 text-sm font-medium mb-0.5">
-            {t(lang, 'analyze.text.label')}
+            {isDE ? 'Was ist passiert? (optional)' : 'What happened? (optional)'}
           </label>
-          <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.text.hint')}</p>
+          <p className="text-slate-500 text-xs mb-1.5">
+            {isDE
+              ? 'Kurzer Kontext: Was lief vorher, was war der Auslöser, gab es weitere Vorfälle? Hilft AI und Polizei, den Fall richtig einzuordnen.'
+              : 'Short context: what was the build-up, what triggered this, were there earlier incidents? Helps the AI and police place the case correctly.'}
+          </p>
           <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder={t(lang, 'analyze.text.placeholder')}
-            rows={4}
+            value={victimContext}
+            onChange={e => setVictimContext(e.target.value)}
+            placeholder={isDE
+              ? 'z.B. „Der Account belästigt mich seit 3 Wochen, nachdem ich einen Post über XY geteilt habe …"'
+              : 'e.g. "This account has been harassing me for 3 weeks after I posted about XY..."'}
+            rows={3}
             className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 resize-none"
           />
         </div>

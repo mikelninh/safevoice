@@ -34,7 +34,11 @@ export function getLocalCase(id: string): Case | null {
 }
 
 /** Create a new case with an initial evidence item. */
-export function createCase(evidence: EvidenceItem, title?: string): Case {
+export function createCase(
+  evidence: EvidenceItem,
+  title?: string,
+  victim_context?: string,
+): Case {
   const now = new Date().toISOString()
   const newCase: Case = {
     id: `case-local-${Date.now()}`,
@@ -45,6 +49,7 @@ export function createCase(evidence: EvidenceItem, title?: string): Case {
     pattern_flags: [],
     overall_severity: evidence.classification?.severity ?? 'low',
     status: 'open',
+    victim_context: victim_context || undefined,
   }
 
   const cases = readCases()

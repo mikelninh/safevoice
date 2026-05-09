@@ -70,6 +70,7 @@ class LLMCategory(str, Enum):
     sexual_harassment = "sexual_harassment"
     volksverhetzung = "volksverhetzung"
     stalking = "stalking"
+    doxxing = "doxxing"
     intimate_images = "intimate_images"
     scam = "scam"
     phishing = "phishing"
@@ -202,6 +203,7 @@ KATEGORIEN (Kurz-Definition, Auswahl)
   secure the existence of our people…"). Wenn solche Codes erkennbar verwendet werden, ist § 130 in
   der Regel einschlägig und severity ≥ high.
 - stalking: wiederholte Annäherung, Überwachung, Kontextabhängig.
+- doxxing: nicht-einvernehmliche Veröffentlichung privater Daten (Adresse, Telefon, Arbeitsplatz, Familienangehörige). Severity ≥ high — Doxxing ermöglicht reale Gefährdung. Anwendbare Normen: § 126a StGB (Gefährdende Verbreitung personenbezogener Daten), § 238 StGB (Nachstellung), DSGVO Art. 6.
 - intimate_images: nicht-einvernehmliche intime Aufnahmen, Deepfakes (§ 201a).
 - impersonation / false_facts / coordinated_attack: Identitätsvortäuschung, vorsätzliche Falschbehauptung, erkennbar abgestimmte Mehr-Account-Angriffe.
 
@@ -218,6 +220,11 @@ Input: "Das bringt mich um" (Idiom)
 → severity=low, categories=[harassment],
   laws=[NetzDG § 3]
   Summary (DE): "Umgangssprachliche Redewendung, keine erkennbare Straftat."
+
+Input: "Ihre Adresse: Hauptstr 12, 10115 Berlin. Telefon: 030 1234567. Geht hin und zeigt es ihr."
+→ severity=high, categories=[doxxing, threat, stalking],
+  laws=[§ 126a StGB, § 238 StGB, NetzDG § 3]
+  Summary (DE): "Doxxing — private Adresse + Telefonnummer öffentlich gepostet, mit Aufruf zu körperlichem Angriff."
 
 Input: "Stirbt endlich, du H*re" (Obfuscation)
 → severity=critical, categories=[death_threat, misogyny],

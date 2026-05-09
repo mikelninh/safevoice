@@ -69,12 +69,30 @@ export async function scrapeUrl(url: string): Promise<{
   return res.json()
 }
 
+export interface VictimInfo {
+  name?: string
+  address?: string
+  phone?: string
+  email?: string
+}
+
+function _victimQuery(v?: VictimInfo): string {
+  if (!v) return ''
+  const params: string[] = []
+  if (v.name) params.push(`victim_name=${encodeURIComponent(v.name)}`)
+  if (v.address) params.push(`victim_address=${encodeURIComponent(v.address)}`)
+  if (v.phone) params.push(`victim_phone=${encodeURIComponent(v.phone)}`)
+  if (v.email) params.push(`victim_email=${encodeURIComponent(v.email)}`)
+  return params.length ? '&' + params.join('&') : ''
+}
+
 export async function fetchReport(
   caseId: string,
   reportType: 'general' | 'netzdg' | 'police',
-  lang: 'de' | 'en'
+  lang: 'de' | 'en',
+  victim?: VictimInfo
 ): Promise<Record<string, unknown>> {
-  const url = `${BASE}/reports/${caseId}?report_type=${reportType}&lang=${lang}`
+  const url = `${BASE}/reports/${caseId}?report_type=${reportType}&lang=${lang}${_victimQuery(victim)}`
   const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
@@ -252,9 +270,12 @@ export async function uploadScreenshot(
 export async function downloadPdf(
   caseId: string,
   reportType: 'general' | 'netzdg' | 'police',
-  lang: 'de' | 'en'
+  lang: 'de' | 'en',
+  victim?: VictimInfo
 ): Promise<void> {
-  const res = await fetch(`${BASE}/reports/${caseId}/pdf?report_type=${reportType}&lang=${lang}`)
+  const res = await fetch(
+    `${BASE}/reports/${caseId}/pdf?report_type=${reportType}&lang=${lang}${_victimQuery(victim)}`
+  )
   if (!res.ok) {
     const body = await res.text().catch(() => '')
     throw new Error(`PDF generation failed (${res.status}): ${body.slice(0, 200)}`)

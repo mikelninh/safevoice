@@ -11,20 +11,42 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    HRFlowable, PageBreak
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    HRFlowable,
+    PageBreak,
 )
 
 from app.models.evidence import Case, EvidenceItem, Severity
 
 
-def generate_pdf(case: Case, report_type: str = "general", lang: str = "de") -> bytes:
-    """Generate a court-ready PDF report for a case."""
+def generate_pdf(
+    case: Case,
+    report_type: str = "general",
+    lang: str = "de",
+    victim_name: str | None = None,
+    victim_address: str | None = None,
+    victim_phone: str | None = None,
+    victim_email: str | None = None,
+) -> bytes:
+    """Generate a court-ready PDF report for a case.
+
+    When `report_type='police'` and `victim_name` is provided, the
+    personalized Strafanzeige body (from `report_generator._police_body`)
+    is embedded at the top so the printed PDF is directly usable as a
+    formal criminal complaint.
+    """
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=25 * mm, rightMargin=25 * mm,
-        topMargin=20 * mm, bottomMargin=20 * mm,
+        buf,
+        pagesize=A4,
+        leftMargin=25 * mm,
+        rightMargin=25 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
     )
 
     styles = _get_styles()
@@ -33,11 +55,14 @@ def generate_pdf(case: Case, report_type: str = "general", lang: str = "de") -> 
 
     # Header
     elements.append(Paragraph("SafeVoice", styles["Title"]))
-    elements.append(Paragraph(
-        "Dokumentationsplattform für digitale Gewalt" if is_de
-        else "Digital Violence Documentation Platform",
-        styles["Subtitle"]
-    ))
+    elements.append(
+        Paragraph(
+            "Dokumentationsplattform für digitale Gewalt"
+            if is_de
+            else "Digital Violence Documentation Platform",
+            styles["Subtitle"],
+        )
+    )
     elements.append(Spacer(1, 8 * mm))
 
     # Report type banner
@@ -48,8 +73,46 @@ def generate_pdf(case: Case, report_type: str = "general", lang: str = "de") -> 
     }
     label = type_labels.get(report_type, type_labels["general"])
     elements.append(Paragraph(label[0] if is_de else label[1], styles["ReportType"]))
-    elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#4338ca")))
+    elements.append(
+        HRFlowable(width="100%", thickness=1, color=colors.HexColor("#4338ca"))
+    )
     elements.append(Spacer(1, 6 * mm))
+
+    # Strafanzeige body — embedded at top when report_type='police' AND we
+    # have a name to personalize. Without a name the body still contains
+    # placeholders, which is worse than not including it at all.
+    if report_type == "police" and victim_name:
+        from app.services.report_generator import (
+            _police_body,
+        )  # local import: avoid cycle
+
+        critical_items = [
+            ev
+            for ev in case.evidence_items
+            if ev.classification and ev.classification.severity in ("high", "critical")
+        ] or list(case.evidence_items)
+        body = _police_body(case, critical_items, is_de=is_de)
+
+        sender_lines = [victim_name]
+        if victim_address:
+            sender_lines.append(victim_address)
+        if victim_phone:
+            sender_lines.append(f"Tel: {victim_phone}")
+        if victim_email:
+            sender_lines.append(f"E-Mail: {victim_email}")
+        sender_block = "\n".join(sender_lines)
+
+        body = body.replace("[NAME DES OPFERS]", sender_block)
+        body = body.replace("[UNTERSCHRIFT]", victim_name)
+
+        for paragraph in body.split("\n\n"):
+            html = paragraph.replace("\n", "<br/>")
+            elements.append(Paragraph(html, styles["Body"]))
+            elements.append(Spacer(1, 3 * mm))
+        elements.append(
+            HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#cbd5e1"))
+        )
+        elements.append(Spacer(1, 6 * mm))
 
     # Case metadata
     now = datetime.now(timezone.utc)
@@ -57,76 +120,98 @@ def generate_pdf(case: Case, report_type: str = "general", lang: str = "de") -> 
         [_l("Fall-ID", "Case ID", is_de), case.id],
         [_l("Erstellt", "Created", is_de), _fmt_dt(case.created_at, is_de)],
         [_l("Bericht generiert", "Report generated", is_de), _fmt_dt(now, is_de)],
-        [_l("Schweregrad", "Severity", is_de), _severity_label(case.overall_severity, is_de)],
+        [
+            _l("Schweregrad", "Severity", is_de),
+            _severity_label(case.overall_severity, is_de),
+        ],
         [_l("Beweise", "Evidence items", is_de), str(len(case.evidence_items))],
         [_l("Status", "Status", is_de), case.status],
     ]
     meta_table = Table(meta_data, colWidths=[55 * mm, 105 * mm])
-    meta_table.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#64748b")),
-        ("TEXTCOLOR", (1, 0), (1, -1), colors.HexColor("#1e293b")),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-    ]))
+    meta_table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#64748b")),
+                ("TEXTCOLOR", (1, 0), (1, -1), colors.HexColor("#1e293b")),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     elements.append(meta_table)
     elements.append(Spacer(1, 6 * mm))
 
     # Victim context
     if case.victim_context:
-        elements.append(Paragraph(
-            _l("Kontext der betroffenen Person", "Victim context", is_de),
-            styles["SectionHead"]
-        ))
+        elements.append(
+            Paragraph(
+                _l("Kontext der betroffenen Person", "Victim context", is_de),
+                styles["SectionHead"],
+            )
+        )
         elements.append(Paragraph(case.victim_context, styles["Body"]))
         elements.append(Spacer(1, 4 * mm))
 
     # Pattern flags
     if case.pattern_flags:
-        elements.append(Paragraph(
-            _l("Erkannte Muster", "Detected patterns", is_de),
-            styles["SectionHead"]
-        ))
+        elements.append(
+            Paragraph(
+                _l("Erkannte Muster", "Detected patterns", is_de), styles["SectionHead"]
+            )
+        )
         for flag in case.pattern_flags:
             desc = flag.description_de if is_de else flag.description
-            elements.append(Paragraph(
-                f"<b>⚑ {flag.type}</b> ({_severity_label(flag.severity, is_de)}): {desc}",
-                styles["Body"]
-            ))
+            elements.append(
+                Paragraph(
+                    f"<b>⚑ {flag.type}</b> ({_severity_label(flag.severity, is_de)}): {desc}",
+                    styles["Body"],
+                )
+            )
         elements.append(Spacer(1, 4 * mm))
 
     # Evidence items
-    elements.append(Paragraph(
-        _l("Beweismittel", "Evidence", is_de),
-        styles["SectionHead"]
-    ))
-    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#cbd5e1")))
+    elements.append(
+        Paragraph(_l("Beweismittel", "Evidence", is_de), styles["SectionHead"])
+    )
+    elements.append(
+        HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#cbd5e1"))
+    )
     elements.append(Spacer(1, 3 * mm))
 
     for i, ev in enumerate(case.evidence_items, 1):
         elements.extend(_evidence_block(ev, i, is_de, styles))
         if i < len(case.evidence_items):
-            elements.append(HRFlowable(
-                width="100%", thickness=0.3, color=colors.HexColor("#e2e8f0"), spaceAfter=3 * mm
-            ))
+            elements.append(
+                HRFlowable(
+                    width="100%",
+                    thickness=0.3,
+                    color=colors.HexColor("#e2e8f0"),
+                    spaceAfter=3 * mm,
+                )
+            )
 
     # Legal notice
     elements.append(Spacer(1, 8 * mm))
-    elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#4338ca")))
+    elements.append(
+        HRFlowable(width="100%", thickness=1, color=colors.HexColor("#4338ca"))
+    )
     elements.append(Spacer(1, 3 * mm))
-    elements.append(Paragraph(
-        _l(
-            "Dieser Bericht wurde automatisch von SafeVoice generiert. "
-            "Alle Inhalte sind mit SHA-256 Prüfsummen gesichert. "
-            "Die Archivierungslinks dienen als unabhängiger Nachweis der Existenz der Inhalte zum Erfassungszeitpunkt.",
-            "This report was automatically generated by SafeVoice. "
-            "All content is secured with SHA-256 checksums. "
-            "Archive links serve as independent proof of content existence at the time of capture.",
-            is_de
-        ),
-        styles["Footer"]
-    ))
+    elements.append(
+        Paragraph(
+            _l(
+                "Dieser Bericht wurde automatisch von SafeVoice generiert. "
+                "Alle Inhalte sind mit SHA-256 Prüfsummen gesichert. "
+                "Die Archivierungslinks dienen als unabhängiger Nachweis der Existenz der Inhalte zum Erfassungszeitpunkt.",
+                "This report was automatically generated by SafeVoice. "
+                "All content is secured with SHA-256 checksums. "
+                "Archive links serve as independent proof of content existence at the time of capture.",
+                is_de,
+            ),
+            styles["Footer"],
+        )
+    )
 
     doc.build(elements)
     return buf.getvalue()
@@ -137,10 +222,12 @@ def _evidence_block(ev: EvidenceItem, idx: int, is_de: bool, styles: dict) -> li
     elements = []
     c = ev.classification
 
-    elements.append(Paragraph(
-        f"{_l('Beweis', 'Evidence', is_de)} #{idx} — @{ev.author_username}",
-        styles["EvidenceHead"]
-    ))
+    elements.append(
+        Paragraph(
+            f"{_l('Beweis', 'Evidence', is_de)} #{idx} — @{ev.author_username}",
+            styles["EvidenceHead"],
+        )
+    )
     elements.append(Spacer(1, 2 * mm))
 
     # Metadata table
@@ -153,37 +240,41 @@ def _evidence_block(ev: EvidenceItem, idx: int, is_de: bool, styles: dict) -> li
         ev_meta.append([_l("Archiv", "Archive", is_de), ev.archived_url])
 
     meta_table = Table(ev_meta, colWidths=[35 * mm, 125 * mm])
-    meta_table.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#475569")),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-    ]))
+    meta_table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#475569")),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
     elements.append(meta_table)
     elements.append(Spacer(1, 3 * mm))
 
     # Content (in a visually distinct block)
-    elements.append(Paragraph(
-        _l("Inhalt:", "Content:", is_de),
-        styles["FieldLabel"]
-    ))
-    elements.append(Paragraph(
-        f'<i>\u201e{_escape(ev.content_text)}\u201c</i>',
-        styles["ContentQuote"]
-    ))
+    elements.append(Paragraph(_l("Inhalt:", "Content:", is_de), styles["FieldLabel"]))
+    elements.append(
+        Paragraph(
+            f"<i>\u201e{_escape(ev.content_text)}\u201c</i>", styles["ContentQuote"]
+        )
+    )
     elements.append(Spacer(1, 3 * mm))
 
     # Classification
     if c:
         sev_label = _severity_label(c.severity, is_de)
         cats = ", ".join(cat.value for cat in c.categories)
-        elements.append(Paragraph(
-            f"<b>{_l('Schweregrad', 'Severity', is_de)}:</b> {sev_label} | "
-            f"<b>{_l('Kategorien', 'Categories', is_de)}:</b> {cats} | "
-            f"<b>{_l('Konfidenz', 'Confidence', is_de)}:</b> {c.confidence:.0%}",
-            styles["Classification"]
-        ))
+        elements.append(
+            Paragraph(
+                f"<b>{_l('Schweregrad', 'Severity', is_de)}:</b> {sev_label} | "
+                f"<b>{_l('Kategorien', 'Categories', is_de)}:</b> {cats} | "
+                f"<b>{_l('Konfidenz', 'Confidence', is_de)}:</b> {c.confidence:.0%}",
+                styles["Classification"],
+            )
+        )
 
         summary = c.summary_de if is_de else c.summary
         elements.append(Paragraph(summary, styles["Body"]))
@@ -191,18 +282,22 @@ def _evidence_block(ev: EvidenceItem, idx: int, is_de: bool, styles: dict) -> li
 
         # Applicable laws
         if c.applicable_laws:
-            elements.append(Paragraph(
-                _l("Anwendbare Gesetze:", "Applicable laws:", is_de),
-                styles["FieldLabel"]
-            ))
+            elements.append(
+                Paragraph(
+                    _l("Anwendbare Gesetze:", "Applicable laws:", is_de),
+                    styles["FieldLabel"],
+                )
+            )
             for law in c.applicable_laws:
                 title = law.title_de if is_de else law.title
                 reason = law.applies_because_de if is_de else law.applies_because
-                elements.append(Paragraph(
-                    f"<b>{law.paragraph}</b> – {title}: {reason} "
-                    f"({_l('Höchststrafe', 'Max penalty', is_de)}: {law.max_penalty})",
-                    styles["LawItem"]
-                ))
+                elements.append(
+                    Paragraph(
+                        f"<b>{law.paragraph}</b> – {title}: {reason} "
+                        f"({_l('Höchststrafe', 'Max penalty', is_de)}: {law.max_penalty})",
+                        styles["LawItem"],
+                    )
+                )
 
     elements.append(Spacer(1, 4 * mm))
     return elements
@@ -213,58 +308,91 @@ def _get_styles() -> dict:
     styles = {}
 
     styles["Title"] = ParagraphStyle(
-        "SVTitle", parent=base["Title"],
-        fontSize=22, textColor=colors.HexColor("#4338ca"),
+        "SVTitle",
+        parent=base["Title"],
+        fontSize=22,
+        textColor=colors.HexColor("#4338ca"),
         spaceAfter=2 * mm,
     )
     styles["Subtitle"] = ParagraphStyle(
-        "SVSubtitle", parent=base["Normal"],
-        fontSize=10, textColor=colors.HexColor("#64748b"),
+        "SVSubtitle",
+        parent=base["Normal"],
+        fontSize=10,
+        textColor=colors.HexColor("#64748b"),
     )
     styles["ReportType"] = ParagraphStyle(
-        "SVReportType", parent=base["Heading1"],
-        fontSize=14, textColor=colors.HexColor("#1e293b"),
-        spaceBefore=4 * mm, spaceAfter=2 * mm,
+        "SVReportType",
+        parent=base["Heading1"],
+        fontSize=14,
+        textColor=colors.HexColor("#1e293b"),
+        spaceBefore=4 * mm,
+        spaceAfter=2 * mm,
     )
     styles["SectionHead"] = ParagraphStyle(
-        "SVSection", parent=base["Heading2"],
-        fontSize=12, textColor=colors.HexColor("#1e293b"),
-        spaceBefore=4 * mm, spaceAfter=2 * mm,
+        "SVSection",
+        parent=base["Heading2"],
+        fontSize=12,
+        textColor=colors.HexColor("#1e293b"),
+        spaceBefore=4 * mm,
+        spaceAfter=2 * mm,
     )
     styles["EvidenceHead"] = ParagraphStyle(
-        "SVEvHead", parent=base["Heading3"],
-        fontSize=11, textColor=colors.HexColor("#4338ca"),
-        spaceBefore=3 * mm, spaceAfter=1 * mm,
+        "SVEvHead",
+        parent=base["Heading3"],
+        fontSize=11,
+        textColor=colors.HexColor("#4338ca"),
+        spaceBefore=3 * mm,
+        spaceAfter=1 * mm,
     )
     styles["Body"] = ParagraphStyle(
-        "SVBody", parent=base["Normal"],
-        fontSize=9, leading=13, textColor=colors.HexColor("#334155"),
+        "SVBody",
+        parent=base["Normal"],
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#334155"),
     )
     styles["FieldLabel"] = ParagraphStyle(
-        "SVFieldLabel", parent=base["Normal"],
-        fontSize=8, textColor=colors.HexColor("#64748b"),
+        "SVFieldLabel",
+        parent=base["Normal"],
+        fontSize=8,
+        textColor=colors.HexColor("#64748b"),
         spaceBefore=1 * mm,
     )
     styles["ContentQuote"] = ParagraphStyle(
-        "SVQuote", parent=base["Normal"],
-        fontSize=9, leading=13, textColor=colors.HexColor("#1e293b"),
-        leftIndent=10 * mm, borderColor=colors.HexColor("#e2e8f0"),
-        borderWidth=0, borderPadding=4,
+        "SVQuote",
+        parent=base["Normal"],
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#1e293b"),
+        leftIndent=10 * mm,
+        borderColor=colors.HexColor("#e2e8f0"),
+        borderWidth=0,
+        borderPadding=4,
         backColor=colors.HexColor("#f8fafc"),
     )
     styles["Classification"] = ParagraphStyle(
-        "SVClass", parent=base["Normal"],
-        fontSize=8, leading=12, textColor=colors.HexColor("#475569"),
-        spaceBefore=2 * mm, spaceAfter=2 * mm,
+        "SVClass",
+        parent=base["Normal"],
+        fontSize=8,
+        leading=12,
+        textColor=colors.HexColor("#475569"),
+        spaceBefore=2 * mm,
+        spaceAfter=2 * mm,
     )
     styles["LawItem"] = ParagraphStyle(
-        "SVLaw", parent=base["Normal"],
-        fontSize=8, leading=11, textColor=colors.HexColor("#475569"),
-        leftIndent=5 * mm, spaceBefore=1 * mm,
+        "SVLaw",
+        parent=base["Normal"],
+        fontSize=8,
+        leading=11,
+        textColor=colors.HexColor("#475569"),
+        leftIndent=5 * mm,
+        spaceBefore=1 * mm,
     )
     styles["Footer"] = ParagraphStyle(
-        "SVFooter", parent=base["Normal"],
-        fontSize=7, textColor=colors.HexColor("#94a3b8"),
+        "SVFooter",
+        parent=base["Normal"],
+        fontSize=7,
+        textColor=colors.HexColor("#94a3b8"),
         alignment=1,  # center
     )
 
@@ -280,8 +408,18 @@ def _severity_label(severity, is_de: bool) -> str:
         s = severity
     else:
         s = severity.value
-    labels_de = {"low": "Niedrig", "medium": "Mittel", "high": "Hoch", "critical": "KRITISCH"}
-    labels_en = {"low": "Low", "medium": "Medium", "high": "High", "critical": "CRITICAL"}
+    labels_de = {
+        "low": "Niedrig",
+        "medium": "Mittel",
+        "high": "Hoch",
+        "critical": "KRITISCH",
+    }
+    labels_en = {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "critical": "CRITICAL",
+    }
     return (labels_de if is_de else labels_en).get(s, s)
 
 
@@ -295,8 +433,4 @@ def _fmt_dt(dt, is_de: bool) -> str:
 
 def _escape(text: str) -> str:
     """Escape XML special chars for ReportLab Paragraph."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

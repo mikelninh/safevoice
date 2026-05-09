@@ -1,8 +1,27 @@
 import { useState, useEffect } from 'react'
-import { fetchReport, downloadPdf, ensureBackendCase, resetServiceWorkerAndCaches } from '../services/api'
+import { fetchReport, downloadPdf, ensureBackendCase, resetServiceWorkerAndCaches, type VictimInfo } from '../services/api'
 import { t, type Lang } from '../i18n'
 import { getLocalCase, setBackendId } from '../services/storage'
 import SendReport from './SendReport'
+
+const VICTIM_STORAGE_KEY = 'sv_victim_info'
+
+function loadVictim(): VictimInfo {
+  try {
+    const raw = localStorage.getItem(VICTIM_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveVictim(v: VictimInfo): void {
+  try {
+    localStorage.setItem(VICTIM_STORAGE_KEY, JSON.stringify(v))
+  } catch {
+    /* quota exceeded — ignore */
+  }
+}
 
 interface Props {
   caseId: string  // local case ID (localStorage) OR backend ID
@@ -33,7 +52,9 @@ async function resolveBackendCaseId(caseId: string): Promise<string> {
 }
 
 export default function ReportModal({ caseId, lang, onClose }: Props) {
-  const [reportType, setReportType] = useState<ReportType>('netzdg')
+  const [reportType, setReportType] = useState<ReportType>('police')
+  const [victim, setVictim] = useState<VictimInfo>(() => loadVictim())
+  const [showVictimForm, setShowVictimForm] = useState(false)
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -53,7 +74,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
       .then(async (resolvedId) => {
         if (cancelled) return
         setResolvedBackendId(resolvedId)
-        const r = await fetchReport(resolvedId, reportType, lang)
+        const r = await fetchReport(resolvedId, reportType, lang, victim)
         if (!cancelled) setReport(r)
       })
       .catch((e: Error) => {
@@ -68,14 +89,14 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
     return () => {
       cancelled = true
     }
-  }, [caseId, reportType, lang])
+  }, [caseId, reportType, lang, victim.name, victim.address, victim.phone, victim.email])
 
   const handleDownload = async () => {
     setDownloadError(null)
     try {
       const resolved = backendId ?? (await resolveBackendCaseId(caseId))
       if (!backendId) setResolvedBackendId(resolved)
-      await downloadPdf(resolved, reportType, lang)
+      await downloadPdf(resolved, reportType, lang, victim)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[ReportModal] downloadPdf failed:', e)
@@ -94,10 +115,16 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [mode, setMode] = useState<'preview' | 'send'>('preview')
 
   const tabs: { key: ReportType; label: string }[] = [
-    { key: 'netzdg', label: t(lang, 'report.netzdg') },
     { key: 'police', label: t(lang, 'report.police') },
+    { key: 'netzdg', label: t(lang, 'report.netzdg') },
     { key: 'general', label: t(lang, 'report.general') },
   ]
+
+  const updateVictim = (patch: Partial<VictimInfo>) => {
+    const next = { ...victim, ...patch }
+    setVictim(next)
+    saveVictim(next)
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-4">
@@ -208,6 +235,65 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
             </div>
           ) : report ? (
             <div className="space-y-4">
+              {reportType === 'police' && (
+                <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowVictimForm(s => !s)}
+                    className="w-full flex items-center justify-between text-left"
+                  >
+                    <div>
+                      <div className="text-slate-200 text-sm font-semibold">
+                        {isDE ? 'Persönliche Daten für die Strafanzeige' : 'Personal data for the criminal complaint'}
+                      </div>
+                      <div className="text-slate-400 text-xs mt-0.5">
+                        {victim.name
+                          ? (isDE ? `Wird als Anzeigeerstatter:in angegeben: ${victim.name}` : `Will appear as complainant: ${victim.name}`)
+                          : (isDE ? 'Optional. Ohne Name bleiben Platzhalter im Bericht.' : 'Optional. Without a name placeholders remain in the report.')}
+                      </div>
+                    </div>
+                    <span className="text-slate-400 text-xs">{showVictimForm ? '▲' : '▼'}</span>
+                  </button>
+                  {showVictimForm && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                      <input
+                        type="text"
+                        value={victim.name ?? ''}
+                        onChange={e => updateVictim({ name: e.target.value })}
+                        placeholder={isDE ? 'Vor- und Nachname *' : 'Full name *'}
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm sm:col-span-2"
+                      />
+                      <input
+                        type="text"
+                        value={victim.address ?? ''}
+                        onChange={e => updateVictim({ address: e.target.value })}
+                        placeholder={isDE ? 'Anschrift (Straße, PLZ, Ort)' : 'Postal address'}
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm sm:col-span-2"
+                      />
+                      <input
+                        type="tel"
+                        value={victim.phone ?? ''}
+                        onChange={e => updateVictim({ phone: e.target.value })}
+                        placeholder={isDE ? 'Telefon' : 'Phone'}
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm"
+                      />
+                      <input
+                        type="email"
+                        value={victim.email ?? ''}
+                        onChange={e => updateVictim({ email: e.target.value })}
+                        placeholder="E-Mail"
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm"
+                      />
+                      <p className="text-slate-500 text-xs sm:col-span-2 mt-1">
+                        {isDE
+                          ? 'Wird nur lokal in deinem Browser gespeichert und beim Generieren in den Bericht eingesetzt. Wir speichern keine personenbezogenen Daten serverseitig.'
+                          : 'Stored only in your browser and inserted into the report when generated. No personal data is stored on the server.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {!!report.subject && (
                 <div>
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">

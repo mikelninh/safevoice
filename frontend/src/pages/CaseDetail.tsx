@@ -51,8 +51,19 @@ export default function CaseDetail({ lang }: Props) {
         })
       : Promise.resolve(caseData.backend_id ?? caseData.id)
 
+    // Retry once on 404: a stale local backend_id (e.g. from a prior deploy
+    // whose DB is gone) can resolve to a phantom case. Force re-sync.
+    const fetchWithRetry = (backendId: string) =>
+      fetchLegalAnalysis(backendId).catch(async err => {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (!msg.includes('404')) throw err
+        const fresh = await ensureBackendCase({ ...caseData, backend_id: undefined })
+        updateCaseBackendId(caseData.id, fresh)
+        return fetchLegalAnalysis(fresh)
+      })
+
     getBackendId
-      .then(backendId => fetchLegalAnalysis(backendId))
+      .then(fetchWithRetry)
       .then(res => setLegalAnalysis(res.analysis))
       .catch(err => setLegalError(err instanceof Error ? err.message : 'Legal analysis unavailable'))
       .finally(() => setLegalLoading(false))
