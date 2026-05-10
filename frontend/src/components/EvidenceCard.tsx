@@ -4,14 +4,19 @@ import SeverityBadge from './SeverityBadge'
 import CategoryTag from './CategoryTag'
 import LawCard from './LawCard'
 import { useState } from 'react'
+import { updateEvidenceAuthor } from '../services/storage'
 
 interface Props {
   evidence: EvidenceItem
+  /** Optional case ID — when present, the @author handle becomes inline-editable. */
+  caseId?: string
   lang: Lang
 }
 
-export default function EvidenceCard({ evidence, lang }: Props) {
+export default function EvidenceCard({ evidence, caseId, lang }: Props) {
   const [expanded, setExpanded] = useState(false)
+  const [editingAuthor, setEditingAuthor] = useState(false)
+  const [authorDraft, setAuthorDraft] = useState(evidence.author_username)
   const isDE = lang === 'de'
   const c = evidence.classification
 
@@ -19,6 +24,16 @@ export default function EvidenceCard({ evidence, lang }: Props) {
     isDE ? 'de-DE' : 'en-GB',
     { dateStyle: 'medium', timeStyle: 'short' }
   )
+
+  const commitAuthor = () => {
+    if (!caseId) return
+    const cleaned = authorDraft.trim().replace(/^@/, '') || 'unknown'
+    if (cleaned !== evidence.author_username) {
+      updateEvidenceAuthor(caseId, evidence.id, cleaned)
+      evidence.author_username = cleaned
+    }
+    setEditingAuthor(false)
+  }
 
   return (
     <div className={`bg-slate-800/60 rounded-xl ${
@@ -36,9 +51,35 @@ export default function EvidenceCard({ evidence, lang }: Props) {
       <div className="p-4 sm:p-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="min-w-0">
-            <span className="text-indigo-300 font-mono text-sm">@{evidence.author_username}</span>
-            <span className="text-slate-500 text-xs ml-3">{date}</span>
+          <div className="min-w-0 flex items-center gap-3 flex-wrap">
+            {editingAuthor && caseId ? (
+              <input
+                value={authorDraft}
+                onChange={e => setAuthorDraft(e.target.value)}
+                onBlur={commitAuthor}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                  if (e.key === 'Escape') {
+                    setAuthorDraft(evidence.author_username)
+                    setEditingAuthor(false)
+                  }
+                }}
+                autoFocus
+                placeholder="username"
+                className="bg-slate-900 border border-slate-600 rounded px-2 py-0.5 text-slate-200 placeholder-slate-500 text-sm font-mono w-40"
+              />
+            ) : (
+              <button
+                onClick={() => caseId && setEditingAuthor(true)}
+                disabled={!caseId}
+                title={caseId ? (isDE ? 'Verfasser:in bearbeiten' : 'Edit author') : undefined}
+                className={`text-indigo-300 font-mono text-sm ${caseId ? 'hover:text-indigo-200 cursor-pointer' : 'cursor-default'}`}
+              >
+                @{evidence.author_username}
+                {caseId && <span className="text-slate-500 ml-1 text-xs">✎</span>}
+              </button>
+            )}
+            <span className="text-slate-500 text-xs">{date}</span>
           </div>
           {c && <SeverityBadge severity={c.severity} lang={lang} />}
         </div>

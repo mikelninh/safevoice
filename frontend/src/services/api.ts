@@ -21,6 +21,58 @@ export async function fetchCase(id: string): Promise<Case> {
   return res.json()
 }
 
+/**
+ * Push a single new evidence item to an existing backend case so the
+ * server-side classifier + legal AI see it. Used by the "add evidence"
+ * flow on a case that's already been synced once.
+ */
+export async function addEvidenceToBackendCase(
+  backendCaseId: string,
+  evidence: {
+    content_text: string
+    url?: string
+    platform?: string
+    author_username?: string
+    screenshot_base64?: string
+  }
+): Promise<void> {
+  const res = await fetch(`${BASE}/cases/${backendCaseId}/evidence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content_type: evidence.screenshot_base64 ? 'screenshot' : 'text',
+      text: evidence.content_text,
+      source_url: evidence.url || undefined,
+      author_username: evidence.author_username ?? 'unknown',
+      platform: evidence.platform ?? undefined,
+      screenshot_base64: evidence.screenshot_base64,
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Evidence sync failed (${res.status}): ${body.slice(0, 200)}`)
+  }
+}
+
+/**
+ * PUT updates to a backend case (title, victim_context). Without this the
+ * server-side legal AI and Strafanzeige use stale context.
+ */
+export async function updateBackendCase(
+  backendCaseId: string,
+  patch: { title?: string; victim_context?: string }
+): Promise<void> {
+  const res = await fetch(`${BASE}/cases/${backendCaseId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Case update failed (${res.status}): ${body.slice(0, 200)}`)
+  }
+}
+
 export async function fetchLegalAnalysis(caseId: string): Promise<LegalAnalysisResponse> {
   const res = await fetch(`${BASE}/legal/${caseId}`, { cache: 'no-store' })
   if (!res.ok) {

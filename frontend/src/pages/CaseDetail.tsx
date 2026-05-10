@@ -252,7 +252,7 @@ export default function CaseDetail({ lang }: Props) {
         </h2>
         <div className="space-y-3">
           {caseData.evidence_items.map(ev => (
-            <EvidenceCard key={ev.id} evidence={ev} lang={lang} />
+            <EvidenceCard key={ev.id} evidence={ev} caseId={caseData.id} lang={lang} />
           ))}
         </div>
       </div>

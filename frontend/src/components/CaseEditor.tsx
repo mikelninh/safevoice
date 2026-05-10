@@ -1,21 +1,29 @@
 /**
  * Inline edit + add-evidence panel for a case.
  *
- * - Edit title / victim_context inline
- * - Edit author_username on existing evidence items
- * - Add new evidence (text or screenshot) to the case
+ * - "Beweis hinzufügen" tab: append text or a screenshot. Both classify
+ *   locally AND push to the backend case so the server-side legal AI +
+ *   Strafanzeige template see the new piece.
+ * - "Kontext & Titel" tab: change case title + victim_context. PUTs to
+ *   the backend so the legal AI sees the updated context.
  *
- * All operations write to localStorage first, then sync to backend via
- * the existing /api/cases/{id}/evidence endpoint when applicable.
+ * Author handles are edited inline on each EvidenceCard — there is no
+ * separate "authors" tab here (it was duplicated work and confused users).
  */
 import { useRef, useState } from 'react'
-import { analyzeText, ensureBackendCase, uploadScreenshot } from '../services/api'
+import {
+  addEvidenceToBackendCase,
+  analyzeText,
+  ensureBackendCase,
+  updateBackendCase,
+  uploadScreenshot,
+} from '../services/api'
 import {
   addEvidenceToCase,
+  updateCaseBackendId,
   updateCaseFields,
-  updateEvidenceAuthor,
 } from '../services/storage'
-import type { Case, EvidenceItem } from '../types'
+import type { Case } from '../types'
 import type { Lang } from '../i18n'
 
 interface Props {
@@ -24,7 +32,8 @@ interface Props {
   onChange: (updated: Case) => void
 }
 
-type Tab = 'context' | 'evidence' | 'authors'
+type Tab = 'context' | 'evidence'
+type SyncState = 'idle' | 'syncing' | 'synced' | 'failed'
 
 export default function CaseEditor({ caseData, lang, onChange }: Props) {
   const [open, setOpen] = useState(false)
@@ -35,7 +44,7 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
   const [title, setTitle] = useState(caseData.title)
   const [context, setContext] = useState(caseData.victim_context ?? '')
   const [savingContext, setSavingContext] = useState(false)
-  const [contextSaved, setContextSaved] = useState(false)
+  const [contextSync, setContextSync] = useState<SyncState>('idle')
 
   // Add-evidence state
   const [evidenceText, setEvidenceText] = useState('')
@@ -43,23 +52,40 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
   const [evidenceUrl, setEvidenceUrl] = useState('')
   const [addingEvidence, setAddingEvidence] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [evidenceSync, setEvidenceSync] = useState<SyncState>('idle')
   const screenshotRef = useRef<HTMLInputElement>(null)
 
-  const handleSaveContext = () => {
-    setSavingContext(true)
-    const updated = updateCaseFields(caseData.id, { title, victim_context: context })
-    if (updated) {
-      onChange(updated)
-      setContextSaved(true)
-      setTimeout(() => setContextSaved(false), 1800)
+  // Resolve the backend ID, syncing the case on first call if needed.
+  const getBackendId = async (): Promise<string> => {
+    const backendId = await ensureBackendCase(caseData)
+    if (backendId !== caseData.backend_id) {
+      updateCaseBackendId(caseData.id, backendId)
     }
-    setSavingContext(false)
+    return backendId
+  }
+
+  const handleSaveContext = async () => {
+    setSavingContext(true)
+    setContextSync('syncing')
+    const updated = updateCaseFields(caseData.id, { title, victim_context: context })
+    if (updated) onChange(updated)
+    try {
+      const backendId = await getBackendId()
+      await updateBackendCase(backendId, { title, victim_context: context })
+      setContextSync('synced')
+      setTimeout(() => setContextSync('idle'), 2200)
+    } catch {
+      setContextSync('failed')
+    } finally {
+      setSavingContext(false)
+    }
   }
 
   const handleAddTextEvidence = async () => {
     if (!evidenceText.trim()) return
     setAddingEvidence(true)
     setAddError(null)
+    setEvidenceSync('syncing')
     try {
       const res = await analyzeText(
         evidenceText.trim(),
@@ -68,12 +94,23 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
       )
       const updated = addEvidenceToCase(caseData.id, res.evidence)
       if (updated) onChange(updated)
-      // Sync to backend in the background — no need to block UI
-      ensureBackendCase(updated ?? caseData).catch(() => {})
+
+      // Push to backend so legal AI + Strafanzeige see it.
+      const backendId = await getBackendId()
+      await addEvidenceToBackendCase(backendId, {
+        content_text: res.evidence.content_text,
+        url: evidenceUrl.trim() || undefined,
+        platform: res.evidence.platform,
+        author_username: evidenceAuthor.trim() || 'unknown',
+      })
+      setEvidenceSync('synced')
+      setTimeout(() => setEvidenceSync('idle'), 2200)
+
       setEvidenceText('')
       setEvidenceAuthor('')
       setEvidenceUrl('')
     } catch (err) {
+      setEvidenceSync('failed')
       setAddError(err instanceof Error ? err.message : (isDE ? 'Konnte nicht klassifizieren.' : 'Could not classify.'))
     } finally {
       setAddingEvidence(false)
@@ -83,21 +120,26 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
   const handleAddScreenshot = async (file: File) => {
     setAddingEvidence(true)
     setAddError(null)
+    setEvidenceSync('syncing')
     try {
       const res = await uploadScreenshot(file)
       const updated = addEvidenceToCase(caseData.id, res.evidence)
       if (updated) onChange(updated)
-      ensureBackendCase(updated ?? caseData).catch(() => {})
+
+      const backendId = await getBackendId()
+      await addEvidenceToBackendCase(backendId, {
+        content_text: res.evidence.content_text,
+        platform: res.evidence.platform,
+        screenshot_base64: res.evidence.screenshot_base64,
+      })
+      setEvidenceSync('synced')
+      setTimeout(() => setEvidenceSync('idle'), 2200)
     } catch (err) {
+      setEvidenceSync('failed')
       setAddError(err instanceof Error ? err.message : (isDE ? 'Upload fehlgeschlagen.' : 'Upload failed.'))
     } finally {
       setAddingEvidence(false)
     }
-  }
-
-  const updateAuthor = (evidenceId: string, value: string) => {
-    const updated = updateEvidenceAuthor(caseData.id, evidenceId, value || 'unknown')
-    if (updated) onChange(updated)
   }
 
   if (!open) {
@@ -106,7 +148,7 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
         onClick={() => setOpen(true)}
         className="w-full text-slate-300 hover:text-white text-sm font-medium bg-slate-800/40 hover:bg-slate-800 rounded-xl py-3 transition-colors"
       >
-        {isDE ? 'Fall bearbeiten — Kontext, Beweise, Verfasser:innen' : 'Edit case — context, evidence, authors'}
+        {isDE ? 'Fall bearbeiten — Beweis hinzufügen, Kontext anpassen' : 'Edit case — add evidence, adjust context'}
       </button>
     )
   }
@@ -122,13 +164,36 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
     </button>
   )
 
+  const SyncPill = ({ state }: { state: SyncState }) => {
+    if (state === 'idle') return null
+    if (state === 'syncing') {
+      return (
+        <span className="text-slate-400 text-xs">
+          {isDE ? 'Wird mit Backend abgeglichen…' : 'Syncing to backend…'}
+        </span>
+      )
+    }
+    if (state === 'synced') {
+      return (
+        <span className="text-emerald-300 text-xs flex items-center gap-1">
+          <span className="text-emerald-400">✓</span>
+          {isDE ? 'Übernommen — Legal AI & Strafanzeige sehen die Änderung.' : 'Synced — legal AI & criminal complaint see the change.'}
+        </span>
+      )
+    }
+    return (
+      <span className="text-amber-300 text-xs">
+        {isDE ? 'Lokal gespeichert, Backend-Sync fehlgeschlagen.' : 'Saved locally, backend sync failed.'}
+      </span>
+    )
+  }
+
   return (
     <div className="bg-slate-800/60 rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 pt-2 border-b border-slate-700/60">
         <div className="flex">
           {tabBtn('evidence', isDE ? 'Beweis hinzufügen' : 'Add evidence')}
           {tabBtn('context', isDE ? 'Kontext & Titel' : 'Context & title')}
-          {tabBtn('authors', isDE ? 'Verfasser:innen' : 'Authors')}
         </div>
         <button
           onClick={() => setOpen(false)}
@@ -166,15 +231,18 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
                   className="bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm"
                 />
               </div>
-              <button
-                onClick={handleAddTextEvidence}
-                disabled={addingEvidence || !evidenceText.trim()}
-                className="mt-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-              >
-                {addingEvidence
-                  ? (isDE ? 'Wird klassifiziert…' : 'Classifying…')
-                  : (isDE ? 'Beweis hinzufügen' : 'Add evidence')}
-              </button>
+              <div className="mt-3 flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={handleAddTextEvidence}
+                  disabled={addingEvidence || !evidenceText.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                >
+                  {addingEvidence
+                    ? (isDE ? 'Wird klassifiziert…' : 'Classifying…')
+                    : (isDE ? 'Beweis hinzufügen' : 'Add evidence')}
+                </button>
+                <SyncPill state={evidenceSync} />
+              </div>
             </div>
 
             <div className="border-t border-slate-700/60 pt-4">
@@ -232,7 +300,7 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
                 className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm resize-none"
               />
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <button
                 onClick={handleSaveContext}
                 disabled={savingContext}
@@ -240,37 +308,8 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
               >
                 {isDE ? 'Speichern' : 'Save'}
               </button>
-              {contextSaved && (
-                <span className="text-emerald-300 text-xs flex items-center gap-1">
-                  <span className="text-emerald-400">✓</span>
-                  {isDE ? 'Gespeichert' : 'Saved'}
-                </span>
-              )}
+              <SyncPill state={contextSync} />
             </div>
-          </div>
-        )}
-
-        {tab === 'authors' && (
-          <div className="space-y-2">
-            <p className="text-slate-500 text-xs mb-2">
-              {isDE
-                ? 'Verfasser:in pro Beweis ändern. Hilft, wenn der ursprüngliche Account anonym war oder du den richtigen Handle nachträglich kennst.'
-                : 'Change the author for each piece of evidence. Useful if the account was anonymous or you learned the correct handle later.'}
-            </p>
-            {caseData.evidence_items.map((ev: EvidenceItem) => (
-              <div key={ev.id} className="bg-slate-900/60 rounded-lg p-3">
-                <p className="text-slate-400 text-xs line-clamp-2 mb-2">"{ev.content_text.slice(0, 120)}"</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 text-xs">@</span>
-                  <input
-                    defaultValue={ev.author_username}
-                    onBlur={e => updateAuthor(ev.id, e.target.value.replace(/^@/, ''))}
-                    placeholder="username"
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-slate-200 placeholder-slate-500 text-sm"
-                  />
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>

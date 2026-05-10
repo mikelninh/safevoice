@@ -68,11 +68,22 @@ def _check_openai_vision() -> bool:
     return _openai_vision_available
 
 
-def _ocr_with_openai_vision(image_bytes: bytes, mime_type: str = "image/png") -> str:
+def _ocr_with_openai_vision(
+    image_bytes: bytes, mime_type: str = "image/png"
+) -> tuple[str, Optional[str], Optional[str]]:
     """
-    Extract text via OpenAI Vision (gpt-4o-mini). Used when Tesseract is
-    unavailable, e.g. on Vercel Functions. Costs ~$0.001-0.005 per image
-    depending on size. Returns empty string on any error.
+    Extract text via OpenAI Vision (gpt-4o-mini). Returns a 3-tuple of
+    (text, sender_handle, platform_hint).
+
+    `sender_handle` is the harasser's visible username/handle (without the
+    leading @), if Vision can identify it from the screenshot. None when no
+    single sender is clear (chat with multiple participants, no header).
+
+    `platform_hint` is one of: "instagram" | "x" | "whatsapp" | "tiktok" |
+    "facebook" | "telegram" | "screenshot" — guessed from visible UI chrome.
+
+    Used when Tesseract is unavailable. ~$0.001-0.005 per image.
+    Returns ("", None, None) on any error.
     """
     try:
         from openai import OpenAI
@@ -81,22 +92,31 @@ def _ocr_with_openai_vision(image_bytes: bytes, mime_type: str = "image/png") ->
         b64 = base64.b64encode(image_bytes).decode("ascii")
         data_url = f"data:{mime_type};base64,{b64}"
 
-        # gpt-4o-mini supports vision and is the cheapest vision-capable model.
         resp = client.chat.completions.create(
             model="gpt-4o-mini",
             max_tokens=1500,
             temperature=0,
+            response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "You are an OCR engine. Transcribe ALL visible text in the "
-                        "screenshot exactly as written, preserving line breaks. Do not "
-                        "summarize, do not translate, do not add commentary. If the "
-                        "image contains a chat conversation, prefix each message with "
-                        "the visible sender name + colon (e.g. 'Anna: ...'). If timestamps "
-                        "are visible, include them. If there is no readable text, return "
-                        "the literal token NO_TEXT."
+                        "You are an OCR engine for SafeVoice — a tool that documents "
+                        "online harassment evidence. Look at the screenshot and return "
+                        "a single JSON object with exactly these keys:\n"
+                        '  "text": the harasser\'s message text — verbatim, line breaks '
+                        "preserved. If the screenshot is a chat with multiple senders, "
+                        "include all messages prefixed with 'SenderName: '. Do NOT "
+                        "summarize or translate. If no readable text, return empty string.\n"
+                        '  "sender_handle": the username or handle of the person who '
+                        "wrote the harassing message — without the leading '@'. Examples: "
+                        "'hateuser123' from an Instagram comment header, 'real_name42' "
+                        "from an X post, the contact name from a WhatsApp chat. Return "
+                        "null if no single clear sender is visible.\n"
+                        '  "platform_hint": one of "instagram" | "x" | "whatsapp" | '
+                        '"tiktok" | "facebook" | "telegram" | "screenshot" — based on '
+                        "visible UI chrome. Use 'screenshot' as fallback.\n"
+                        "Return ONLY the JSON object, no markdown, no commentary."
                     ),
                 },
                 {
@@ -107,13 +127,28 @@ def _ocr_with_openai_vision(image_bytes: bytes, mime_type: str = "image/png") ->
                 },
             ],
         )
-        text = (resp.choices[0].message.content or "").strip()
-        if text == "NO_TEXT":
-            return ""
-        return _clean_ocr_text(text)
+        raw = (resp.choices[0].message.content or "").strip()
+        import json
+
+        try:
+            data = json.loads(raw)
+        except Exception:
+            logger.warning(f"Vision returned non-JSON output: {raw[:200]}")
+            return _clean_ocr_text(raw), None, None
+
+        text = _clean_ocr_text(str(data.get("text") or ""))
+        sender = data.get("sender_handle")
+        if isinstance(sender, str):
+            sender = sender.strip().lstrip("@") or None
+        else:
+            sender = None
+        platform = data.get("platform_hint")
+        if not isinstance(platform, str):
+            platform = None
+        return text, sender, platform
     except Exception as e:
         logger.error(f"OpenAI Vision OCR failed: {e}")
-        return ""
+        return "", None, None
 
 
 def extract_text_from_image(image_bytes: bytes, mime_type: str = "image/png") -> str:
@@ -165,10 +200,73 @@ def extract_text_from_image(image_bytes: bytes, mime_type: str = "image/png") ->
 
     # --- Tier 2: OpenAI Vision (Vercel/serverless fallback) ---
     if _check_openai_vision():
-        return _ocr_with_openai_vision(image_bytes, mime_type=mime_type)
+        text, _sender, _platform = _ocr_with_openai_vision(
+            image_bytes, mime_type=mime_type
+        )
+        return text
 
     logger.warning("OCR unavailable: neither Tesseract nor OpenAI Vision configured")
     return ""
+
+
+def extract_with_metadata(image_bytes: bytes, mime_type: str = "image/png") -> dict:
+    """
+    Like extract_text_from_image, but also returns sender_handle and
+    platform_hint when Vision can identify them. Returns a dict:
+
+        {
+            "text": str,
+            "sender_handle": Optional[str],
+            "platform_hint": Optional[str],
+            "engine": "tesseract" | "openai_vision" | "none",
+        }
+
+    Used by the upload route so the frontend can pre-fill author_username
+    and platform without the user having to type them in.
+    """
+    out = {
+        "text": "",
+        "sender_handle": None,
+        "platform_hint": None,
+        "engine": "none",
+    }
+    if not image_bytes:
+        return out
+
+    try:
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(image_bytes))
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+    except Exception as e:
+        logger.error(f"Failed to open image: {e}")
+        return out
+
+    if _check_tesseract():
+        try:
+            import pytesseract
+
+            text = pytesseract.image_to_string(img, lang="deu+eng")
+            cleaned = _clean_ocr_text(text)
+            if cleaned:
+                out["text"] = cleaned
+                out["engine"] = "tesseract"
+                return out
+        except Exception as e:
+            logger.warning(f"Tesseract deu+eng failed ({e})")
+
+    if _check_openai_vision():
+        text, sender, platform = _ocr_with_openai_vision(
+            image_bytes, mime_type=mime_type
+        )
+        out["text"] = text
+        out["sender_handle"] = sender
+        out["platform_hint"] = platform
+        out["engine"] = "openai_vision"
+        return out
+
+    return out
 
 
 def _clean_ocr_text(text: str) -> str:
