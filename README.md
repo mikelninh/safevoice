@@ -1,54 +1,86 @@
 # SafeVoice
 
-See also:
+**Live:** [safevoice-vert.vercel.app](https://safevoice-vert.vercel.app)
+
+Repo notes:
 - [AGENTS.md](/Users/mikel/safevoice/AGENTS.md) — repo priorities and low-interruption collaboration rules
 - [SAFEVOICE_COMPANY_THESIS_DE.md](/Users/mikel/safevoice/SAFEVOICE_COMPANY_THESIS_DE.md)
 - [SAFEVOICE_EXECUTION_PLAN_DE.md](/Users/mikel/safevoice/SAFEVOICE_EXECUTION_PLAN_DE.md)
 
-> **🧪 Status: Closed Beta · NGO-Partner-Pilot · April 2026**
-> Funktionsfähig und im Test mit ersten NGO-Partnern. **Noch kein Produktivbetrieb** —
-> Datenschutzerklärung & Impressum sind Vorab-Versionen, nicht anwaltlich geprüft. Wir
-> suchen Trägerschaft (z. B. HateAid) bevor SafeVoice für Massenanwendung empfohlen
-> werden kann. Feedback und Pull Requests sehr willkommen.
+> **🧪 Status: Closed Beta · NGO-Partner-Pilot · Mai 2026**
+> Live deployt, anonym im Browser nutzbar, im Test mit Tutor + Team und ersten NGO-Partnern.
+> **Noch kein Produktivbetrieb für Massenanwendung** — Datenschutzerklärung & Impressum
+> sind Vorab-Versionen, nicht anwaltlich geprüft. Postanschrift gemäß § 5 TMG wird
+> vor Live-Gang ergänzt. Wir suchen Trägerschaft (z. B. HateAid).
+> Feedback und Pull Requests sehr willkommen.
 
-**Document digital harassment. Classify under German law. Generate court-ready reports. In 30 seconds.**
+**Document digital harassment. Classify under German law. Generate court-ready Strafanzeige in 30 seconds.**
 
-Bilingual UI (DE/EN). Classifier runs in German and English on OpenAI `gpt-4o-mini` with Pydantic Structured Outputs. DSGVO-by-design. Free for victims. Turkish and Arabic coverage on the roadmap.
+Anonymous-first (no account needed). Bilingual UI (DE/EN). Classifier on OpenAI `gpt-4o-mini` with Pydantic Structured Outputs. DSGVO-by-design — no personal data leaves your browser unless you explicitly submit it. Turkish + Arabic classifier coverage works today; UI translations on the roadmap.
 
 ---
 
 ## The Problem
 
-Every 3 minutes, someone in Germany is harassed online. 90% goes unreported because:
+Every 3 minutes someone in Germany is harassed online. 90% goes unreported because:
 - Victims don't know which laws apply
 - Evidence disappears (posts get deleted)
-- Reporting is complex and takes hours
+- Filing a Strafanzeige takes hours of paperwork
 
 ## The Solution
 
-Paste text, a URL, or upload a screenshot → AI classifies it under German criminal law → evidence is preserved with SHA-256 hash chain → court-ready PDF report generated.
-
 ```
-PASTE → CLASSIFY → PRESERVE → REPORT
- 10s       3s      instant    1 click
+PASTE → CLASSIFY → DOCUMENT → STRAFANZEIGE
+ 10s       3s       instant     1 click
 ```
 
-## Operating Direction
-
-SafeVoice should be understood as a controlled evidence-to-action workflow, not a generic AI app:
-
-- evidence capture
-- classification
-- case-level legal analysis
-- report / legal PDF / action output
-
-The current company/operating docs live in:
-- [SAFEVOICE_COMPANY_THESIS_DE.md](/Users/mikel/safevoice/SAFEVOICE_COMPANY_THESIS_DE.md)
-- [SAFEVOICE_EXECUTION_PLAN_DE.md](/Users/mikel/safevoice/SAFEVOICE_EXECUTION_PLAN_DE.md)
+Paste a hateful message, link, or screenshot → AI classifies it under German criminal law → evidence is preserved with SHA-256 hash chain → court-ready PDF Strafanzeige with executive summary, evidence exhibits, and AI legal assessment ready for the police.
 
 ---
 
-## Quick Start
+## How It Works
+
+### 1. Get content in (3 paths)
+- **Paste text** — copy a hateful comment from anywhere, paste it. Most common path.
+- **Paste a URL** — public news/blog URLs work directly. Instagram/X/TikTok/Facebook block server-side scraping by design — for those, screenshot is the reliable path and is also DSGVO-cleaner since SafeVoice never touches the platform.
+- **Upload a screenshot** — OCR runs in two tiers:
+  1. Tesseract locally (Docker / dev)
+  2. **OpenAI Vision (gpt-4o-mini) fallback on Vercel**, where system packages aren't available
+  Vision returns structured JSON: extracted text + sender_handle + platform_hint, so the @username and platform auto-fill from the screenshot.
+
+### 2. AI classifies it
+Single-tier LLM classifier — OpenAI `gpt-4o-mini` with Pydantic Structured Outputs. Detects **16 offense categories** including death_threat, volksverhetzung, doxxing, intimate_images, sexual_harassment, stalking. Returns severity, applicable German paragraphs, bilingual summary (DE + EN), and a `requires_immediate_action` flag.
+
+Schema enforcement is server-side. Categories and laws are exhaustive Python enums, so the model cannot invent a category or a paragraph. If the model refuses on safety grounds or the response fails schema validation, the API returns a clean `503` — **no silent fallback by design**, because a weak classification (e.g. regex misreading a death threat) would be worse than no classification.
+
+Few-shot prompt strategy with explicit doxxing example, idiom false-positive (*"Das bringt mich um"* → low) and obfuscation case (*"Stirbt endlich, du H\*re"* → critical).
+
+### 3. Case-level legal AI (second layer)
+Once a case has multiple pieces of evidence, a second AI pass produces a **Juristische Gesamteinschätzung**: free-text assessment, escalation risk + reason, strongest charges with strength scores (`strong` / `medium` / `weak`), and prioritised next steps with deadlines. Auto-refreshes when evidence or victim_context changes. Embedded in the Strafanzeige PDF so the police get one document.
+
+### 4. Evidence is preserved
+- SHA-256 content hash (sha256:…) per evidence
+- UTC timestamp with timezone
+- archive.org backup link when scraping
+- **Browser-side hash verifier** — anyone (police, court, lawyer) can paste the original text into SafeVoice and confirm it produces the same hash. Web Crypto API, no network.
+
+### 5. Strafanzeige PDF (the deliverable for police)
+A4, court-ready, ~8 KB:
+- **Executive summary card** at the top — complainant, severity badge, case-id, incident counts (with critical count highlighted), statutes — readable in 3 seconds
+- **Förmliche Strafanzeige body** with the victim's personal data substituted in (no [PLACEHOLDER] markers if a name is provided)
+- **Beweismittel as numbered exhibits** — each with severity-colored dot, italic quote with thin left rule, classification line, statutes, mono SHA-256 footer
+- **KI-gestützte Bewertung** as the last section — typographically distinct (tracked-out caps label + italic disclaimer) so police instantly see this is the AI's voice, not the victim's
+- Page footer with case-id and page numbers, 30 mm left margin for 2-hole punching
+- Tiny `✂` fold mark for envelope folding
+
+Plus alternate templates: NetzDG-Meldung (24 h / 7 d platform deadline), allgemeiner Bericht.
+
+### 6. Submit (Onlinewache or email)
+3-step Onlinewache flow built into the case page: select Bundesland → copy the prepared text → open the form and paste. Or download the `.eml` for Apple Mail / Outlook / Thunderbird with attachments pre-attached. PLZ-driven recipient pre-selection.
+
+---
+
+## Quick Start (local dev)
 
 ### Backend
 ```bash
@@ -56,148 +88,87 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload          # :8000
 ```
 
 ### Frontend
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                             # :5173
 ```
 
 - Frontend: http://localhost:5173
 - API docs: http://localhost:8000/docs
 
-### Enable AI classifier
-Add your OpenAI key to `.env`:
+### Required env
 ```
-OPENAI_API_KEY=sk-your-key
+OPENAI_API_KEY=sk-…   # required — without it /analyze returns 503
+DATABASE_URL=…        # optional, defaults to sqlite:///./safevoice.db
 ```
-Without it, the classifier is unavailable and `/analyze/*` endpoints return `503`. There is **no silent regex fallback by design** — a weak classification (e.g. regex misreading a death threat) would be worse than no classification. The old 3-tier fallback was removed on 13 April 2026.
 
 ---
 
-## How It Works
+## Production deployment
 
-### 1. Victim pastes content
-Three ways to get content in:
-- **Paste the comment text** — copy a harassing comment directly from Instagram/WhatsApp/X, paste into SafeVoice (best for comments)
-- **Paste a post link** — SafeVoice fetches the post caption automatically (works for Instagram posts, reels, X tweets)
-- **Upload a screenshot** — OCR extracts the text from WhatsApp/DM screenshots
+**Single platform: Vercel** (Frankfurt, Fluid Compute).
 
-### 2. AI classifies it
-Single-tier LLM classifier — OpenAI `gpt-4o-mini` with **Pydantic Structured
-Outputs** via `client.chat.completions.parse()`. Detects **15 offense
-categories** and returns: severity, confidence, applicable German paragraphs,
-bilingual summary (DE + EN), and recommended actions.
+| Layer | Where |
+|-------|-------|
+| Frontend (Vite SPA) | Vercel static |
+| Backend (FastAPI) | Vercel Python Function via `api/proxy.py` |
+| Database | Neon Postgres (Vercel Marketplace integration) |
+| OCR | Tesseract locally · OpenAI Vision in serverless |
+| Classifier + Legal AI | OpenAI `gpt-4o-mini` |
 
-**Prompt strategy: few-shot with victim_context handling.** The system
-prompt contains four worked examples (including a false-positive idiom
-*"Das bringt mich um"* and an obfuscation case *"Stirbt endlich, du H\*re"*),
-plus explicit rules for how `victim_context` — if provided — should change
-the classification (e.g. *"Ex-Partner → § 238 StGB (Stalking)"* instead of
-just § 241 StGB). This is the same content documented in the Comparison
-Table.
+`vercel.json` rewrites `/api/(.*)` → `/api/proxy?_p=$1`; the ASGI shim in `api/proxy.py` re-applies the original path before delegating to the FastAPI app whose routers are mounted at both `/` and `/api/`.
 
-Schema enforcement is server-side. Categories and laws are exhaustive Python
-enums, so the model cannot invent a category or a paragraph. If the model
-refuses on safety grounds or a response fails schema validation, the API
-returns a clean `503` — no silent fallback.
-
-Earlier versions had a 3-tier fallback (LLM → transformer → regex). We
-removed it because (a) the LLM is dramatically more accurate on real
-evidence, (b) the regex tier produced too many false positives to send to
-police, and (c) running a transformer added 1.5 GB of dependencies for
-marginal gain. A regex-only fallback for organisations that cannot send data
-to OpenAI remains on the roadmap.
-
-### 3. Evidence is preserved
-- SHA-256 content hash for integrity
-- Cryptographic hash chain linking evidence items
-- UTC timestamp with timezone (legal requirement)
-- archive.org backup
-
-### 4. Reports are generated
-- **NetzDG report** — for platform (Instagram must respond in 24h/7d)
-- **Strafanzeige** — police complaint template
-- **PDF export** — court-ready A4 document
-
----
-
-## Database Schema
-
-10 tables. Core flow: **user → case → evidence → classification → categories + laws.**
-Auth state (`magic_link_tokens`, `session_tokens`) persisted so Railway cold-starts don't log users out.
-
-```
-users                     — who is documenting (email + status + last_login)
-magic_link_tokens         — single-use login tokens · 15 min TTL · DB-backed
-session_tokens            — long-lived session tokens · 30 day TTL · DB-backed
-cases                     — one incident (groups related evidence)
-evidence_items            — one piece of content with SHA-256 hash chain
-classifications           — AI output: severity, confidence, summary (DE+EN)
-categories                — 15 offense types (harassment, Volksverhetzung, stalking, deepfakes...)
-laws                      — 11 German law references (§130–§269 StGB, NetzDG)
-classification_categories — many-to-many junction
-classification_laws       — many-to-many junction
-```
+Env vars on Vercel: `OPENAI_API_KEY`, `DATABASE_URL` (auto via Neon), `CORS_ORIGINS`, `VITE_OPERATOR_NAME`, `VITE_OPERATOR_EMAIL`, `VITE_OPERATOR_CITY` (Impressum, § 5 TMG).
 
 ---
 
 ## API Endpoints
 
-The core trio — **auth**, **cases**, **analyze** — is what the tutor
-action items map to. A dozen more routers cover reports, the Partner API, policy
-exports, the hash chain, and dashboards.
-
 ```
-# Auth  (backend/app/routers/auth.py)
-POST   /auth/login              — request magic link
-POST   /auth/verify             — exchange token for session
-GET    /auth/me                 — read user
-PUT    /auth/me                 — update user
-POST   /auth/logout             — end session
-DELETE /auth/me                 — soft delete (GDPR Art. 17)
-DELETE /auth/me/emergency       — hard delete (purges cases + evidence)
-GET    /auth/me/export          — Art. 20 data export (JSON)
+# Analyze  (backend/app/routers/analyze.py)
+POST   /analyze/ingest                 — text → classify (no DB write)
+POST   /analyze/url                    — scrape URL → classify (returns 422 + helpful hint for IG/X/TikTok)
+POST   /analyze/case                   — case-level RAG analysis
+POST   /analyze/chat                   — case-aware follow-up Q&A
 
 # Cases  (backend/app/routers/cases.py)
-GET    /cases/                  — list
-GET    /cases/{id}              — detail + evidence + classifications
-POST   /cases/                  — explicit create (rare — usually implicit)
-PUT    /cases/{id}              — update
-DELETE /cases/{id}              — delete (cascade)
-POST   /cases/{id}/evidence     — attach evidence to existing case
-
-# Analyze  (backend/app/routers/analyze.py)
-POST   /analyze/text            — classify a string (no DB write)
-POST   /analyze/ingest          — evidence + classify + case in one tx
-POST   /analyze/url             — scrape URL → classify
-POST   /analyze/case            — case-level RAG analysis across N evidence
+GET    /cases/                          — list
+GET    /cases/{id}                      — detail + evidence
+POST   /cases/                          — create
+PUT    /cases/{id}                      — update title + victim_context
+DELETE /cases/{id}                      — cascade delete
+POST   /cases/{id}/evidence             — append evidence (auto-syncs from frontend)
 
 # Reports  (backend/app/routers/reports.py)
-GET    /reports/{id}            — text report
-GET    /reports/{id}/pdf        — PDF
-GET    /reports/{id}/bafin      — BaFin scam report
-GET    /reports/{id}/court-package  — ZIP bundle
-POST   /reports/{id}/eml        — RFC 5322 email export
+GET    /reports/{id}?report_type=…      — preview text
+GET    /reports/{id}/pdf?…              — A4 PDF (Strafanzeige | NetzDG | general)
+                                          — accepts ?victim_name=…&victim_address=…&victim_phone=…&victim_email=…
+GET    /reports/{id}/legal-pdf          — standalone legal-analysis PDF
+GET    /reports/{id}/court-package      — ZIP bundle
+POST   /reports/{id}/eml                — RFC 5322 .eml export with attachments
 
-# Partner API  (backend/app/routers/partners.py)
-POST   /partners/organizations  — onboard NGO / law firm
-POST   /partners/cases/submit   — institutional case submission
-…                               — 9 endpoints total
+# Legal AI  (backend/app/routers/legal.py)
+GET    /legal/{case_id}                 — case-level analysis (auto-cached server-side)
 
-# Hash chain  (backend/app/routers/chain.py)
-POST   /chain/build             — build tamper-proof hash chain for a case
-POST   /chain/verify            — verify the chain
-GET    /chain/{case_id}         — read the chain
+# Upload  (backend/app/routers/upload.py)
+POST   /upload/screenshot               — OCR (Tesseract → Vision fallback)
+
+# Auth (optional, NGO/lawyer flow)  (backend/app/routers/auth.py)
+POST   /auth/login                      — magic link
+POST   /auth/verify
+GET    /auth/me · PUT · DELETE
+GET    /auth/me/export                  — Art. 20 data export
 
 # Health
-GET    /health                  — liveness check
+GET    /health · /api/health
 ```
 
-Full interactive OpenAPI docs: http://localhost:8000/docs
+Full interactive OpenAPI docs: `http://localhost:8000/docs` (or `/api/docs` on Vercel preview).
 
 ---
 
@@ -210,11 +181,10 @@ Full interactive OpenAPI docs: http://localhost:8000/docs
 | § 186 StGB | Üble Nachrede (Defamation) | 1 year |
 | § 187 StGB | Verleumdung (Slander) | 5 years |
 | § 201a StGB | Intimate image violation / Deepfakes | 2 years |
-| § 238 StGB | Nachstellung (Stalking) | 3-5 years |
+| § 238 StGB | Nachstellung (Stalking) | 3 years (5 with aggravating factors) |
 | § 241 StGB | Bedrohung (Threat) | 2 years |
-| § 126a StGB | Strafbare Bedrohung (Criminal threat) | 3 years |
-| § 263 StGB | Betrug (Fraud) | 5 years |
-| § 263a StGB | Computerbetrug (Computer fraud) | 5 years |
+| § 126a StGB | Gefährdende Verbreitung personenbezogener Daten · Strafbare Bedrohung | 3 years |
+| § 263 / § 263a StGB | Betrug · Computerbetrug | 5 years |
 | § 269 StGB | Fälschung beweiserheblicher Daten | 5 years |
 | NetzDG § 3 | Platform removal obligation | €50M fine |
 
@@ -224,14 +194,15 @@ Full interactive OpenAPI docs: http://localhost:8000/docs
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18 + TypeScript + Vite + Tailwind CSS |
-| Backend | Python 3.13 + FastAPI |
-| Database | SQLAlchemy (SQLite dev / PostgreSQL prod) |
-| AI Classifier | OpenAI GPT-4o-mini (structured outputs) |
-| Evidence | SHA-256 hash chain + UTC timestamps |
-| Reports | ReportLab (PDF) + Python `email` (RFC 5322 .eml export) |
-| Auth | Magic-link (passwordless) |
-| Deploy | Docker · Railway (Postgres + FastAPI) |
+| Frontend | React 18 + TypeScript + Vite + Tailwind 4 |
+| Backend | Python 3.12 + FastAPI |
+| Hosting | Vercel (frontend static + Python Fluid Compute) · Frankfurt |
+| Database | Neon Postgres (Vercel Marketplace) |
+| AI Classifier | OpenAI `gpt-4o-mini` (Pydantic structured outputs) |
+| OCR | Tesseract (Docker) · OpenAI Vision (serverless fallback) |
+| Evidence | SHA-256 hash chain + browser-side Web-Crypto verifier |
+| Reports | ReportLab (A4 PDF) + Python `email` (RFC 5322 .eml) |
+| Auth (optional) | Magic-link, DB-backed sessions |
 
 ---
 
@@ -239,25 +210,38 @@ Full interactive OpenAPI docs: http://localhost:8000/docs
 
 ```
 safevoice/
+├── api/proxy.py                       — Vercel Python Function entry point (ASGI shim)
 ├── backend/app/
-│   ├── main.py                   — FastAPI app
-│   ├── database.py               — SQLAlchemy models + seed data
-│   ├── models/                   — Pydantic domain objects (Case, Evidence, …)
+│   ├── main.py                        — FastAPI app + middleware
+│   ├── database.py                    — SQLAlchemy models + seed
+│   ├── models/                        — Pydantic domain (Case, Evidence, …)
 │   ├── services/
-│   │   ├── classifier.py         — orchestrator (single-tier LLM)
-│   │   ├── classifier_llm_v2.py  — OpenAI gpt-4o-mini + Pydantic .parse()
-│   │   ├── legal_ai.py           — case-level RAG: retrieve → augment → generate
-│   │   ├── scraper.py            — Instagram + X URL scraper
-│   │   ├── evidence.py           — SHA-256 hashing + hash chain
-│   │   └── pdf_generator.py      — court-ready PDF reports
-│   └── routers/                  — FastAPI routes (auth, cases, analyze, reports, …)
+│   │   ├── classifier.py              — orchestrator (single-tier LLM)
+│   │   ├── classifier_llm_v2.py       — gpt-4o-mini + Pydantic .parse()
+│   │   ├── legal_ai.py                — case-level second-layer analysis
+│   │   ├── ocr.py                     — Tesseract → OpenAI Vision fallback
+│   │   ├── scraper.py                 — public web scraper
+│   │   ├── evidence.py                — SHA-256 hashing
+│   │   ├── pdf_generator.py           — A4 Strafanzeige PDF (exec summary + exhibits + AI block)
+│   │   ├── report_generator.py        — Strafanzeige / NetzDG / general body builders
+│   │   └── legal_pdf.py               — standalone NGO-grade legal PDF
+│   └── routers/                       — FastAPI routes (analyze, cases, reports, legal, upload, …)
 ├── frontend/src/
-│   ├── pages/                    — Home, Analyze, Cases, CaseDetail
-│   ├── components/               — SeverityBadge, LawCard, SafeExit, …
-│   └── i18n/                     — DE/EN translations
-├── schema.dbml                   — DB schema for dbdiagram.io
-├── .env                          — OPENAI_API_KEY (not committed)
-└── Dockerfile                    — production deployment
+│   ├── pages/                         — Home, Analyze, Cases, CaseDetail, Login, Impressum, Datenschutz
+│   ├── components/
+│   │   ├── ReportModal.tsx            — Vorschau + Senden tabs, shared victim form
+│   │   ├── SendReport.tsx             — recipient picker, .eml builder
+│   │   ├── CaseEditor.tsx             — add evidence + edit context (tabbed)
+│   │   ├── EvidenceCard.tsx           — inline @author edit + hash verifier
+│   │   ├── HashVerifier.tsx           — browser-side SHA-256 verifier
+│   │   ├── OnlinewachePanel.tsx       — 3-step copy/open/paste flow
+│   │   └── …                          — SeverityBadge, LawCard, AcknowledgementBanner, SafeExit
+│   └── i18n/                          — DE/EN translations
+├── requirements.txt                   — pinned for Vercel build
+├── runtime.txt                        — python-3.12
+├── vercel.json                        — function config + rewrites
+├── schema.dbml                        — DB schema for dbdiagram.io
+└── Dockerfile                         — production deployment (alternative to Vercel)
 ```
 
 ---
@@ -266,18 +250,12 @@ safevoice/
 
 Everything beyond the quick start lives in `docs/`.
 
-- [`docs/DEPLOY.md`](docs/DEPLOY.md) — Railway + Vercel deployment, env vars, DNS
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) — deploy guide, env vars
 - [`docs/DESIGN.md`](docs/DESIGN.md) — design system + product principles
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — what's next
-- [`docs/DEMO_EN.md`](docs/DEMO_EN.md) / [`docs/DEMO.md`](docs/DEMO.md) — demo scripts
-- [`docs/AI_FLOW.md`](docs/AI_FLOW.md), [`docs/CASE_CRUD.md`](docs/CASE_CRUD.md), [`docs/USER_CRUD.md`](docs/USER_CRUD.md), [`docs/DB_ATTRIBUTES.md`](docs/DB_ATTRIBUTES.md), [`docs/CLASSIFICATION_API.md`](docs/CLASSIFICATION_API.md) — per-topic deep dives
+- [`docs/AI_FLOW.md`](docs/AI_FLOW.md), [`docs/CASE_CRUD.md`](docs/CASE_CRUD.md), [`docs/USER_CRUD.md`](docs/USER_CRUD.md), [`docs/CLASSIFICATION_API.md`](docs/CLASSIFICATION_API.md) — per-topic deep dives
 
-Meeting + presentation artefacts live in `docs/meeting/`:
-
-- [`docs/meeting/DEMO_SLIDES.html`](docs/meeting/DEMO_SLIDES.html) — 11-slide tutor deck
-- [`docs/meeting/DEMO_CODE_WALKTHROUGH.html`](docs/meeting/DEMO_CODE_WALKTHROUGH.html) — code walkthrough with syntax highlighting
-- [`docs/meeting/STUDY_GUIDE.html`](docs/meeting/STUDY_GUIDE.html) — step-by-step implementation guide
-- [`docs/meeting/QUIZ.html`](docs/meeting/QUIZ.html) — 20 MC questions covering all six action items
+Meeting + presentation artefacts in `docs/meeting/` (tutor deck, code walkthrough, study guide, quiz).
 
 ---
 
