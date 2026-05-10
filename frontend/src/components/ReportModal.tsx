@@ -435,12 +435,21 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
 
               {!!report.body && (
                 <div>
-                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
-                    {isDE ? 'Inhalt' : 'Content'}
+                  <div className="flex items-baseline justify-between mb-1 gap-2">
+                    <div className="text-xs text-slate-500 uppercase tracking-wider">
+                      {isDE ? 'Inhalt (Strafanzeige-Hauptteil)' : 'Content (complaint body)'}
+                    </div>
                   </div>
                   <pre className="bg-slate-800 rounded-lg p-4 text-slate-300 text-xs whitespace-pre-wrap font-mono overflow-x-auto">
                     {report.body as string}
                   </pre>
+                  {reportType === 'police' && (
+                    <p className="text-slate-500 text-xs mt-2 leading-relaxed bg-slate-800/40 rounded px-3 py-2">
+                      {isDE
+                        ? 'Die PDF enthält zusätzlich: Übersichts-Karte oben (Schweregrad, Vorfälle, §-Liste), Beweismittel als nummerierte Belegtabelle mit farbigen Schweregrad-Markern, KI-gestützte juristische Bewertung mit Risiko + Empfehlungen, Seitenzahlen und Briefkopf. Die Vorschau zeigt nur den eigentlichen Anzeigetext.'
+                        : 'The PDF additionally includes: an overview card at the top (severity, incident counts, statutes), the evidence list as numbered exhibits with colour-coded severity, the AI-assisted legal assessment with risk + recommendations, page numbers and a letterhead. This preview shows only the formal complaint body.'}
+                    </p>
+                  )}
                 </div>
               )}
 
