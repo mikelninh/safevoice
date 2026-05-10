@@ -51,6 +51,17 @@ async function resolveBackendCaseId(caseId: string): Promise<string> {
   return backendId
 }
 
+/**
+ * Extract the incident count the backend put in the report subject —
+ * format: "… – N dokumentierte Vorfälle" or "… – N Vorfälle (M kritisch)"
+ * (English equivalents). Returns null if not parseable.
+ */
+function extractReportCount(subject: string | null | undefined): number | null {
+  if (!subject) return null
+  const m = subject.match(/(\d+)\s+(?:dokumentierte\s+)?(?:Vorfälle|incidents)/i)
+  return m ? parseInt(m[1], 10) : null
+}
+
 export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [reportType, setReportType] = useState<ReportType>('police')
   // Live form state (`victim`) is the draft the user types into.
@@ -222,6 +233,10 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
               reportBody={(report.body as string) ?? null}
               reportSubject={(report.subject as string) ?? null}
               lang={lang}
+              victim={victim}
+              onVictimChange={(patch) => updateVictim(patch)}
+              onApplyVictim={handleApplyVictim}
+              isVictimDirty={isDirty}
               onDownloadPdf={handleDownload}
             />
           ) : loading ? (

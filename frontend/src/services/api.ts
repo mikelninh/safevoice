@@ -126,6 +126,8 @@ export interface VictimInfo {
   address?: string
   phone?: string
   email?: string
+  /** Optional postal code — used by SendReport to pre-select Bundesland police. */
+  plz?: string
 }
 
 function _victimQuery(v?: VictimInfo): string {

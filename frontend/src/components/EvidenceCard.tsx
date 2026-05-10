@@ -137,10 +137,25 @@ export default function EvidenceCard({ evidence, caseId, lang }: Props) {
                 ))}
               </div>
             </div>
-            <div className="text-xs text-slate-500 font-mono border-t border-slate-700 pt-3">
-              <div>Hash: {evidence.content_hash}</div>
+            <div className="border-t border-slate-700/60 pt-3 space-y-2">
+              <div>
+                <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">
+                  {isDE ? 'Prüfsumme (SHA-256)' : 'Checksum (SHA-256)'}
+                </div>
+                <div className="text-xs text-slate-500 font-mono break-all">{evidence.content_hash}</div>
+                <p className="text-slate-500 text-xs mt-1.5 leading-relaxed font-sans">
+                  {isDE
+                    ? 'Eindeutiger Fingerabdruck des Inhalts zum Erfassungszeitpunkt. Polizei, Gericht, Anwält:in oder NGO können damit prüfen, dass der Text nachträglich nicht verändert wurde — den selben Hash über den Originalinhalt rechnen und vergleichen. Du musst damit nichts tun; er liegt deinem Bericht bei.'
+                    : 'Unique fingerprint of the content at capture time. Police, court, lawyer or NGO can verify the text wasn\'t altered later — they recompute the same hash on the original and compare. You don\'t need to do anything with it; it\'s included in your report.'}
+                </p>
+              </div>
               {evidence.archived_url && (
-                <div>Archive: <a href={evidence.archived_url} className="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">{evidence.archived_url}</a></div>
+                <div>
+                  <div className="text-slate-400 text-xs uppercase tracking-wider mb-1">
+                    {isDE ? 'Archiv-Link' : 'Archive link'}
+                  </div>
+                  <a href={evidence.archived_url} className="text-indigo-400 hover:underline text-xs font-mono break-all" target="_blank" rel="noopener noreferrer">{evidence.archived_url}</a>
+                </div>
               )}
             </div>
           </div>
