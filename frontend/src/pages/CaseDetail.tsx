@@ -68,7 +68,9 @@ export default function CaseDetail({ lang }: Props) {
       .then(res => setLegalAnalysis(res.analysis))
       .catch(err => setLegalError(err instanceof Error ? err.message : 'Legal analysis unavailable'))
       .finally(() => setLegalLoading(false))
-  }, [caseData?.id])
+    // Re-run when the evidence count or context changes — those are exactly
+    // the inputs the server-side legal AI builds its assessment from.
+  }, [caseData?.id, caseData?.evidence_items.length, caseData?.victim_context])
 
   if (loading) {
     return (
@@ -168,8 +170,8 @@ export default function CaseDetail({ lang }: Props) {
             </h2>
             <p className="text-slate-500 text-sm leading-relaxed">
               {isDE
-                ? 'Der zweite AI-Layer bündelt alle Belege zu einer Fallanalyse mit Risiken und nächsten Schritten.'
-                : 'The second AI layer turns all evidence into one case-level legal assessment.'}
+                ? 'Alle Belege werden zu einer Fallanalyse mit Risiken und nächsten Schritten zusammengeführt.'
+                : 'All evidence is consolidated into one case-level assessment with risks and next steps.'}
             </p>
           </div>
           <button
