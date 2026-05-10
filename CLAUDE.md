@@ -10,8 +10,8 @@ SafeVoice is a bilingual (DE/EN) web app that helps victims document digital har
 
 - Repo-level priorities and collaboration style live in [AGENTS.md](/Users/mikel/safevoice/AGENTS.md).
 - Company/operating context lives in:
-  - [SAFEVOICE_COMPANY_THESIS_DE.md](/Users/mikel/safevoice/SAFEVOICE_COMPANY_THESIS_DE.md)
-  - [SAFEVOICE_EXECUTION_PLAN_DE.md](/Users/mikel/safevoice/SAFEVOICE_EXECUTION_PLAN_DE.md)
+  - [docs/strategy/COMPANY_THESIS_DE.md](docs/strategy/COMPANY_THESIS_DE.md)
+  - [docs/strategy/EXECUTION_PLAN_DE.md](docs/strategy/EXECUTION_PLAN_DE.md)
 
 ## Commands
 
