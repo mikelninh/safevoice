@@ -10,6 +10,7 @@ import ReportModal from '../components/ReportModal'
 import { getLocalCase, updateCaseBackendId } from '../services/storage'
 import HateAidReferral from '../components/HateAidReferral'
 import OnlinewachePanel from '../components/OnlinewachePanel'
+import CaseEditor from '../components/CaseEditor'
 
 interface Props { lang: Lang }
 
@@ -254,6 +255,11 @@ export default function CaseDetail({ lang }: Props) {
             <EvidenceCard key={ev.id} evidence={ev} lang={lang} />
           ))}
         </div>
+      </div>
+
+      {/* Edit / add evidence */}
+      <div className="mb-6">
+        <CaseEditor caseData={caseData} lang={lang} onChange={setCaseData} />
       </div>
 
       {/* HateAid referral */}

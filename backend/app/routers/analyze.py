@@ -14,7 +14,12 @@ from app.services.pattern_detector import detect_patterns, compute_overall_sever
 from app.services.evidence import hash_content, capture_timestamp, archive_url_sync
 from app.services.scraper import scrape_url_sync, detect_platform
 from app.services.db_helpers import add_evidence_with_classification, get_last_hash
-from app.models.evidence import ClassificationResult, EvidenceItem, PatternFlag, Severity
+from app.models.evidence import (
+    ClassificationResult,
+    EvidenceItem,
+    PatternFlag,
+    Severity,
+)
 from app.database import get_db, Case as DBCase
 from app.schemas import AnalyzeTextRequest, AnalyzeUrlRequest, IngestRequest
 import uuid
@@ -102,7 +107,7 @@ def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
             "classification": classification,
             "content_hash": content_hash,
             "persisted": True,
-            "message": "Evidence classified and saved to case."
+            "message": "Evidence classified and saved to case.",
         }
 
     # Ephemeral result (no case_id)
@@ -121,7 +126,7 @@ def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
         "evidence": evidence,
         "classification": classification,
         "persisted": False,
-        "message": "Evidence classified (not saved — provide case_id to persist)."
+        "message": "Evidence classified (not saved — provide case_id to persist).",
     }
 
 
@@ -141,7 +146,12 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
     if not scraped:
         raise HTTPException(
             status_code=422,
-            detail="Could not fetch content from this URL. It may be private or unavailable."
+            detail=(
+                "Diese URL konnte nicht abgerufen werden. Instagram, X/Twitter, "
+                "TikTok und Facebook erfordern fast immer ein Login und blocken "
+                "den Abruf — bitte stattdessen einen Screenshot hochladen "
+                "(funktioniert mit OCR und ist auch DSGVO-sicher)."
+            ),
         )
 
     # Classify the main post
@@ -168,10 +178,16 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
 
         previous_hash = get_last_hash(db, req.case_id)
         main_evidence = add_evidence_with_classification(
-            db=db, case_id=req.case_id, text=scraped.content_text,
-            classification_result=classification, content_type="url",
-            source_url=url, platform=platform, archived_url=archived_url,
-            previous_hash=previous_hash, classifier_tier=tier,
+            db=db,
+            case_id=req.case_id,
+            text=scraped.content_text,
+            classification_result=classification,
+            content_type="url",
+            source_url=url,
+            platform=platform,
+            archived_url=archived_url,
+            previous_hash=previous_hash,
+            classifier_tier=tier,
         )
 
         comment_ids = []
@@ -186,11 +202,16 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
             )
             prev = get_last_hash(db, req.case_id)
             c_evidence = add_evidence_with_classification(
-                db=db, case_id=req.case_id, text=comment["text"],
-                classification_result=c_result, content_type="comment",
-                source_url=url, platform=platform,
+                db=db,
+                case_id=req.case_id,
+                text=comment["text"],
+                classification_result=c_result,
+                content_type="comment",
+                source_url=url,
+                platform=platform,
                 author_username=comment.get("author", "unknown"),
-                previous_hash=prev, classifier_tier=tier,
+                previous_hash=prev,
+                classifier_tier=tier,
             )
             comment_ids.append(c_evidence.id)
 
@@ -201,16 +222,21 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
             "classification": classification,
             "platform": platform,
             "persisted": True,
-            "message": f"Content from {platform} classified and saved ({1 + len(comment_ids)} items)."
+            "message": f"Content from {platform} classified and saved ({1 + len(comment_ids)} items).",
         }
 
     # Ephemeral result
     evidence = EvidenceItem(
-        id=str(uuid.uuid4()), url=url, platform=platform,
-        captured_at=captured_at, author_username=scraped.author_username,
+        id=str(uuid.uuid4()),
+        url=url,
+        platform=platform,
+        captured_at=captured_at,
+        author_username=scraped.author_username,
         author_display_name=scraped.author_display_name,
-        content_text=scraped.content_text, content_hash=content_hash,
-        archived_url=archived_url, classification=classification,
+        content_text=scraped.content_text,
+        content_hash=content_hash,
+        archived_url=archived_url,
+        classification=classification,
     )
 
     comment_evidence = []
@@ -223,12 +249,18 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
             jurisdiction=req.jurisdiction,
             user_lang=req.user_lang,
         )
-        comment_evidence.append(EvidenceItem(
-            id=str(uuid.uuid4()), url=url, platform=platform,
-            captured_at=captured_at, author_username=comment.get("author", "unknown"),
-            content_text=comment["text"], content_hash=hash_content(comment["text"]),
-            classification=c_classification,
-        ))
+        comment_evidence.append(
+            EvidenceItem(
+                id=str(uuid.uuid4()),
+                url=url,
+                platform=platform,
+                captured_at=captured_at,
+                author_username=comment.get("author", "unknown"),
+                content_text=comment["text"],
+                content_hash=hash_content(comment["text"]),
+                classification=c_classification,
+            )
+        )
 
     return {
         "evidence": evidence,
@@ -236,7 +268,7 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
         "classification": classification,
         "platform": platform,
         "persisted": False,
-        "message": f"Content from {platform} classified (not saved — provide case_id to persist)."
+        "message": f"Content from {platform} classified (not saved — provide case_id to persist).",
     }
 
 
@@ -249,8 +281,10 @@ class ChatRequest(BaseModel):
 def legal_chat(req: ChatRequest):
     """Answer follow-up legal questions about a classification."""
     import os
+
     try:
         from openai import OpenAI
+
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             return {"answer": "AI nicht verfügbar. Bitte OPENAI_API_KEY setzen."}
@@ -261,13 +295,19 @@ def legal_chat(req: ChatRequest):
             temperature=0.3,
             max_tokens=500,
             messages=[
-                {"role": "system", "content": """Du bist ein juristischer Berater für Opfer digitaler Gewalt in Deutschland.
+                {
+                    "role": "system",
+                    "content": """Du bist ein juristischer Berater für Opfer digitaler Gewalt in Deutschland.
 Beantworte Fragen zum konkreten Fall basierend auf dem Kontext.
 Sei präzise, nenne konkrete Paragraphen und Strafen.
 Erkläre verständlich, nicht juristisch.
 Antworte auf Deutsch.
-Ende jede Antwort mit: 'Dies ist keine Rechtsberatung. Für verbindliche Auskunft wende dich an eine Anwältin oder an HateAid (hateaid.org).'"""},
-                {"role": "user", "content": f"Kontext zum Fall:\n{req.context}\n\nFrage: {req.question}"},
+Ende jede Antwort mit: 'Dies ist keine Rechtsberatung. Für verbindliche Auskunft wende dich an eine Anwältin oder an HateAid (hateaid.org).'""",
+                },
+                {
+                    "role": "user",
+                    "content": f"Kontext zum Fall:\n{req.context}\n\nFrage: {req.question}",
+                },
             ],
         )
         answer = response.choices[0].message.content

@@ -71,6 +71,38 @@ export function addEvidenceToCase(caseId: string, evidence: EvidenceItem): Case 
   return cases[idx]
 }
 
+/** Update editable case fields in localStorage (title, victim_context). */
+export function updateCaseFields(
+  caseId: string,
+  patch: { title?: string; victim_context?: string },
+): Case | null {
+  const cases = readCases()
+  const idx = cases.findIndex(c => c.id === caseId)
+  if (idx === -1) return null
+  if (patch.title !== undefined) cases[idx].title = patch.title
+  if (patch.victim_context !== undefined) cases[idx].victim_context = patch.victim_context || undefined
+  cases[idx].updated_at = new Date().toISOString()
+  writeCases(cases)
+  return cases[idx]
+}
+
+/** Update the author_username on an existing evidence item. */
+export function updateEvidenceAuthor(
+  caseId: string,
+  evidenceId: string,
+  author_username: string,
+): Case | null {
+  const cases = readCases()
+  const idx = cases.findIndex(c => c.id === caseId)
+  if (idx === -1) return null
+  const evIdx = cases[idx].evidence_items.findIndex(e => e.id === evidenceId)
+  if (evIdx === -1) return null
+  cases[idx].evidence_items[evIdx].author_username = author_username
+  cases[idx].updated_at = new Date().toISOString()
+  writeCases(cases)
+  return cases[idx]
+}
+
 /** Persist the backend-assigned ID back into the local case record. */
 export function updateCaseBackendId(localId: string, backendId: string): void {
   const cases = readCases()
