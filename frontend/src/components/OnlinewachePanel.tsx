@@ -32,6 +32,7 @@ const BUNDESLAENDER: { name: string; url: string }[] = [
 export default function OnlinewachePanel({ lang, reportText }: Props) {
   const [selected, setSelected] = useState<string>('')
   const [copied, setCopied] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const isDE = lang === 'de'
 
   const selectedLand = BUNDESLAENDER.find(b => b.name === selected)
@@ -43,61 +44,101 @@ export default function OnlinewachePanel({ lang, reportText }: Props) {
   }
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+    <div className="bg-slate-800/60 rounded-xl p-5 space-y-4">
       <div>
         <h3 className="text-white font-semibold mb-1">
           {isDE ? 'Online-Strafanzeige erstatten' : 'File police report online'}
         </h3>
-        <p className="text-slate-400 text-sm">
+        <p className="text-slate-400 text-sm leading-relaxed">
           {isDE
-            ? 'Bundesland wählen, vorbereiteten Text kopieren, in das Onlinewache-Formular einfügen.'
-            : 'Select the state, copy the prepared text, paste it into the Onlinewache form.'}
+            ? 'Jedes Bundesland hat ein eigenes Online-Formular (keine einheitliche E-Mail). SafeVoice hat den passenden Strafanzeige-Text für deinen Fall vorbereitet — du kopierst ihn und fügst ihn unten im Formular ins „Sachverhalt"-Feld ein.'
+            : 'Every Bundesland has its own online form (no unified email). SafeVoice has prepared the matching criminal complaint text for your case — copy it and paste it into the form\'s "Sachverhalt" / details field below.'}
         </p>
       </div>
 
       {/* Bundesland selector */}
-      <select
-        value={selected}
-        onChange={e => setSelected(e.target.value)}
-        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
-      >
-        <option value="">
-          {isDE ? '— Bundesland wählen —' : '— Select state —'}
-        </option>
-        {BUNDESLAENDER.map(b => (
-          <option key={b.name} value={b.name}>{b.name}</option>
-        ))}
-      </select>
+      <div>
+        <label className="block text-slate-300 text-xs font-medium mb-1.5 uppercase tracking-wider">
+          {isDE ? '1. Bundesland wählen' : '1. Select Bundesland'}
+        </label>
+        <select
+          value={selected}
+          onChange={e => setSelected(e.target.value)}
+          className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+        >
+          <option value="">
+            {isDE ? '— Bundesland wählen —' : '— Select Bundesland —'}
+          </option>
+          {BUNDESLAENDER.map(b => (
+            <option key={b.name} value={b.name}>{b.name}</option>
+          ))}
+        </select>
+      </div>
 
       {/* Actions */}
       {selected && (
         <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <button
-              onClick={handleCopy}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
-            >
-              {copied
-                ? (isDE ? '✓ Text kopiert' : '✓ Text copied')
-                : (isDE ? '1. Text kopieren' : '1. Copy report text')}
-            </button>
-            {selectedLand && (
+          {/* Step 2: copy — with explainer + optional preview */}
+          <div>
+            <label className="block text-slate-300 text-xs font-medium mb-1.5 uppercase tracking-wider">
+              {isDE ? '2. Strafanzeige-Text kopieren' : '2. Copy criminal complaint text'}
+            </label>
+            <p className="text-slate-500 text-xs mb-2 leading-relaxed">
+              {isDE
+                ? 'Kopiert den vorbereiteten Strafanzeige-Text in deine Zwischenablage — Sachverhalt, alle dokumentierten Vorfälle und rechtliche Einordnung. Im nächsten Schritt fügst du ihn in das Formular ein.'
+                : 'Copies the prepared criminal complaint text to your clipboard — facts, all documented incidents, legal classification. You\'ll paste it into the form in the next step.'}
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleCopy}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                {copied
+                  ? (isDE ? '✓ Text in Zwischenablage' : '✓ Text in clipboard')
+                  : (isDE ? 'Text kopieren' : 'Copy text')}
+              </button>
+              <button
+                onClick={() => setShowPreview(s => !s)}
+                className="text-slate-400 hover:text-slate-200 text-xs"
+              >
+                {showPreview
+                  ? (isDE ? '▲ Vorschau ausblenden' : '▲ Hide preview')
+                  : (isDE ? '▼ Vorschau anzeigen' : '▼ Show preview')}
+              </button>
+            </div>
+            {showPreview && (
+              <pre className="mt-3 bg-slate-900 rounded-lg p-3 text-slate-300 text-xs font-mono whitespace-pre-wrap max-h-48 overflow-y-auto border border-slate-700">
+                {reportText.slice(0, 800)}
+                {reportText.length > 800 ? '…' : ''}
+              </pre>
+            )}
+          </div>
+
+          {/* Step 3: open the form */}
+          {selectedLand && (
+            <div>
+              <label className="block text-slate-300 text-xs font-medium mb-1.5 uppercase tracking-wider">
+                {isDE ? '3. Onlinewache öffnen und Text einfügen' : '3. Open Onlinewache and paste'}
+              </label>
               <a
                 href={selectedLand.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors border border-slate-600"
+                className={`inline-flex items-center justify-center gap-1 px-4 py-2 rounded-lg transition-colors text-sm font-semibold ${
+                  copied
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    : 'bg-slate-700 hover:bg-slate-600 text-white border border-slate-600'
+                }`}
               >
-                {isDE ? '2. Onlinewache öffnen' : '2. Open Onlinewache'} →
+                {isDE ? `Onlinewache ${selectedLand.name} öffnen` : `Open Onlinewache ${selectedLand.name}`} →
               </a>
-            )}
-          </div>
-
-          <p className="text-slate-500 text-xs">
-            {isDE
-              ? 'Tipp: Füge den kopierten Text im Freitext-Feld der Onlinewache ein. Die meisten Onlinewachen akzeptieren Anzeigen rund um die Uhr.'
-              : 'Tip: Paste the copied text in the free-text field of the Onlinewache. Most accept reports 24/7.'}
-          </p>
+              <p className="text-slate-500 text-xs mt-2 leading-relaxed">
+                {isDE
+                  ? 'Im Formular: Anzeigeerstatter:in-Daten ausfüllen, dann den Text aus der Zwischenablage in das „Sachverhalt"-Feld einfügen (Cmd/Ctrl + V). Onlinewachen sind 24/7 erreichbar.'
+                  : 'In the form: fill in your complainant details, then paste the clipboard text into the "Sachverhalt" / details field (Cmd/Ctrl + V). Onlinewachen are open 24/7.'}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

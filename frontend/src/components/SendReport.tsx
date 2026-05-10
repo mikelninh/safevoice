@@ -15,7 +15,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import type { Lang } from '../i18n'
-import { downloadEml, fetchReport } from '../services/api'
+import { downloadEml, fetchReport, type VictimInfo } from '../services/api'
 import {
   POLICE_DIRECTORY,
   plzToBundesland,
@@ -23,19 +23,16 @@ import {
   type Bundesland,
 } from '../data/police-directory'
 
-interface VictimData {
-  name: string
-  address: string
-  email: string
-  phone: string
-  plz: string
-}
-
 interface Props {
   caseId: string                 // resolved backend case ID
   reportBody: string | null       // pre-generated report body from /reports/{id}
   reportSubject: string | null
   lang: Lang
+  /** Shared with the Vorschau tab — same form, single source of truth. */
+  victim: VictimInfo
+  onVictimChange: (patch: Partial<VictimInfo>) => void
+  onApplyVictim: () => void
+  isVictimDirty: boolean
   onDownloadPdf: () => Promise<void>
 }
 
@@ -132,20 +129,30 @@ const DEFAULT_RECIPIENTS: Recipient[] = [
   },
 ]
 
-export default function SendReport({ caseId, reportBody, reportSubject, lang, onDownloadPdf }: Props) {
+export default function SendReport({
+  caseId,
+  reportBody,
+  reportSubject,
+  lang,
+  victim,
+  onVictimChange,
+  onApplyVictim,
+  isVictimDirty,
+  onDownloadPdf,
+}: Props) {
   const isDE = lang === 'de'
-  const [victim, setVictim] = useState<VictimData>({ name: '', address: '', email: '', phone: '', plz: '' })
   const [recipientId, setRecipientId] = useState<string>('zac-nrw')
   const [detectedBL, setDetectedBL] = useState<Bundesland | null>(null)
   const [plzSuggestionAccepted, setPlzSuggestionAccepted] = useState(false)
+  const [showAllRecipients, setShowAllRecipients] = useState(false)
 
-  // Detect Bundesland from PLZ as user types (debounced-lite: only on 5 digits)
+  // Detect Bundesland from PLZ as user types (only on 5 digits)
   useEffect(() => {
-    if (/^\d{5}$/.test(victim.plz.trim())) {
-      const bl = plzToBundesland(victim.plz.trim())
+    const plz = (victim.plz ?? '').trim()
+    if (/^\d{5}$/.test(plz)) {
+      const bl = plzToBundesland(plz)
       setDetectedBL(bl)
       if (bl && !plzSuggestionAccepted) {
-        // Don't auto-overwrite if user has actively chosen something else
         setRecipientId(`landespolizei-${bl}`)
       }
     } else {
@@ -263,7 +270,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
       .replace('[VICTIM NAME]', nameLine)
       .replace('[UNTERSCHRIFT]', victim.name || '[UNTERSCHRIFT]')
       .replace('[SIGNATURE]', victim.name || '[SIGNATURE]')
-  }, [effectiveReportBody, victim])
+  }, [effectiveReportBody, victim.name, victim.address, victim.plz, victim.phone, victim.email])
 
   // mailto body: browsers limit URL to ~2000 chars. We truncate body and
   // tell the user the full content is in the attached PDF.
@@ -280,7 +287,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
   const mailtoUrl = `mailto:${encodeURIComponent(actualEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(mailBody)}`
 
   const canSend = !!actualEmail.trim() && !!effectiveReportBody && !bodyLoading
-  const missingName = !victim.name.trim()
+  const missingName = !(victim.name ?? '').trim()
 
   const handleSend = async () => {
     // Start PDF download first so it's ready in Downloads when mailto opens
@@ -330,36 +337,49 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
 
   return (
     <div className="space-y-4">
-      {/* Step 1: Opferdaten */}
+      {/* Step 1: Absenderdaten — same form as Vorschau, single source of truth */}
       <section>
-        <h3 className="text-sm font-semibold text-slate-200 mb-2">
-          {isDE ? '1. Absenderdaten' : '1. Sender details'}
-        </h3>
-        <p className="text-xs text-slate-400 mb-3">
+        <div className="flex items-baseline justify-between mb-2 gap-2">
+          <h3 className="text-sm font-semibold text-slate-200">
+            {isDE ? '1. Absenderdaten' : '1. Sender details'}
+          </h3>
+          {victim.name && !isVictimDirty && (
+            <span className="text-emerald-300 text-xs flex items-center gap-1">
+              <span className="text-emerald-400">✓</span>
+              {isDE ? 'Übernommen' : 'Applied'}
+            </span>
+          )}
+          {isVictimDirty && (
+            <span className="text-amber-300 text-xs">
+              {isDE ? 'Nicht übernommen.' : 'Unsaved changes.'}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-400 mb-3 leading-relaxed">
           {isDE
-            ? 'Wird in die Strafanzeige eingefügt. Bleibt nur im Browser — nichts wird ohne Klick versendet.'
-            : 'Inserted into the complaint. Stays in the browser — nothing sent without a click.'}
+            ? 'Diese Daten werden auch im Vorschau-Tab verwendet — du musst sie nur einmal eintragen. Bleibt nur in deinem Browser; nichts wird ohne Klick versendet.'
+            : 'These details are shared with the Preview tab — fill them once. Stays in your browser; nothing is sent without a click.'}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <input
             type="text"
             placeholder={isDE ? 'Vollständiger Name' : 'Full name'}
-            value={victim.name}
-            onChange={(e) => setVictim(v => ({ ...v, name: e.target.value }))}
+            value={victim.name ?? ''}
+            onChange={e => onVictimChange({ name: e.target.value })}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
           />
           <input
             type="email"
             placeholder="E-Mail"
-            value={victim.email}
-            onChange={(e) => setVictim(v => ({ ...v, email: e.target.value }))}
+            value={victim.email ?? ''}
+            onChange={e => onVictimChange({ email: e.target.value })}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
           />
           <input
             type="text"
             placeholder={isDE ? 'Straße und Hausnummer' : 'Street and number'}
-            value={victim.address}
-            onChange={(e) => setVictim(v => ({ ...v, address: e.target.value }))}
+            value={victim.address ?? ''}
+            onChange={e => onVictimChange({ address: e.target.value })}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 sm:col-span-2"
           />
           <input
@@ -367,25 +387,79 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
             inputMode="numeric"
             maxLength={5}
             placeholder={isDE ? 'PLZ (5-stellig)' : 'Postal code (5 digits)'}
-            value={victim.plz}
-            onChange={(e) => { setVictim(v => ({ ...v, plz: e.target.value.replace(/\D/g, '') })); setPlzSuggestionAccepted(false) }}
+            value={victim.plz ?? ''}
+            onChange={e => { onVictimChange({ plz: e.target.value.replace(/\D/g, '') }); setPlzSuggestionAccepted(false) }}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
           />
           <input
             type="tel"
             placeholder={isDE ? 'Telefon (optional)' : 'Phone (optional)'}
-            value={victim.phone}
-            onChange={(e) => setVictim(v => ({ ...v, phone: e.target.value }))}
+            value={victim.phone ?? ''}
+            onChange={e => onVictimChange({ phone: e.target.value })}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500"
           />
         </div>
+        {isVictimDirty && (
+          <button
+            type="button"
+            onClick={onApplyVictim}
+            className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            {isDE ? 'In Bericht übernehmen' : 'Apply to report'}
+          </button>
+        )}
       </section>
 
       {/* Step 2: Recipient */}
       <section>
-        <h3 className="text-sm font-semibold text-slate-200 mb-2">
-          {isDE ? '2. Empfänger' : '2. Recipient'}
+        <h3 className="text-sm font-semibold text-slate-200 mb-1">
+          {isDE ? '2. Wer soll das bekommen?' : '2. Who should receive this?'}
         </h3>
+        <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+          {isDE
+            ? 'Wähle eine der drei häufigen Optionen — oder klappe „Mehr Optionen" für alle Bundesländer und Plattformen auf.'
+            : 'Pick one of the three common options — or expand "More options" for all Bundesländer and platforms.'}
+        </p>
+
+        {/* Quick-pick: 3 most common destinations */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+          {[
+            {
+              id: detectedBL ? `landespolizei-${detectedBL}` : 'zac-nrw',
+              icon: '🚓',
+              label: isDE ? 'Polizei' : 'Police',
+              hint: detectedBL
+                ? (isDE ? `Landespolizei ${getLandPolice(detectedBL)?.name}` : `State police ${getLandPolice(detectedBL)?.name}`)
+                : (isDE ? 'Spezialisierte Cybercrime-Stelle' : 'Specialised cybercrime unit'),
+            },
+            {
+              id: 'platform-meta',
+              icon: '🛡️',
+              label: isDE ? 'Plattform' : 'Platform',
+              hint: isDE ? 'Inhalt löschen lassen (NetzDG)' : 'Get content removed (NetzDG)',
+            },
+            {
+              id: 'hateaid',
+              icon: '💙',
+              label: isDE ? 'Beratung' : 'Counselling',
+              hint: isDE ? 'HateAid — kostenlos' : 'HateAid — free',
+            },
+          ].map(opt => (
+            <button
+              key={opt.id}
+              onClick={() => { setRecipientId(opt.id); setPlzSuggestionAccepted(true) }}
+              className={`text-left rounded-lg p-3 border transition-colors ${
+                recipientId === opt.id
+                  ? 'bg-indigo-950/40 border-indigo-700 ring-1 ring-indigo-500/40'
+                  : 'bg-slate-800/60 border-slate-700 hover:bg-slate-800'
+              }`}
+            >
+              <div className="text-base mb-0.5">{opt.icon}</div>
+              <div className="text-slate-100 text-sm font-semibold">{opt.label}</div>
+              <div className="text-slate-400 text-xs mt-0.5 leading-snug">{opt.hint}</div>
+            </button>
+          ))}
+        </div>
 
         {/* PLZ-based detection hint */}
         {detectedBL && (
@@ -394,16 +468,24 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
             {' '}
             <span className="text-indigo-300/80">
               {isDE
-                ? `— basierend auf deiner PLZ. Landespolizei ${getLandPolice(detectedBL)?.name} ist vorausgewählt.`
-                : `— based on your postal code. Landespolizei ${getLandPolice(detectedBL)?.name} pre-selected.`}
+                ? `— anhand deiner PLZ. Bei Klick auf „Polizei" wird Landespolizei ${getLandPolice(detectedBL)?.name} verwendet.`
+                : `— from your postal code. Clicking "Police" uses Landespolizei ${getLandPolice(detectedBL)?.name}.`}
             </span>
           </div>
         )}
 
-        <select
+        <details
+          open={showAllRecipients}
+          onToggle={e => setShowAllRecipients((e.target as HTMLDetailsElement).open)}
+          className="mb-2"
+        >
+          <summary className="cursor-pointer text-slate-400 hover:text-slate-200 text-xs select-none">
+            {isDE ? 'Mehr Optionen (alle Bundesländer, andere Plattformen, eigene Adresse)' : 'More options (all Bundesländer, other platforms, custom address)'}
+          </summary>
+          <select
           value={recipientId}
           onChange={(e) => { setRecipientId(e.target.value); setPlzSuggestionAccepted(true) }}
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
+          className="w-full mt-2 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100"
         >
           <optgroup label={isDE ? 'Spezialisierte Zentralstellen (empfohlen für Online-Hass)' : 'Specialised units (recommended for online hate)'}>
             {DEFAULT_RECIPIENTS.filter(r => r.id.startsWith('zac-') || r.id.startsWith('zcb-') || r.id.startsWith('zit-')).map(r => (
@@ -435,6 +517,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
             <option value="custom">Andere E-Mail-Adresse</option>
           </optgroup>
         </select>
+        </details>
 
         <p className="text-xs text-slate-400 mt-1">{selectedRecipient?.note}</p>
 
@@ -527,10 +610,10 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
 
       {/* Warnings */}
       {missingName && (
-        <div className="bg-amber-900/30 border border-amber-800 text-amber-200 rounded-lg p-3 text-xs">
+        <div className="bg-amber-900/30 border border-amber-800 text-amber-200 rounded-lg p-3 text-xs leading-relaxed">
           {isDE
-            ? '⚠ Ohne Namen wird der Platzhalter "[NAME DES OPFERS]" im Bericht stehen bleiben.'
-            : '⚠ Without a name, the placeholder "[VICTIM NAME]" will remain in the report.'}
+            ? 'Bitte gib oben deinen vollständigen Namen ein. Eine Strafanzeige ohne Namen kann die Polizei nicht bearbeiten — du müsstest sie sonst handschriftlich auf dem Ausdruck nachtragen.'
+            : 'Please enter your full name above. The police cannot process a criminal complaint without a complainant\'s name — you would otherwise need to add it by hand on the printout.'}
         </div>
       )}
 
@@ -540,7 +623,7 @@ export default function SendReport({ caseId, reportBody, reportSubject, lang, on
         const formUrl =
           (selectedRecipient as Recipient).formUrl
           || (selectedRecipient as { onlinewacheUrl?: string }).onlinewacheUrl
-          || 'https://www.onlinewache.polizei.de'
+          || 'https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html'
         return (
           <div className="space-y-2 pt-2">
             <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">

@@ -1,8 +1,10 @@
 import os
 import time
 from collections import defaultdict
+
 try:
     from dotenv import load_dotenv
+
     _env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
     if os.path.exists(_env_path):
         load_dotenv(_env_path, override=False)
@@ -13,7 +15,21 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.routers import cases, analyze, reports, chain, upload, sla, partners, dashboard, auth, legal, policy, orgs, bulk_import
+from app.routers import (
+    cases,
+    analyze,
+    reports,
+    chain,
+    upload,
+    sla,
+    partners,
+    dashboard,
+    auth,
+    legal,
+    policy,
+    orgs,
+    bulk_import,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -92,42 +108,54 @@ app.add_middleware(
 )
 
 # Mount all routers at both / and /api/ so frontend works in dev (proxy) and production (direct)
-for r in [cases.router, analyze.router, reports.router, chain.router, upload.router,
-          sla.router, partners.router, dashboard.router, auth.router, legal.router, policy.router,
-          orgs.router, bulk_import.router]:
+for r in [
+    cases.router,
+    analyze.router,
+    reports.router,
+    chain.router,
+    upload.router,
+    sla.router,
+    partners.router,
+    dashboard.router,
+    auth.router,
+    legal.router,
+    policy.router,
+    orgs.router,
+    bulk_import.router,
+]:
     app.include_router(r)
     app.include_router(r, prefix="/api")
 
 
-# Initialize database on startup
+# Initialize database on startup. Wrapped in try/except so a slow or briefly
+# unreachable database during a serverless cold start does NOT crash the
+# whole function — endpoints can still surface a 503 with a clear error.
 from app.database import init_db, seed_categories_and_laws
-init_db()
-seed_categories_and_laws()
 
+try:
+    init_db()
+    seed_categories_and_laws()
+except Exception as _db_err:  # pragma: no cover
+    import logging
 
-@app.get("/debug-env")
-def debug_env():
-    """Temporary: check which env vars are set."""
-    import subprocess
-    all_vars = {k: v[:3] + "..." for k, v in os.environ.items() if "KEY" in k or "URL" in k or "CORS" in k or "RATE" in k or "PORT" in k}
-    return {"env_vars": all_vars, "total_env_count": len(os.environ)}
+    logging.getLogger(__name__).error("Startup DB init failed: %s", _db_err)
+
 
 @app.get("/health")
+@app.get("/api/health")
 def health():
     from app.services.classifier import is_configured as classifier_configured
     from app.database import SessionLocal, Category, Law
+
     db = SessionLocal()
     cats = db.query(Category).count()
     laws = db.query(Law).count()
     db.close()
-    key = os.environ.get("OPENAI_API_KEY", "")
-    key_info = f"{key[:5]}...{key[-4:]}" if len(key) > 10 else ("empty" if not key else "too_short")
     return {
         "status": "ok" if classifier_configured() else "degraded",
         "service": "SafeVoice API",
         "classifier": "llm" if classifier_configured() else "unavailable",
         "db": {"categories": cats, "laws": laws},
-        "openai_key": key_info,
     }
 
 

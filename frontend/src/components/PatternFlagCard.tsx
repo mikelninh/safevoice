@@ -18,10 +18,10 @@ const patternIcons: Record<string, string> = {
 export default function PatternFlagCard({ flag, lang }: Props) {
   const isDE = lang === 'de'
   return (
-    <div className="bg-slate-800 border border-yellow-700 rounded-lg p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">{patternIcons[flag.type] ?? '⚑'}</span>
-        <span className="font-semibold text-yellow-300 text-sm">
+    <div className="bg-amber-950/30 ring-1 ring-amber-800/50 rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <span className="text-base leading-none">{patternIcons[flag.type] ?? '⚑'}</span>
+        <span className="font-semibold text-amber-200 text-sm">
           {t(lang, `pattern.${flag.type}`)}
         </span>
         <SeverityBadge severity={flag.severity} lang={lang} />
@@ -29,7 +29,7 @@ export default function PatternFlagCard({ flag, lang }: Props) {
           {flag.evidence_count} {isDE ? 'Belege' : 'items'}
         </span>
       </div>
-      <p className="text-slate-300 text-sm">
+      <p className="text-slate-300 text-sm leading-relaxed">
         {isDE ? flag.description_de : flag.description}
       </p>
     </div>

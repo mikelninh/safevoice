@@ -1,8 +1,33 @@
 import { useState, useEffect } from 'react'
-import { fetchReport, downloadPdf, ensureBackendCase, resetServiceWorkerAndCaches } from '../services/api'
+import {
+  downloadPdf,
+  ensureBackendCase,
+  fetchReport,
+  resetServiceWorkerAndCaches,
+  type VictimInfo,
+} from '../services/api'
 import { t, type Lang } from '../i18n'
 import { getLocalCase, setBackendId } from '../services/storage'
 import SendReport from './SendReport'
+
+const VICTIM_STORAGE_KEY = 'sv_victim_info'
+
+function loadVictim(): VictimInfo {
+  try {
+    const raw = localStorage.getItem(VICTIM_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveVictim(v: VictimInfo): void {
+  try {
+    localStorage.setItem(VICTIM_STORAGE_KEY, JSON.stringify(v))
+  } catch {
+    /* quota exceeded — ignore */
+  }
+}
 
 interface Props {
   caseId: string  // local case ID (localStorage) OR backend ID
@@ -32,28 +57,100 @@ async function resolveBackendCaseId(caseId: string): Promise<string> {
   return backendId
 }
 
+/**
+ * Extract the incident count the backend put in the report subject —
+ * format: "… – N dokumentierte Vorfälle" or "… – N Vorfälle (M kritisch)"
+ * (English equivalents). Returns null if not parseable.
+ */
+function extractReportCount(subject: string | null | undefined): number | null {
+  if (!subject) return null
+  const m = subject.match(/(\d+)\s+(?:dokumentierte\s+)?(?:Vorfälle|incidents)/i)
+  return m ? parseInt(m[1], 10) : null
+}
+
 export default function ReportModal({ caseId, lang, onClose }: Props) {
-  const [reportType, setReportType] = useState<ReportType>('netzdg')
+  const [reportType, setReportType] = useState<ReportType>('police')
+  // Live form state (`victim`) is the draft the user types into.
+  // `appliedVictim` is what the API actually uses — only updated when the
+  // user clicks "Speichern" (or auto-flushed on Download). This avoids
+  // refetching the report on every keystroke while still feeling immediate.
+  const [victim, setVictim] = useState<VictimInfo>(() => loadVictim())
+  const [appliedVictim, setAppliedVictim] = useState<VictimInfo>(() => loadVictim())
+  const [showVictimForm, setShowVictimForm] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadedFor, setDownloadedFor] = useState<ReportType | null>(null)
+  const [downloading, setDownloading] = useState(false)
   const [backendId, setResolvedBackendId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [resyncing, setResyncing] = useState(false)
+  const [resyncDone, setResyncDone] = useState(false)
   const isDE = lang === 'de'
+
+  const localCase = getLocalCase(caseId)
+  const localEvidenceCount = localCase?.evidence_items.length ?? 0
+  const reportCount = extractReportCount((report?.subject as string) ?? null)
+  const hasMismatch =
+    reportType === 'police' &&
+    !!localCase &&
+    !!reportCount &&
+    localEvidenceCount > reportCount
+
+  // Auto-sync on mismatch: ensureBackendCase already reconciles missing
+  // evidence on every call, but the report subject still reflects the old
+  // count until we re-fetch. So when a mismatch is detected, kick off a
+  // resync silently and refresh the report. No button needed.
+  useEffect(() => {
+    if (!hasMismatch || resyncing || resyncDone || !backendId || !localCase) return
+    let cancelled = false
+    ;(async () => {
+      setResyncing(true)
+      try {
+        await ensureBackendCase(localCase)
+        if (cancelled) return
+        setResyncDone(true)
+        // Trigger a re-fetch via object-identity bump
+        setAppliedVictim(v => ({ ...v }))
+      } finally {
+        if (!cancelled) setResyncing(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [hasMismatch, backendId])
+
+
+  const isDirty =
+    (victim.name ?? '') !== (appliedVictim.name ?? '') ||
+    (victim.address ?? '') !== (appliedVictim.address ?? '') ||
+    (victim.phone ?? '') !== (appliedVictim.phone ?? '') ||
+    (victim.email ?? '') !== (appliedVictim.email ?? '')
+
+  const handleApplyVictim = () => {
+    setAppliedVictim(victim)
+    saveVictim(victim)
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 1800)
+  }
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
     setReport(null)
+    setDownloadedFor(null)
+    setResyncDone(false)
 
     // Step 1: ensure case exists on backend, then fetch the report.
     resolveBackendCaseId(caseId)
       .then(async (resolvedId) => {
         if (cancelled) return
         setResolvedBackendId(resolvedId)
-        const r = await fetchReport(resolvedId, reportType, lang)
+        const r = await fetchReport(resolvedId, reportType, lang, appliedVictim)
         if (!cancelled) setReport(r)
       })
       .catch((e: Error) => {
@@ -68,18 +165,26 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
     return () => {
       cancelled = true
     }
-  }, [caseId, reportType, lang])
+  }, [caseId, reportType, lang, appliedVictim.name, appliedVictim.address, appliedVictim.phone, appliedVictim.email])
 
   const handleDownload = async () => {
     setDownloadError(null)
+    setDownloading(true)
     try {
       const resolved = backendId ?? (await resolveBackendCaseId(caseId))
       if (!backendId) setResolvedBackendId(resolved)
-      await downloadPdf(resolved, reportType, lang)
+      if (isDirty) {
+        setAppliedVictim(victim)
+        saveVictim(victim)
+      }
+      await downloadPdf(resolved, reportType, lang, victim)
+      setDownloadedFor(reportType)
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[ReportModal] downloadPdf failed:', e)
       setDownloadError(msg)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -94,10 +199,14 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [mode, setMode] = useState<'preview' | 'send'>('preview')
 
   const tabs: { key: ReportType; label: string }[] = [
-    { key: 'netzdg', label: t(lang, 'report.netzdg') },
     { key: 'police', label: t(lang, 'report.police') },
+    { key: 'netzdg', label: t(lang, 'report.netzdg') },
     { key: 'general', label: t(lang, 'report.general') },
   ]
+
+  const updateVictim = (patch: Partial<VictimInfo>) => {
+    setVictim(v => ({ ...v, ...patch }))
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-4">
@@ -169,6 +278,10 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
               reportBody={(report.body as string) ?? null}
               reportSubject={(report.subject as string) ?? null}
               lang={lang}
+              victim={victim}
+              onVictimChange={(patch) => updateVictim(patch)}
+              onApplyVictim={handleApplyVictim}
+              isVictimDirty={isDirty}
               onDownloadPdf={handleDownload}
             />
           ) : loading ? (
@@ -208,6 +321,109 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
             </div>
           ) : report ? (
             <div className="space-y-4">
+              {reportType === 'police' && (
+                <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowVictimForm(s => !s)}
+                    className="w-full flex items-center justify-between text-left"
+                  >
+                    <div>
+                      <div className="text-slate-200 text-sm font-semibold">
+                        {isDE ? 'Persönliche Daten für die Strafanzeige' : 'Personal data for the criminal complaint'}
+                      </div>
+                      <div className="text-slate-400 text-xs mt-0.5">
+                        {victim.name
+                          ? (isDE ? `Wird als Anzeigeerstatter:in angegeben: ${victim.name}` : `Will appear as complainant: ${victim.name}`)
+                          : (isDE ? 'Optional. Ohne Name bleiben Platzhalter im Bericht.' : 'Optional. Without a name placeholders remain in the report.')}
+                      </div>
+                    </div>
+                    <span className="text-slate-400 text-xs">{showVictimForm ? '▲' : '▼'}</span>
+                  </button>
+                  {showVictimForm && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                      <input
+                        type="text"
+                        value={victim.name ?? ''}
+                        onChange={e => updateVictim({ name: e.target.value })}
+                        placeholder={isDE ? 'Vor- und Nachname *' : 'Full name *'}
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm sm:col-span-2"
+                      />
+                      <input
+                        type="text"
+                        value={victim.address ?? ''}
+                        onChange={e => updateVictim({ address: e.target.value })}
+                        placeholder={isDE ? 'Straße und Hausnummer' : 'Street and number'}
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm sm:col-span-2"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={5}
+                        value={victim.plz ?? ''}
+                        onChange={e => updateVictim({ plz: e.target.value.replace(/\D/g, '') })}
+                        placeholder={isDE ? 'PLZ (5-stellig)' : 'Postal code (5 digits)'}
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm"
+                      />
+                      <input
+                        type="tel"
+                        value={victim.phone ?? ''}
+                        onChange={e => updateVictim({ phone: e.target.value })}
+                        placeholder={isDE ? 'Telefon' : 'Phone'}
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm"
+                      />
+                      <input
+                        type="email"
+                        value={victim.email ?? ''}
+                        onChange={e => updateVictim({ email: e.target.value })}
+                        placeholder="E-Mail"
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm sm:col-span-2"
+                      />
+                      <p className="text-slate-500 text-xs sm:col-span-2 mt-1">
+                        {isDE
+                          ? 'Wird nur lokal in deinem Browser gespeichert und beim Generieren in den Bericht eingesetzt. Wir speichern keine personenbezogenen Daten serverseitig.'
+                          : 'Stored only in your browser and inserted into the report when generated. No personal data is stored on the server.'}
+                      </p>
+                      <div className="sm:col-span-2 flex items-center gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleApplyVictim}
+                          disabled={!isDirty}
+                          className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                        >
+                          {isDE ? 'In Bericht übernehmen' : 'Apply to report'}
+                        </button>
+                        {justSaved && !isDirty && (
+                          <span className="text-emerald-300 text-xs flex items-center gap-1">
+                            <span className="text-emerald-400">✓</span>
+                            {isDE ? 'Übernommen' : 'Applied'}
+                          </span>
+                        )}
+                        {!justSaved && !isDirty && appliedVictim.name && (
+                          <span className="text-slate-500 text-xs">
+                            {isDE ? 'Gespeichert.' : 'Saved.'}
+                          </span>
+                        )}
+                        {isDirty && (
+                          <span className="text-amber-300 text-xs">
+                            {isDE ? 'Nicht gespeichert.' : 'Unsaved changes.'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {hasMismatch && !resyncing && !resyncDone && (
+                <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-3 text-slate-300 text-xs flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                  {isDE
+                    ? 'Belege werden im Hintergrund mit dem Backend synchronisiert…'
+                    : 'Syncing missing evidence to the backend…'}
+                </div>
+              )}
+
               {!!report.subject && (
                 <div>
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
@@ -219,12 +435,21 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
 
               {!!report.body && (
                 <div>
-                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
-                    {isDE ? 'Inhalt' : 'Content'}
+                  <div className="flex items-baseline justify-between mb-1 gap-2">
+                    <div className="text-xs text-slate-500 uppercase tracking-wider">
+                      {isDE ? 'Inhalt (Strafanzeige-Hauptteil)' : 'Content (complaint body)'}
+                    </div>
                   </div>
                   <pre className="bg-slate-800 rounded-lg p-4 text-slate-300 text-xs whitespace-pre-wrap font-mono overflow-x-auto">
                     {report.body as string}
                   </pre>
+                  {reportType === 'police' && (
+                    <p className="text-slate-500 text-xs mt-2 leading-relaxed bg-slate-800/40 rounded px-3 py-2">
+                      {isDE
+                        ? 'Die PDF enthält zusätzlich: Übersichts-Karte oben (Schweregrad, Vorfälle, §-Liste), Beweismittel als nummerierte Belegtabelle mit farbigen Schweregrad-Markern, KI-gestützte juristische Bewertung mit Risiko + Empfehlungen, Seitenzahlen und Briefkopf. Die Vorschau zeigt nur den eigentlichen Anzeigetext.'
+                        : 'The PDF additionally includes: an overview card at the top (severity, incident counts, statutes), the evidence list as numbered exhibits with colour-coded severity, the AI-assisted legal assessment with risk + recommendations, page numbers and a letterhead. This preview shows only the formal complaint body.'}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -281,6 +506,92 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
               )}
             </div>
           ) : null}
+          {downloadedFor && !downloadError && (
+            <div className="mt-4 bg-emerald-950/40 border border-emerald-900/60 rounded-xl p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-emerald-400 text-lg leading-none mt-0.5">✓</span>
+                <div className="flex-1">
+                  <div className="text-emerald-100 font-semibold text-sm">
+                    {isDE ? 'PDF heruntergeladen — was jetzt?' : 'PDF downloaded — what next?'}
+                  </div>
+                  <p className="text-emerald-200/80 text-xs mt-0.5">
+                    {isDE
+                      ? 'Hier sind die nächsten Schritte für diesen Berichtstyp.'
+                      : 'Here are the next steps for this report type.'}
+                  </p>
+                </div>
+              </div>
+              {downloadedFor === 'police' && (
+                <ol className="space-y-2.5 text-sm text-slate-200">
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">1.</span>
+                    <span>
+                      {isDE
+                        ? 'Online: Lade die PDF in der '
+                        : 'Online: upload the PDF in your state’s '}
+                      <a href="https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">
+                        Onlinewache
+                      </a>{' '}
+                      {isDE ? 'deines Bundeslands hoch.' : 'police portal.'}
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">2.</span>
+                    <span>
+                      {isDE
+                        ? 'Persönlich: Bring die PDF + dein Lichtbildausweis zur nächsten Polizeidienststelle.'
+                        : 'In person: bring the PDF + photo ID to your nearest police station.'}
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">3.</span>
+                    <span>
+                      {isDE
+                        ? 'Beratung: Ruf vorher die kostenlose HateAid-Hotline an: '
+                        : 'Get advice first via the free HateAid hotline: '}
+                      <span className="font-mono text-slate-100">030 252 953 21</span>
+                      {isDE ? ' (Mo-Fr 10–18 Uhr).' : ' (Mon-Fri 10am–6pm).'}
+                    </span>
+                  </li>
+                </ol>
+              )}
+              {downloadedFor === 'netzdg' && (
+                <ol className="space-y-2.5 text-sm text-slate-200">
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">1.</span>
+                    <span>
+                      {isDE
+                        ? 'Reiche die PDF im NetzDG-Meldeformular der jeweiligen Plattform ein (Instagram, X/Twitter, TikTok haben eigene Formulare).'
+                        : 'Submit the PDF via the platform’s NetzDG complaint form (Instagram, X/Twitter, TikTok all have one).'}
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">2.</span>
+                    <span>
+                      {isDE
+                        ? 'Plattformen müssen offensichtlich rechtswidrige Inhalte innerhalb von 24 Stunden löschen. Komplexere Fälle: 7 Tage.'
+                        : 'Platforms must remove obviously illegal content within 24 hours. More complex cases: 7 days.'}
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="text-emerald-400 font-mono text-xs mt-0.5">3.</span>
+                    <span>
+                      {isDE
+                        ? 'Wenn die Plattform nicht reagiert: zusätzlich Strafanzeige stellen (Tab "Strafanzeige").'
+                        : 'If the platform ignores the report: also file a criminal complaint (Strafanzeige tab).'}
+                    </span>
+                  </li>
+                </ol>
+              )}
+              {downloadedFor === 'general' && (
+                <p className="text-sm text-slate-200">
+                  {isDE
+                    ? 'Behalte diese PDF als deine eigene Beweissicherung. Sie enthält SHA-256-Prüfsummen aller Belege — das ist dein zeitlich verifizierter Backup, falls die Originalinhalte später gelöscht werden.'
+                    : 'Keep this PDF as your own evidence backup. It includes SHA-256 checksums of every piece of evidence — your time-verified backup if the originals get deleted later.'}
+                </p>
+              )}
+            </div>
+          )}
           {downloadError && (
             <div className="mt-4 bg-red-900/40 border border-red-800 text-red-200 rounded-lg p-3 text-xs">
               <div className="font-semibold mb-1">
@@ -295,18 +606,26 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
         {mode === 'preview' && (
           <div className="p-4 border-t border-slate-700 flex gap-3">
             <button
-              onClick={handleCopy}
-              disabled={!report}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
+              onClick={handleDownload}
+              disabled={!report || loading || downloading}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
-              {copied ? t(lang, 'report.copied') : t(lang, 'report.copy')}
+              {downloading && (
+                <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              )}
+              {downloading
+                ? (isDE ? 'PDF wird erstellt…' : 'Building PDF…')
+                : (isDE ? 'PDF herunterladen' : 'Download PDF')}
             </button>
             <button
-              onClick={handleDownload}
-              disabled={!report || loading}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors border border-slate-600"
+              onClick={handleCopy}
+              disabled={!report}
+              className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-100 font-semibold py-3 rounded-xl transition-colors border border-slate-600"
+              title={isDE
+                ? 'Volltext in Zwischenablage — z.B. zum Einfügen in ein Onlinewache-Formular'
+                : 'Copy full text to clipboard — e.g. to paste into an Onlinewache form'}
             >
-              {isDE ? 'PDF herunterladen' : 'Download PDF'}
+              {copied ? t(lang, 'report.copied') : t(lang, 'report.copy')}
             </button>
             <button
               onClick={onClose}

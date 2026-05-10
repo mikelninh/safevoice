@@ -17,6 +17,72 @@ interface Message {
   text: string
 }
 
+/**
+ * Build follow-up questions tied to *this* classification — paragraph names,
+ * categories, and platform from the evidence — so users don't have to ask
+ * generic questions against a specific case.
+ */
+function buildSuggestions(c: ClassificationResult, isDE: boolean): string[] {
+  const paragraphs = c.applicable_laws.map(l => l.paragraph).filter(p => p && p !== 'NetzDG § 3')
+  const primaryParagraph = paragraphs[0] ?? '§ 185 StGB'
+  const secondaryParagraph = paragraphs.length > 1 ? paragraphs[1] : null
+  const sev = c.severity
+  const cats = c.categories
+  const out: string[] = []
+
+  if (isDE) {
+    out.push(`Was bedeutet ${primaryParagraph} konkret für meinen Fall — wie wahrscheinlich ist eine Verurteilung?`)
+    if (sev === 'critical' || sev === 'high') {
+      out.push('Sollte ich sofort zur Polizei gehen oder reicht eine Online-Strafanzeige?')
+    } else {
+      out.push('Lohnt sich eine Strafanzeige bei dieser Schwere oder bringt eine NetzDG-Meldung mehr?')
+    }
+    if (cats.includes('death_threat') || cats.includes('threat')) {
+      out.push('Welche Schutzmaßnahmen kann ich beantragen, wenn die Drohung ernst gemeint sein könnte?')
+    } else if (cats.includes('volksverhetzung')) {
+      out.push('Wer ist bei § 130 StGB ermittlungspflichtig und wann wird die Staatsanwaltschaft aktiv?')
+    } else if (cats.includes('intimate_images') || cats.includes('sexual_harassment')) {
+      out.push('Welche Sofortmaßnahmen gibt es gegen die Verbreitung intimer Inhalte?')
+    } else if (cats.includes('doxxing')) {
+      out.push('Welche meiner Daten kann ich nach DSGVO sofort löschen lassen?')
+    } else {
+      out.push('Wie unterscheidet sich Beleidigung (§ 185) von übler Nachrede (§ 186) in meinem Fall?')
+    }
+    out.push('Welche Beweise brauche ich zusätzlich, damit die Anzeige Aussicht auf Erfolg hat?')
+    if (secondaryParagraph) {
+      out.push(`Greift hier zusätzlich ${secondaryParagraph} und was ändert das an der Strafhöhe?`)
+    } else {
+      out.push('Wie lange habe ich Zeit, Strafanzeige zu erstatten — gibt es Verjährungsfristen?')
+    }
+  } else {
+    out.push(`What does ${primaryParagraph} actually mean for my case — how likely is a conviction?`)
+    if (sev === 'critical' || sev === 'high') {
+      out.push('Should I go to the police immediately, or is an online complaint enough?')
+    } else {
+      out.push('At this severity, is a criminal complaint worth filing or is a NetzDG report more effective?')
+    }
+    if (cats.includes('death_threat') || cats.includes('threat')) {
+      out.push('What protective measures can I apply for if the threat might be real?')
+    } else if (cats.includes('volksverhetzung')) {
+      out.push('Who is required to investigate § 130 hate speech and when does the prosecutor get involved?')
+    } else if (cats.includes('intimate_images') || cats.includes('sexual_harassment')) {
+      out.push('What immediate steps stop intimate content from spreading further?')
+    } else if (cats.includes('doxxing')) {
+      out.push('Which of my personal data can I get removed under GDPR right now?')
+    } else {
+      out.push('How does insult (§ 185) differ from defamation (§ 186) in my case?')
+    }
+    out.push('What additional evidence makes the complaint more likely to succeed?')
+    if (secondaryParagraph) {
+      out.push(`Does ${secondaryParagraph} also apply, and how does that affect potential penalties?`)
+    } else {
+      out.push('How long do I have to file — are there limitation periods?')
+    }
+  }
+
+  return out.slice(0, 4)
+}
+
 export default function LegalChat({ lang, originalText, classification }: Props) {
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
@@ -85,25 +151,17 @@ export default function LegalChat({ lang, originalText, classification }: Props)
         <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white text-lg">×</button>
       </div>
 
-      {/* Suggestions */}
+      {/* Suggestions — case-aware: built from the actual classification */}
       {messages.length === 0 && (
         <div className="p-4 space-y-2">
-          <p className="text-slate-500 text-xs mb-2">{isDE ? 'Beispielfragen:' : 'Example questions:'}</p>
-          {(isDE ? [
-            'Was genau bedeutet § 241 StGB für diesen Fall?',
-            'Wie erstatte ich Strafanzeige?',
-            'Was ist der Unterschied zwischen Beleidigung und Bedrohung?',
-            'Wie lange hat Instagram Zeit, den Inhalt zu löschen?',
-          ] : [
-            'What exactly does § 241 StGB mean for this case?',
-            'How do I file a police report?',
-            'What is the difference between insult and threat?',
-            'How long does Instagram have to remove this content?',
-          ]).map((q, i) => (
+          <p className="text-slate-500 text-xs mb-2">
+            {isDE ? 'Beispielfragen zu deinem Fall:' : 'Example questions about your case:'}
+          </p>
+          {buildSuggestions(classification, isDE).map((q, i) => (
             <button
               key={i}
-              onClick={() => { setQuestion(q); }}
-              className="block w-full text-left text-sm text-indigo-300 hover:text-indigo-200 bg-slate-900 rounded-lg px-3 py-2 transition-colors"
+              onClick={() => { setQuestion(q) }}
+              className="block w-full text-left text-sm text-indigo-300 hover:text-indigo-200 bg-slate-900 rounded-lg px-3 py-2 transition-colors leading-relaxed"
             >
               {q}
             </button>

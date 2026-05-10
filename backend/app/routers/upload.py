@@ -9,7 +9,11 @@ import uuid
 import logging
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
-from app.services.ocr import extract_text_from_image, detect_whatsapp_format
+from app.services.ocr import (
+    detect_whatsapp_format,
+    extract_text_from_image,  # noqa: F401  (kept for any external callers)
+    extract_with_metadata,
+)
 from app.services.classifier import classify
 from app.services.evidence import hash_content, capture_timestamp
 from app.models.evidence import EvidenceItem
@@ -44,7 +48,7 @@ async def upload_screenshot(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid file type: {content_type}. "
-                   f"Accepted types: PNG, JPEG, WebP."
+            f"Accepted types: PNG, JPEG, WebP.",
         )
 
     # Read and validate size
@@ -53,38 +57,46 @@ async def upload_screenshot(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=400,
             detail=f"File too large ({len(image_bytes)} bytes). "
-                   f"Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB."
+            f"Maximum size is {MAX_FILE_SIZE // (1024 * 1024)} MB.",
         )
 
     if len(image_bytes) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded file is empty."
-        )
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-    # Detect WhatsApp format and extract text
-    whatsapp_meta = detect_whatsapp_format(image_bytes)
-    extracted_text = whatsapp_meta["extracted_text"]
+    # Run OCR with metadata extraction. Vision tier returns the harasser's
+    # username + a platform hint when visible — used to pre-fill the evidence
+    # so the user doesn't have to retype the @handle.
+    meta = extract_with_metadata(image_bytes, mime_type=content_type)
+    extracted_text = meta["text"]
+    sender_handle: str | None = meta["sender_handle"]
+    platform_hint: str | None = meta["platform_hint"]
+
+    # Keep the WhatsApp heuristic for downstream UI (read receipts, timestamps).
+    whatsapp_meta = detect_whatsapp_format(image_bytes, mime_type=content_type)
 
     if not extracted_text.strip():
-        # Even without OCR text, we can still create evidence
-        # with the screenshot itself as proof
-        logger.info("No text extracted from screenshot (OCR unavailable or image has no text)")
+        logger.info(
+            "No text extracted from screenshot (OCR unavailable or image has no text)"
+        )
         extracted_text = "[Screenshot uploaded - no text extracted via OCR]"
 
-    # Classify the extracted text
     classification = classify(extracted_text)
 
-    # Build evidence item
+    # Pick the platform: Vision's hint > WhatsApp heuristic > generic screenshot.
+    platform = platform_hint or (
+        "whatsapp" if whatsapp_meta["is_whatsapp"] else "screenshot"
+    )
+    author_username = sender_handle or "unknown"
+
     content_hash = hash_content(extracted_text)
     captured_at = capture_timestamp()
 
     evidence = EvidenceItem(
         id=str(uuid.uuid4()),
         url="",
-        platform="whatsapp" if whatsapp_meta["is_whatsapp"] else "screenshot",
+        platform=platform,
         captured_at=captured_at,
-        author_username="unknown",
+        author_username=author_username,
         content_text=extracted_text,
         content_type="screenshot",
         content_hash=content_hash,
@@ -95,7 +107,12 @@ async def upload_screenshot(file: UploadFile = File(...)):
         "evidence": evidence,
         "classification": classification,
         "ocr_metadata": {
-            "text_extracted": bool(extracted_text and not extracted_text.startswith("[")),
+            "text_extracted": bool(
+                extracted_text and not extracted_text.startswith("[")
+            ),
+            "engine": meta["engine"],
+            "sender_handle": sender_handle,
+            "platform_hint": platform_hint,
             "is_whatsapp": whatsapp_meta["is_whatsapp"],
             "timestamps_found": whatsapp_meta["timestamps_found"],
             "has_read_receipts": whatsapp_meta["has_read_receipts"],

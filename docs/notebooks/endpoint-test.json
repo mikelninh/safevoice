@@ -1,0 +1,134 @@
+[
+  {
+    "case_id": "01-baseline",
+    "status_code": 200,
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "applicable_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "requires_immediate_action": false,
+    "confidence": 0.9,
+    "summary": "Unverf\u00e4nglicher Kommentar ohne erkennbare Straftat.",
+    "summary_de": "Unverf\u00e4nglicher Kommentar ohne erkennbare Straftat.",
+    "latency_ms": 3523,
+    "error": null
+  },
+  {
+    "case_id": "02-soft-insult",
+    "status_code": 200,
+    "severity": "low",
+    "categories": [
+      "harassment"
+    ],
+    "applicable_laws": [
+      "NetzDG \u00a7 3"
+    ],
+    "requires_immediate_action": false,
+    "confidence": 0.9,
+    "summary": "Beleidigung, die als allgemeine Bel\u00e4stigung eingestuft wird.",
+    "summary_de": "Beleidigung, die als allgemeine Bel\u00e4stigung eingestuft wird.",
+    "latency_ms": 2360,
+    "error": null
+  },
+  {
+    "case_id": "03-obfuscated-insult",
+    "status_code": 200,
+    "severity": "medium",
+    "categories": [
+      "misogyny",
+      "harassment"
+    ],
+    "applicable_laws": [
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "requires_immediate_action": false,
+    "confidence": 0.95,
+    "summary": "Beleidigung mit frauenfeindlichem Inhalt.",
+    "summary_de": "Beleidigung mit frauenfeindlichem Inhalt.",
+    "latency_ms": 2262,
+    "error": null
+  },
+  {
+    "case_id": "04-implicit-threat",
+    "status_code": 200,
+    "severity": "high",
+    "categories": [
+      "threat"
+    ],
+    "applicable_laws": [
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "requires_immediate_action": true,
+    "confidence": 0.9,
+    "summary": "Implizite Drohung mit dem Wissen \u00fcber den Wohnort der Person.",
+    "summary_de": "Implizite Drohung mit dem Wissen \u00fcber den Wohnort der Person.",
+    "latency_ms": 3365,
+    "error": null
+  },
+  {
+    "case_id": "05-death-threat",
+    "status_code": 200,
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "applicable_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 126a StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "requires_immediate_action": true,
+    "confidence": 0.95,
+    "summary": "Explizite Todesdrohung verbunden mit frauenfeindlicher Beleidigung.",
+    "summary_de": "Explizite Todesdrohung verbunden mit frauenfeindlicher Beleidigung.",
+    "latency_ms": 3084,
+    "error": null
+  },
+  {
+    "case_id": "06-obfuscated-death",
+    "status_code": 200,
+    "severity": "critical",
+    "categories": [
+      "death_threat",
+      "misogyny"
+    ],
+    "applicable_laws": [
+      "\u00a7 241 StGB",
+      "\u00a7 185 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "requires_immediate_action": true,
+    "confidence": 0.95,
+    "summary": "T\u00f6tungsaufforderung mit frauenfeindlicher Beleidigung.",
+    "summary_de": "T\u00f6tungsaufforderung mit frauenfeindlicher Beleidigung.",
+    "latency_ms": 2752,
+    "error": null
+  },
+  {
+    "case_id": "07-victim-context-stalking",
+    "status_code": 200,
+    "severity": "high",
+    "categories": [
+      "stalking",
+      "threat"
+    ],
+    "applicable_laws": [
+      "\u00a7 238 StGB",
+      "\u00a7 241 StGB",
+      "NetzDG \u00a7 3"
+    ],
+    "requires_immediate_action": true,
+    "confidence": 0.95,
+    "summary": "Implizite Drohung im Kontext wiederholter Kontaktaufnahme durch Ex-Partner.",
+    "summary_de": "Implizite Drohung im Kontext wiederholter Kontaktaufnahme durch Ex-Partner \u2014 Stalking-Tatbestand erf\u00fcllt.",
+    "latency_ms": 17323,
+    "error": null
+  }
+]

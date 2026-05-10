@@ -19,11 +19,11 @@ const translations: Record<Lang, Record<string, string>> = {
     'cases.sync.banner.dismiss': 'Später',
 
     'home.hero.title': 'Ein Werkzeug für das, was dir passiert ist.',
-    'home.hero.subtitle': 'SafeVoice hilft dir, digitale Belästigung zu dokumentieren, rechtlich einzuordnen und Anzeige zu erstatten.',
+    'home.hero.subtitle': 'SafeVoice hilft dir, digitale Belästigung zu dokumentieren, rechtlich einzuordnen und Anzeige zu erstatten — wenn du das willst.',
     'home.hero.cta': 'Vorfall melden',
     'home.hero.cases': 'Meine Fälle ansehen',
 
-    'home.steps.title': 'In 3 Schritten zur Anzeige',
+    'home.steps.title': 'In drei Schritten zur Anzeige',
     'home.steps.1.title': 'Teilen',
     'home.steps.1.desc': 'Teile den Link (Instagram, X, ...) oder gib den Text direkt ein.',
     'home.steps.2.title': 'Analysieren',
@@ -70,7 +70,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'category.impersonation': 'Identitätsmissbrauch',
 
     'result.immediate_action': 'Sofortiger Handlungsbedarf',
-    'result.immediate_action.desc': 'Dieser Inhalt erfordert sofortiges Handeln. Erstatite Strafanzeige und melde den Inhalt bei Instagram.',
+    'result.immediate_action.desc': 'Dieser Inhalt sollte schnell gemeldet werden. Wir empfehlen eine Strafanzeige und eine Meldung an die Plattform.',
     'result.laws': 'Relevante Gesetze',
     'result.consequences': 'Mögliche Konsequenzen',
     'result.confidence': 'Analysegenauigkeit',
@@ -82,7 +82,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'cases.empty.cta': 'Ersten Vorfall melden',
     'cases.evidence': 'Belege',
     'cases.patterns': 'Muster erkannt',
-    'cases.report': 'Bericht exportieren',
+    'cases.report': 'Strafanzeige & Berichte erstellen',
 
     'report.netzdg': 'NetzDG-Meldung',
     'report.police': 'Strafanzeige',
@@ -121,11 +121,11 @@ const translations: Record<Lang, Record<string, string>> = {
     'nav.about': 'About SafeVoice',
 
     'home.hero.title': 'A tool for what happened to you.',
-    'home.hero.subtitle': 'SafeVoice helps you document digital harassment, understand your legal options, and file reports.',
+    'home.hero.subtitle': 'SafeVoice helps you document digital harassment, understand your legal options, and file a report — if you want to.',
     'home.hero.cta': 'Report an incident',
     'home.hero.cases': 'View my cases',
 
-    'home.steps.title': 'Three steps to justice',
+    'home.steps.title': 'Three steps to a report',
     'home.steps.1.title': 'Share',
     'home.steps.1.desc': 'Share the link (Instagram, X, ...) or paste the text directly.',
     'home.steps.2.title': 'Analyze',
@@ -172,7 +172,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'category.impersonation': 'Impersonation',
 
     'result.immediate_action': 'Immediate action required',
-    'result.immediate_action.desc': 'This content requires immediate action. File a police report and report the content to Instagram.',
+    'result.immediate_action.desc': 'This content should be reported quickly. We recommend filing a police report and reporting it to the platform.',
     'result.laws': 'Applicable laws',
     'result.consequences': 'Potential consequences',
     'result.confidence': 'Analysis confidence',
@@ -184,7 +184,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'cases.empty.cta': 'Report first incident',
     'cases.evidence': 'Evidence items',
     'cases.patterns': 'Patterns detected',
-    'cases.report': 'Export report',
+    'cases.report': 'Create criminal complaint & reports',
 
     'report.netzdg': 'NetzDG Report',
     'report.police': 'Police Report',

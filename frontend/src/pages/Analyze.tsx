@@ -28,6 +28,7 @@ export default function Analyze({ lang }: Props) {
   const [params] = useSearchParams()
   const [url, setUrl] = useState(params.get('url') ?? '')
   const [text, setText] = useState(params.get('text') ?? '')
+  const [victimContext, setVictimContext] = useState('')
   const [author, setAuthor] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<EvidenceItem | null>(null)
@@ -123,24 +124,44 @@ export default function Analyze({ lang }: Props) {
 
   const handleSave = () => {
     if (!result) return
-    createCase(result)
+    createCase(result, undefined, victimContext.trim() || undefined)
     setSaved(true)
   }
 
   const c = result?.classification
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-white mb-2">
+    <div className="max-w-2xl mx-auto px-4 py-10">
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 tracking-tight">
         {t(lang, 'analyze.title')}
       </h1>
-      <div className="flex items-center gap-2 mb-6">
-        <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-        <span className="text-green-300 text-sm">{t(lang, 'analyze.privacy')}</span>
+      <div className="flex items-center gap-2 mb-8">
+        <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+        <span className="text-green-300/90 text-sm">{t(lang, 'analyze.privacy')}</span>
       </div>
 
-      {/* Form */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-6 space-y-4">
+      {/* Form — text first (most common path: paste a message you received) */}
+      <div className="bg-slate-800/60 rounded-xl p-5 sm:p-6 mb-6 space-y-5">
+        <div>
+          <label className="block text-slate-300 text-sm font-medium mb-0.5">
+            {t(lang, 'analyze.text.label')}
+          </label>
+          <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.text.hint')}</p>
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder={t(lang, 'analyze.text.placeholder')}
+            rows={4}
+            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 resize-none"
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-700/60"></div>
+          <span className="text-slate-500 text-xs uppercase tracking-wider">{isDE ? 'oder' : 'or'}</span>
+          <div className="flex-1 h-px bg-slate-700/60"></div>
+        </div>
+
         <div>
           <label className="block text-slate-300 text-sm font-medium mb-0.5">
             {t(lang, 'analyze.url.label')}
@@ -162,10 +183,10 @@ export default function Analyze({ lang }: Props) {
           </div>
         </div>
 
-        <div className="relative flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-700"></div>
-          <span className="text-slate-500 text-xs">{isDE ? 'oder' : 'or'}</span>
-          <div className="flex-1 h-px bg-slate-700"></div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-700/60"></div>
+          <span className="text-slate-500 text-xs uppercase tracking-wider">{isDE ? 'oder' : 'or'}</span>
+          <div className="flex-1 h-px bg-slate-700/60"></div>
         </div>
 
         {/* Screenshot upload */}
@@ -218,22 +239,22 @@ export default function Analyze({ lang }: Props) {
           )}
         </div>
 
-        <div className="relative flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-700"></div>
-          <span className="text-slate-500 text-xs">{isDE ? 'oder' : 'or'}</span>
-          <div className="flex-1 h-px bg-slate-700"></div>
-        </div>
-
         <div>
           <label className="block text-slate-300 text-sm font-medium mb-0.5">
-            {t(lang, 'analyze.text.label')}
+            {isDE ? 'Was ist passiert? (optional)' : 'What happened? (optional)'}
           </label>
-          <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.text.hint')}</p>
+          <p className="text-slate-500 text-xs mb-1.5">
+            {isDE
+              ? 'Kurzer Kontext: Was lief vorher, was war der Auslöser, gab es weitere Vorfälle? Hilft AI und Polizei, den Fall richtig einzuordnen.'
+              : 'Short context: what was the build-up, what triggered this, were there earlier incidents? Helps the AI and police place the case correctly.'}
+          </p>
           <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder={t(lang, 'analyze.text.placeholder')}
-            rows={4}
+            value={victimContext}
+            onChange={e => setVictimContext(e.target.value)}
+            placeholder={isDE
+              ? 'z.B. „Der Account belästigt mich seit 3 Wochen, nachdem ich einen Post über XY geteilt habe …"'
+              : 'e.g. "This account has been harassing me for 3 weeks after I posted about XY..."'}
+            rows={3}
             className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 resize-none"
           />
         </div>
@@ -288,19 +309,19 @@ export default function Analyze({ lang }: Props) {
 
           {/* Immediate action alert */}
           {c.requires_immediate_action && (
-            <div className="bg-red-900 border border-red-600 rounded-xl p-4">
+            <div className="bg-red-950/60 border border-red-800 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xl">⚠</span>
-                <span className="text-red-200 font-bold">
+                <span className="text-red-400 text-lg leading-none">⚠</span>
+                <span className="text-red-100 font-semibold">
                   {t(lang, 'result.immediate_action')}
                 </span>
               </div>
-              <p className="text-red-300 text-sm">
+              <p className="text-red-200/90 text-sm leading-relaxed">
                 {t(lang, 'result.immediate_action.desc')}
               </p>
-              <div className="mt-3 flex flex-col sm:flex-row gap-2">
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
                 <a
-                  href="https://www.onlinewache.polizei.de"
+                  href="https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 text-center bg-red-700 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
@@ -320,7 +341,7 @@ export default function Analyze({ lang }: Props) {
           )}
 
           {/* Classification result */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+          <div className="bg-slate-800/60 rounded-xl p-5 sm:p-6 space-y-5">
             <div className="flex items-center justify-between">
               <SeverityBadge severity={c.severity} lang={lang} showDesc />
               <span className="text-slate-500 text-xs">
@@ -369,7 +390,7 @@ export default function Analyze({ lang }: Props) {
           <button
             onClick={handleSave}
             disabled={saved}
-            className="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-60 text-slate-200 font-semibold py-3 rounded-xl transition-colors border border-slate-600"
+            className="w-full bg-slate-700/80 hover:bg-slate-700 disabled:opacity-60 text-slate-100 font-semibold py-3 rounded-xl transition-colors"
           >
             {saved ? `✓ ${t(lang, 'result.saved')}` : t(lang, 'result.save')}
           </button>

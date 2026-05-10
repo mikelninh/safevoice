@@ -3,6 +3,7 @@
  * No passwords. Email only.
  */
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { t, type Lang } from '../i18n'
 
 interface Props {
@@ -29,7 +30,7 @@ export default function Login({ lang, onLogin }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       })
-      if (!res.ok) throw new Error(`Auth-Server antwortete ${res.status}`)
+      if (!res.ok) throw new Error(`Auth server responded ${res.status}`)
       const data = await res.json()
       // MVP: token returned directly. Production: sent via email
       setMagicToken(data.magic_link_token)
@@ -79,13 +80,19 @@ export default function Login({ lang, onLogin }: Props) {
           <span className="text-white text-2xl font-bold">SV</span>
         </div>
         <h1 className="text-2xl font-bold text-white mb-2">
-          {isDE ? 'Ein-Klick-Login (MVP)' : 'One-click sign-in (MVP)'}
+          {isDE ? 'Konto (optional)' : 'Account (optional)'}
         </h1>
         <p className="text-slate-400 text-sm">
           {isDE
-            ? 'Email-Versand per Resend ist geplant. Im Moment: Email eingeben, ein Klick — fertig.'
-            : 'Email delivery via Resend is on the roadmap. For now: enter your email, one click — done.'}
+            ? 'SafeVoice funktioniert anonym im Browser. Ein Konto brauchst du nur, wenn du als NGO/Anwält:in mehrere Geräte synchronisieren willst.'
+            : 'SafeVoice works anonymously in your browser. You only need an account if you are an NGO or lawyer syncing across devices.'}
         </p>
+        <Link
+          to="/cases"
+          className="inline-block mt-4 text-indigo-300 hover:text-indigo-200 text-sm font-semibold"
+        >
+          {isDE ? '← Ohne Konto fortfahren' : '← Continue without account'}
+        </Link>
       </div>
 
       {step === 'email' && (
@@ -126,12 +133,12 @@ export default function Login({ lang, onLogin }: Props) {
       {step === 'check' && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center space-y-4">
           <h2 className="text-white font-semibold">
-            {isDE ? `Token für ${email} erstellt` : `Token created for ${email}`}
+            {isDE ? `Konto für ${email} bereit` : `Account ready for ${email}`}
           </h2>
           <p className="text-slate-400 text-sm">
             {isDE
-              ? 'Email-Versand ist noch nicht live (Resend-Integration geplant). Im MVP wird dein Konto direkt erstellt — ein Klick, fertig.'
-              : 'Email delivery is not yet wired (Resend integration planned). In the MVP your account is created directly — one click, done.'}
+              ? 'Der E-Mail-Versand ist in der Beta noch nicht aktiv. Du kannst dich direkt anmelden — ein Klick reicht.'
+              : 'Email delivery is not active yet during the beta. You can sign in directly — one click is enough.'}
           </p>
 
           {/* MVP: direct verify button since we have the token */}
@@ -149,8 +156,8 @@ export default function Login({ lang, onLogin }: Props) {
             <span className="w-2 h-2 bg-green-400 rounded-full"></span>
             <span className="text-green-300 text-xs">
               {isDE
-                ? 'Dein Konto wird sofort erstellt — kein Email-Link nötig solange wir MVP sind.'
-                : 'Your account is created instantly — no email link needed while we are MVP.'}
+                ? 'Dein Konto wird sofort erstellt — während der Beta ohne E-Mail-Link.'
+                : 'Your account is created instantly — no email link needed during the beta.'}
             </span>
           </div>
 

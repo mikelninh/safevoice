@@ -21,6 +21,58 @@ export async function fetchCase(id: string): Promise<Case> {
   return res.json()
 }
 
+/**
+ * Push a single new evidence item to an existing backend case so the
+ * server-side classifier + legal AI see it. Used by the "add evidence"
+ * flow on a case that's already been synced once.
+ */
+export async function addEvidenceToBackendCase(
+  backendCaseId: string,
+  evidence: {
+    content_text: string
+    url?: string
+    platform?: string
+    author_username?: string
+    screenshot_base64?: string
+  }
+): Promise<void> {
+  const res = await fetch(`${BASE}/cases/${backendCaseId}/evidence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content_type: evidence.screenshot_base64 ? 'screenshot' : 'text',
+      text: evidence.content_text,
+      source_url: evidence.url || undefined,
+      author_username: evidence.author_username ?? 'unknown',
+      platform: evidence.platform ?? undefined,
+      screenshot_base64: evidence.screenshot_base64,
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Evidence sync failed (${res.status}): ${body.slice(0, 200)}`)
+  }
+}
+
+/**
+ * PUT updates to a backend case (title, victim_context). Without this the
+ * server-side legal AI and Strafanzeige use stale context.
+ */
+export async function updateBackendCase(
+  backendCaseId: string,
+  patch: { title?: string; victim_context?: string }
+): Promise<void> {
+  const res = await fetch(`${BASE}/cases/${backendCaseId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Case update failed (${res.status}): ${body.slice(0, 200)}`)
+  }
+}
+
 export async function fetchLegalAnalysis(caseId: string): Promise<LegalAnalysisResponse> {
   const res = await fetch(`${BASE}/legal/${caseId}`, { cache: 'no-store' })
   if (!res.ok) {
@@ -69,12 +121,32 @@ export async function scrapeUrl(url: string): Promise<{
   return res.json()
 }
 
+export interface VictimInfo {
+  name?: string
+  address?: string
+  phone?: string
+  email?: string
+  /** Optional postal code — used by SendReport to pre-select Bundesland police. */
+  plz?: string
+}
+
+function _victimQuery(v?: VictimInfo): string {
+  if (!v) return ''
+  const params: string[] = []
+  if (v.name) params.push(`victim_name=${encodeURIComponent(v.name)}`)
+  if (v.address) params.push(`victim_address=${encodeURIComponent(v.address)}`)
+  if (v.phone) params.push(`victim_phone=${encodeURIComponent(v.phone)}`)
+  if (v.email) params.push(`victim_email=${encodeURIComponent(v.email)}`)
+  return params.length ? '&' + params.join('&') : ''
+}
+
 export async function fetchReport(
   caseId: string,
   reportType: 'general' | 'netzdg' | 'police',
-  lang: 'de' | 'en'
+  lang: 'de' | 'en',
+  victim?: VictimInfo
 ): Promise<Record<string, unknown>> {
-  const url = `${BASE}/reports/${caseId}?report_type=${reportType}&lang=${lang}`
+  const url = `${BASE}/reports/${caseId}?report_type=${reportType}&lang=${lang}${_victimQuery(victim)}`
   const res = await fetch(url, { cache: 'no-store' })
   if (!res.ok) {
     const body = await res.text().catch(() => '')
@@ -100,6 +172,7 @@ export async function ensureBackendCase(
     victim_context?: string
     evidence_items: Array<{
       content_text: string
+      content_hash?: string
       url?: string
       platform?: string
       author_username?: string
@@ -107,11 +180,50 @@ export async function ensureBackendCase(
     }>
   }
 ): Promise<string> {
-  // Fast path: already synced
+  /** Push a single evidence item; logs+swallows errors so partial sync is OK. */
+  const pushEvidence = async (
+    backendId: string,
+    ev: typeof localCase.evidence_items[number],
+  ) => {
+    const evRes = await fetch(`${BASE}/cases/${backendId}/evidence`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content_type: ev.screenshot_base64 ? 'screenshot' : 'text',
+        text: ev.content_text,
+        source_url: ev.url || undefined,
+        author_username: ev.author_username ?? 'unknown',
+        platform: ev.platform ?? undefined,
+        screenshot_base64: ev.screenshot_base64,
+      }),
+    })
+    if (!evRes.ok) {
+      const body = await evRes.text().catch(() => '')
+      console.warn('[ensureBackendCase] evidence sync failed:', evRes.status, body.slice(0, 200))
+    }
+  }
+
+  // Fast path: already synced — reconcile evidence on every call so newly
+  // added local pieces always reach the backend before reports are fetched.
   if (localCase.backend_id) {
-    // Verify it still exists server-side
     const check = await fetch(`${BASE}/cases/${localCase.backend_id}`, { cache: 'no-store' })
-    if (check.ok) return localCase.backend_id
+    if (check.ok) {
+      try {
+        const remote = await check.json()
+        const remoteHashes = new Set<string>(
+          (remote.evidence_items ?? []).map((e: { content_hash?: string }) => e.content_hash)
+        )
+        const missing = localCase.evidence_items.filter(
+          ev => ev.content_hash && !remoteHashes.has(ev.content_hash)
+        )
+        for (const ev of missing) {
+          await pushEvidence(localCase.backend_id, ev)
+        }
+      } catch (err) {
+        console.warn('[ensureBackendCase] reconcile failed:', err)
+      }
+      return localCase.backend_id
+    }
     // Fall through to re-create if server-side case was deleted
   }
 
@@ -133,23 +245,7 @@ export async function ensureBackendCase(
 
   // Push each evidence item (re-classify server-side for fresh hash chain)
   for (const ev of localCase.evidence_items) {
-    const evRes = await fetch(`${BASE}/cases/${backendId}/evidence`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content_type: ev.screenshot_base64 ? 'screenshot' : 'text',
-        text: ev.content_text,
-        source_url: ev.url || undefined,
-        author_username: ev.author_username ?? 'unknown',
-        platform: ev.platform ?? undefined,
-        screenshot_base64: ev.screenshot_base64,
-      }),
-    })
-    if (!evRes.ok) {
-      const body = await evRes.text().catch(() => '')
-      // Continue — partial sync is better than no sync.
-      console.warn('[ensureBackendCase] evidence sync failed:', evRes.status, body.slice(0, 200))
-    }
+    await pushEvidence(backendId, ev)
   }
 
   return backendId
@@ -252,9 +348,12 @@ export async function uploadScreenshot(
 export async function downloadPdf(
   caseId: string,
   reportType: 'general' | 'netzdg' | 'police',
-  lang: 'de' | 'en'
+  lang: 'de' | 'en',
+  victim?: VictimInfo
 ): Promise<void> {
-  const res = await fetch(`${BASE}/reports/${caseId}/pdf?report_type=${reportType}&lang=${lang}`)
+  const res = await fetch(
+    `${BASE}/reports/${caseId}/pdf?report_type=${reportType}&lang=${lang}${_victimQuery(victim)}`
+  )
   if (!res.ok) {
     const body = await res.text().catch(() => '')
     throw new Error(`PDF generation failed (${res.status}): ${body.slice(0, 200)}`)

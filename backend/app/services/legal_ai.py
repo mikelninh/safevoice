@@ -113,6 +113,112 @@ def is_available() -> bool:
     return _openai_installed and bool(os.environ.get("OPENAI_API_KEY"))
 
 
+# Bumped whenever the system prompt or schema materially changes.
+# Stored on each case_analyses row so historical runs remain auditable.
+LEGAL_PROMPT_VERSION = "v1"
+
+
+def analyze_and_persist_case(case_id: str, db) -> dict | None:
+    """RETRIEVE + AUGMENT + GENERATE + WRITE + UPDATE — the CRUD-demonstrating path.
+
+    1. Read the case + all evidence + classifications from Postgres
+    2. Format as context, send to OpenAI with Pydantic schema
+    3. INSERT a new `case_analyses` row (full audit trail, model + prompt version recorded)
+    4. UPDATE `cases.summary`, `summary_de`, `overall_severity` from the analysis
+    5. Commit, return the structured analysis as a dict
+
+    Re-running this on the same case INSERTS a new analysis row (history preserved)
+    and UPDATEs the case's cached summary fields — never duplicates, never mutates
+    history. Mirrors the same Structured Outputs pattern as the single-evidence
+    classifier; the difference is granularity.
+    """
+    import json as _json
+    from app.database import Case as DBCase, CaseAnalysisRow
+    from app.services.db_helpers import case_to_pydantic
+
+    db_case = db.query(DBCase).filter_by(id=case_id).first()
+    if db_case is None:
+        return None
+
+    # Convert DB shape → Pydantic Case shape so the read-only analyze_case_legally
+    # (which expects content_text, captured_at, applicable_laws) sees the right fields.
+    pydantic_case = case_to_pydantic(db_case)
+
+    # Reuse the existing read-only function for retrieve + augment + generate.
+    # Then layer the write on top so the read path stays callable in isolation.
+    analysis = analyze_case_legally(pydantic_case)
+    if analysis is None:
+        return None
+
+    risk = analysis.get("risk_assessment") or {}
+
+    # Capture provenance of authoritative statute texts the analyzer grounded
+    # in — fetched from GitLaw via app.services.law_text. Stored as JSON on
+    # the case_analyses row so a defense lawyer can verify exactly which
+    # version of which paragraph this analysis cited.
+    cited_law_sources = []
+    try:
+        from app.services.law_text import get_law_text
+        seen = set()
+        for ev in pydantic_case.evidence_items:
+            if not ev.classification:
+                continue
+            for law in ev.classification.applicable_laws:
+                if law.paragraph in seen:
+                    continue
+                seen.add(law.paragraph)
+                lt = get_law_text(law.paragraph)
+                if lt is not None:
+                    cited_law_sources.append({
+                        "paragraph": lt.paragraph,
+                        "title": lt.title,
+                        "law_abbr": lt.law_abbr,
+                        "source_path": lt.source_path,
+                        "last_updated": lt.last_updated,
+                        "text_sha256": lt.text_sha256,
+                    })
+    except Exception as _e:  # pragma: no cover — provenance is best-effort
+        pass
+
+    row = CaseAnalysisRow(
+        case_id=case_id,
+        legal_assessment_de=analysis.get("legal_assessment_de", ""),
+        legal_assessment_en=analysis.get("legal_assessment_en", ""),
+        strongest_charges_json=_json.dumps(analysis.get("strongest_charges", []), ensure_ascii=False),
+        recommended_actions_json=_json.dumps(analysis.get("recommended_actions", []), ensure_ascii=False),
+        risk_assessment_json=_json.dumps(risk, ensure_ascii=False),
+        evidence_gaps_json=_json.dumps(analysis.get("evidence_gaps", []), ensure_ascii=False),
+        cross_references=analysis.get("cross_references", ""),
+        disclaimer_de=analysis.get("disclaimer_de", ""),
+        disclaimer_en=analysis.get("disclaimer_en", ""),
+        model_used="gpt-4o-mini" if is_available() else "fallback",
+        prompt_version=LEGAL_PROMPT_VERSION,
+        cited_law_sources_json=_json.dumps(cited_law_sources, ensure_ascii=False),
+    )
+    db.add(row)
+
+    # UPDATE the case's cached summary fields — the human-facing surface.
+    # This is what makes the AI's imprint visible on a plain GET /cases/{id}.
+    db_case.summary_de = analysis.get("legal_assessment_de", db_case.summary_de)
+    db_case.summary = analysis.get("legal_assessment_en", db_case.summary)
+    escalation = (risk.get("escalation_risk") or "").lower()
+    if escalation in ("low", "medium", "high"):
+        db_case.overall_severity = escalation
+
+    db.commit()
+    db.refresh(row)
+
+    return {
+        **analysis,
+        "_persisted": {
+            "case_analysis_id": row.id,
+            "generated_at": row.generated_at.isoformat(),
+            "model_used": row.model_used,
+            "prompt_version": row.prompt_version,
+        },
+    }
+
+
 def analyze_case_legally(case: Case) -> dict | None:
     """Deep legal analysis of an entire case.
 
@@ -128,6 +234,7 @@ def analyze_case_legally(case: Case) -> dict | None:
 
         # RETRIEVE + AUGMENT — pull evidence + classifications, structure as context
         evidence_summary = []
+        cited_laws: list[str] = []  # collect for authoritative-text grounding
         for ev in case.evidence_items:
             entry = {
                 "author": ev.author_username,
@@ -139,9 +246,23 @@ def analyze_case_legally(case: Case) -> dict | None:
                 entry["severity"] = ev.classification.severity.value
                 entry["categories"] = [c.value for c in ev.classification.categories]
                 entry["laws"] = [l.paragraph for l in ev.classification.applicable_laws]
+                for l in ev.classification.applicable_laws:
+                    if l.paragraph not in cited_laws:
+                        cited_laws.append(l.paragraph)
             evidence_summary.append(entry)
 
+        # AUGMENT (cont'd) — fetch authoritative statute text from the GitLaw
+        # corpus for every cited law. Keeps the analysis grounded in real
+        # current text instead of model-recall. Falls back silently when a
+        # paragraph isn't in the corpus (e.g. NetzDG is in a different file).
+        from app.services.law_text import get_law_text, format_authoritative_block
+        law_texts = [get_law_text(c) for c in cited_laws]
+        law_texts = [lt for lt in law_texts if lt is not None]
+        authoritative_block = format_authoritative_block(law_texts)
+
         user_prompt = f"""Analyze this digital harassment case.
+
+{authoritative_block}
 
 Case ID: {case.id}
 Title: {case.title}

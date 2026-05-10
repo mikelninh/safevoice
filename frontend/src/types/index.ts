@@ -15,6 +15,11 @@ export type Category =
   | 'investment_fraud'
   | 'romance_scam'
   | 'impersonation'
+  | 'volksverhetzung'
+  | 'verleumdung'
+  | 'stalking'
+  | 'doxxing'
+  | 'intimate_images'
 
 export interface GermanLaw {
   paragraph: string

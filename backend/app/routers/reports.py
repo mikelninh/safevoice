@@ -34,8 +34,7 @@ def get_legal_pdf(
     db_case = (
         db.query(DBCase)
         .options(
-            joinedload(DBCase.evidence_items)
-            .joinedload(DBEvidence.classification),
+            joinedload(DBCase.evidence_items).joinedload(DBEvidence.classification),
         )
         .filter(DBCase.id == case_id)
         .first()
@@ -43,7 +42,11 @@ def get_legal_pdf(
     if not db_case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    org = db.query(Org).filter(Org.id == db_case.org_id).first() if db_case.org_id else None
+    org = (
+        db.query(Org).filter(Org.id == db_case.org_id).first()
+        if db_case.org_id
+        else None
+    )
 
     pdf_bytes = generate_legal_pdf(db_case, org=org)
     filename = f"safevoice-legal-{case_id[:8]}.pdf"
@@ -77,8 +80,7 @@ def build_eml_endpoint(
     db_case = (
         db.query(DBCase)
         .options(
-            joinedload(DBCase.evidence_items)
-            .joinedload(DBEvidence.classification),
+            joinedload(DBCase.evidence_items).joinedload(DBEvidence.classification),
         )
         .filter(DBCase.id == case_id)
         .first()
@@ -86,7 +88,11 @@ def build_eml_endpoint(
     if not db_case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    org = db.query(Org).filter(Org.id == db_case.org_id).first() if db_case.org_id else None
+    org = (
+        db.query(Org).filter(Org.id == db_case.org_id).first()
+        if db_case.org_id
+        else None
+    )
 
     # Use the requested report type (default 'police'). Recipient-template
     # mismatches (e.g. NetzDG body sent to police) are now caller-controlled.
@@ -139,8 +145,7 @@ def _get_case_as_pydantic(case_id: str, db: Session):
     db_case = (
         db.query(DBCase)
         .options(
-            joinedload(DBCase.evidence_items)
-            .joinedload(DBEvidence.classification)
+            joinedload(DBCase.evidence_items).joinedload(DBEvidence.classification)
         )
         .filter(DBCase.id == case_id)
         .first()
@@ -150,26 +155,88 @@ def _get_case_as_pydantic(case_id: str, db: Session):
     return case_to_pydantic(db_case)
 
 
+def _build_sender_block(
+    victim_name: str | None,
+    victim_address: str | None,
+    victim_phone: str | None,
+    victim_email: str | None,
+) -> str:
+    if not victim_name:
+        return ""
+    parts = [victim_name]
+    if victim_address:
+        parts.append(victim_address)
+    if victim_phone:
+        parts.append(f"Tel: {victim_phone}")
+    if victim_email:
+        parts.append(f"E-Mail: {victim_email}")
+    return "\n".join(parts)
+
+
+def _personalize_report(
+    report: dict,
+    victim_name: str | None,
+    victim_address: str | None,
+    victim_phone: str | None,
+    victim_email: str | None,
+) -> dict:
+    """Replace [NAME DES OPFERS] / [UNTERSCHRIFT] placeholders in body."""
+    if not victim_name:
+        return report
+    sender_block = _build_sender_block(
+        victim_name, victim_address, victim_phone, victim_email
+    )
+    body = report.get("body", "")
+    if body:
+        body = body.replace("[NAME DES OPFERS]", sender_block)
+        body = body.replace("[UNTERSCHRIFT]", victim_name)
+        report = {**report, "body": body}
+    return report
+
+
 @router.get("/{case_id}")
 def get_report(
     case_id: str,
-    report_type: str = Query(default="general", description="general | netzdg | police"),
+    report_type: str = Query(
+        default="general", description="general | netzdg | police"
+    ),
     lang: str = Query(default="de", description="de | en"),
+    victim_name: str | None = Query(default=None),
+    victim_address: str | None = Query(default=None),
+    victim_phone: str | None = Query(default=None),
+    victim_email: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     case = _get_case_as_pydantic(case_id, db)
-    return generate_report(case, report_type=report_type, lang=lang)
+    report = generate_report(case, report_type=report_type, lang=lang)
+    return _personalize_report(
+        report, victim_name, victim_address, victim_phone, victim_email
+    )
 
 
 @router.get("/{case_id}/pdf")
 def get_report_pdf(
     case_id: str,
-    report_type: str = Query(default="general", description="general | netzdg | police"),
+    report_type: str = Query(
+        default="general", description="general | netzdg | police"
+    ),
     lang: str = Query(default="de", description="de | en"),
+    victim_name: str | None = Query(default=None),
+    victim_address: str | None = Query(default=None),
+    victim_phone: str | None = Query(default=None),
+    victim_email: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     case = _get_case_as_pydantic(case_id, db)
-    pdf_bytes = generate_pdf(case, report_type=report_type, lang=lang)
+    pdf_bytes = generate_pdf(
+        case,
+        report_type=report_type,
+        lang=lang,
+        victim_name=victim_name,
+        victim_address=victim_address,
+        victim_phone=victim_phone,
+        victim_email=victim_email,
+    )
     filename = f"safevoice_{case_id}_{report_type}_{lang}.pdf"
     return Response(
         content=pdf_bytes,

@@ -29,6 +29,7 @@ class Category(str, Enum):
     VOLKSVERHETZUNG = "volksverhetzung"
     VERLEUMDUNG = "verleumdung"
     STALKING = "stalking"
+    DOXXING = "doxxing"
     INTIMATE_IMAGES = "intimate_images"
 
 

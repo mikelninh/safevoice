@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { downloadLegalPdf, fetchCase, fetchLegalAnalysis } from '../services/api'
+import { ensureBackendCase, fetchCase, fetchLegalAnalysis } from '../services/api'
 import { t, type Lang } from '../i18n'
 import type { Case, LegalAnalysisPayload } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
 import EvidenceCard from '../components/EvidenceCard'
 import PatternFlagCard from '../components/PatternFlagCard'
 import ReportModal from '../components/ReportModal'
-import { getLocalCase } from '../services/storage'
+import { getLocalCase, updateCaseBackendId } from '../services/storage'
 import HateAidReferral from '../components/HateAidReferral'
 import OnlinewachePanel from '../components/OnlinewachePanel'
+import CaseEditor from '../components/CaseEditor'
 
 interface Props { lang: Lang }
 
@@ -19,6 +20,7 @@ export default function CaseDetail({ lang }: Props) {
   const [legalAnalysis, setLegalAnalysis] = useState<LegalAnalysisPayload | null>(null)
   const [legalLoading, setLegalLoading] = useState(false)
   const [legalError, setLegalError] = useState<string | null>(null)
+  const [legalUpdatedAt, setLegalUpdatedAt] = useState<Date | null>(null)
   const [loading, setLoading] = useState(true)
   const [showReport, setShowReport] = useState(false)
   const isDE = lang === 'de'
@@ -37,15 +39,47 @@ export default function CaseDetail({ lang }: Props) {
       .finally(() => setLoading(false))
   }, [id])
 
-  useEffect(() => {
-    if (!caseData?.id) return
+  // Extracted so the manual "Aktualisieren" button can call the same code path.
+  const refetchLegal = (current: Case) => {
     setLegalLoading(true)
     setLegalError(null)
-    fetchLegalAnalysis(caseData.id)
-      .then(res => setLegalAnalysis(res.analysis))
+
+    const isLocal = current.id.startsWith('case-local-')
+
+    const getBackendId = isLocal
+      ? ensureBackendCase(current).then(backendId => {
+          updateCaseBackendId(current.id, backendId)
+          return backendId
+        })
+      : Promise.resolve(current.backend_id ?? current.id)
+
+    // Retry once on 404: a stale local backend_id (e.g. from a prior deploy
+    // whose DB is gone) can resolve to a phantom case. Force re-sync.
+    const fetchWithRetry = (backendId: string) =>
+      fetchLegalAnalysis(backendId).catch(async err => {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (!msg.includes('404')) throw err
+        const fresh = await ensureBackendCase({ ...current, backend_id: undefined })
+        updateCaseBackendId(current.id, fresh)
+        return fetchLegalAnalysis(fresh)
+      })
+
+    getBackendId
+      .then(fetchWithRetry)
+      .then(res => {
+        setLegalAnalysis(res.analysis)
+        setLegalUpdatedAt(new Date())
+      })
       .catch(err => setLegalError(err instanceof Error ? err.message : 'Legal analysis unavailable'))
       .finally(() => setLegalLoading(false))
-  }, [caseData?.id])
+  }
+
+  useEffect(() => {
+    if (!caseData) return
+    refetchLegal(caseData)
+    // Re-run when evidence count or context changes — exactly the inputs
+    // the server-side legal AI builds its assessment from.
+  }, [caseData?.id, caseData?.evidence_items.length, caseData?.victim_context])
 
   if (loading) {
     return (
@@ -71,38 +105,39 @@ export default function CaseDetail({ lang }: Props) {
   )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto px-4 py-10">
       {/* Back nav */}
-      <Link to="/cases" className="text-slate-400 hover:text-slate-200 text-sm flex items-center gap-1 mb-6 transition-colors">
+      <Link to="/cases" className="text-slate-400 hover:text-slate-200 text-sm inline-flex items-center gap-1 mb-8 transition-colors">
         ← {isDE ? 'Alle Fälle' : 'All cases'}
       </Link>
 
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <h1 className="text-2xl font-bold text-white">{caseData.title}</h1>
+      <div className="mb-8">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">{caseData.title}</h1>
           <SeverityBadge severity={caseData.overall_severity} lang={lang} />
         </div>
 
         {caseData.victim_context && (
-          <p className="text-slate-400 text-sm bg-slate-800 border border-slate-700 rounded-lg p-3">
-            <span className="text-slate-500 text-xs uppercase tracking-wider block mb-1">
+          <div className="bg-slate-800/60 rounded-lg p-4">
+            <span className="text-slate-500 text-xs uppercase tracking-wider block mb-1.5">
               {isDE ? 'Kontext' : 'Context'}
             </span>
-            {caseData.victim_context}
-          </p>
+            <p className="text-slate-300 text-sm leading-relaxed">{caseData.victim_context}</p>
+          </div>
         )}
       </div>
 
       {/* Immediate action banner */}
       {hasCritical && (
-        <div className="bg-red-900 border border-red-600 rounded-xl p-4 mb-6">
-          <div className="font-bold text-red-200 mb-2">
-            ⚠ {isDE ? 'Sofortiger Handlungsbedarf in diesem Fall' : 'Immediate action required in this case'}
+        <div className="bg-red-950/60 border border-red-800 rounded-xl p-5 mb-6">
+          <div className="font-semibold text-red-100 mb-3 flex items-center gap-2">
+            <span className="text-red-400 text-lg leading-none">⚠</span>
+            {isDE ? 'Sofortiger Handlungsbedarf in diesem Fall' : 'Immediate action required in this case'}
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <a
-              href="https://www.onlinewache.polizei.de"
+              href="https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html"
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 text-center bg-red-700 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
@@ -136,29 +171,40 @@ export default function CaseDetail({ lang }: Props) {
       )}
 
       {/* Legal AI summary */}
-      <div className="mb-6 bg-slate-900 border border-slate-700 rounded-xl p-4">
-        <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
-          <div>
-            <h2 className="text-slate-300 text-xs uppercase tracking-wider mb-1">
+      <div className="mb-6 bg-slate-800/60 rounded-xl p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-slate-400 text-xs uppercase tracking-wider mb-1.5">
               {isDE ? 'Juristische Gesamteinschätzung' : 'Legal case assessment'}
             </h2>
-            <p className="text-slate-500 text-sm">
+            <p className="text-slate-500 text-sm leading-relaxed">
               {isDE
-                ? 'Der zweite AI-Layer bündelt alle Belege zu einer Fallanalyse mit Risiken und nächsten Schritten.'
-                : 'The second AI layer turns all evidence into one case-level legal assessment.'}
+                ? 'Alle Belege + Kontext werden zu einer Fallanalyse mit Risiken und nächsten Schritten zusammengeführt. Aktualisiert sich automatisch, wenn du Beweise hinzufügst oder den Kontext änderst.'
+                : 'All evidence + context is consolidated into one case-level assessment with risks and next steps. Auto-refreshes when you add evidence or edit the context.'}
             </p>
+            {legalUpdatedAt && !legalLoading && (
+              <p className="text-slate-600 text-xs mt-2">
+                {isDE ? 'Stand: ' : 'Last updated: '}
+                {legalUpdatedAt.toLocaleTimeString(isDE ? 'de-DE' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}
+                {' · '}
+                <button
+                  type="button"
+                  onClick={() => caseData && refetchLegal(caseData)}
+                  className="text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline"
+                >
+                  {isDE ? '↻ Jetzt aktualisieren' : '↻ Refresh now'}
+                </button>
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={() => downloadLegalPdf(caseData.id)}
-            className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-3 py-2 transition-colors"
-          >
-            {isDE ? 'Legal PDF laden' : 'Download legal PDF'}
-          </button>
         </div>
 
         {legalLoading && (
-          <p className="text-slate-400 text-sm">{isDE ? 'Analyse wird geladen…' : 'Loading legal analysis…'}</p>
+          <p className="text-slate-400 text-sm">
+            {legalAnalysis
+              ? (isDE ? 'Wird mit neuen Belegen aktualisiert…' : 'Refreshing with new evidence…')
+              : (isDE ? 'Analyse wird geladen…' : 'Loading legal analysis…')}
+          </p>
         )}
 
         {!legalLoading && legalError && (
@@ -172,7 +218,7 @@ export default function CaseDetail({ lang }: Props) {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+              <div className="bg-slate-900/70 rounded-lg p-4">
                 <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
                   {isDE ? 'Eskalationsrisiko' : 'Escalation risk'}
                 </div>
@@ -184,7 +230,7 @@ export default function CaseDetail({ lang }: Props) {
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
+              <div className="bg-slate-900/70 rounded-lg p-4">
                 <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
                   {isDE ? 'Stärkste Vorwürfe' : 'Strongest charges'}
                 </div>
@@ -228,9 +274,14 @@ export default function CaseDetail({ lang }: Props) {
         </h2>
         <div className="space-y-3">
           {caseData.evidence_items.map(ev => (
-            <EvidenceCard key={ev.id} evidence={ev} lang={lang} />
+            <EvidenceCard key={ev.id} evidence={ev} caseId={caseData.id} lang={lang} />
           ))}
         </div>
+      </div>
+
+      {/* Edit / add evidence */}
+      <div className="mb-6">
+        <CaseEditor caseData={caseData} lang={lang} onChange={setCaseData} />
       </div>
 
       {/* HateAid referral */}
@@ -253,7 +304,7 @@ export default function CaseDetail({ lang }: Props) {
       {/* Export report */}
       <button
         onClick={() => setShowReport(true)}
-        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-4 rounded-xl transition-colors text-lg"
+        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-4 rounded-xl transition-colors text-base shadow-lg shadow-indigo-900/30"
       >
         {t(lang, 'cases.report')} →
       </button>

@@ -2,14 +2,14 @@
   "buildCommand": "cd frontend && npm ci && npm run build",
   "outputDirectory": "frontend/dist",
   "framework": "vite",
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://safevoice-production-0847.up.railway.app/$1"
-    },
-    {
-      "source": "/((?!assets|manifest|sw\\.js|workbox).*)",
-      "destination": "/index.html"
+  "functions": {
+    "api/proxy.py": {
+      "maxDuration": 60,
+      "memory": 1024
     }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/proxy?_p=$1" },
+    { "source": "/((?!api/|assets|manifest|sw\\.js|workbox).*)", "destination": "/index.html" }
   ]
 }

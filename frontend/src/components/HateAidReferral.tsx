@@ -18,7 +18,7 @@ export default function HateAidReferral({ lang, severity, caseContext }: Props) 
   const isDE = lang === 'de'
 
   return (
-    <div className="bg-indigo-950 border border-indigo-800 rounded-xl p-5">
+    <div className="bg-indigo-950/60 ring-1 ring-indigo-800/60 rounded-xl p-5">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 bg-indigo-800 rounded-lg flex items-center justify-center shrink-0 text-lg">
           <span role="img" aria-label="support">💙</span>

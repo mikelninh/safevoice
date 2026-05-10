@@ -34,7 +34,11 @@ export function getLocalCase(id: string): Case | null {
 }
 
 /** Create a new case with an initial evidence item. */
-export function createCase(evidence: EvidenceItem, title?: string): Case {
+export function createCase(
+  evidence: EvidenceItem,
+  title?: string,
+  victim_context?: string,
+): Case {
   const now = new Date().toISOString()
   const newCase: Case = {
     id: `case-local-${Date.now()}`,
@@ -45,6 +49,7 @@ export function createCase(evidence: EvidenceItem, title?: string): Case {
     pattern_flags: [],
     overall_severity: evidence.classification?.severity ?? 'low',
     status: 'open',
+    victim_context: victim_context || undefined,
   }
 
   const cases = readCases()
@@ -64,6 +69,48 @@ export function addEvidenceToCase(caseId: string, evidence: EvidenceItem): Case 
   cases[idx].overall_severity = computeSeverity(cases[idx].evidence_items)
   writeCases(cases)
   return cases[idx]
+}
+
+/** Update editable case fields in localStorage (title, victim_context). */
+export function updateCaseFields(
+  caseId: string,
+  patch: { title?: string; victim_context?: string },
+): Case | null {
+  const cases = readCases()
+  const idx = cases.findIndex(c => c.id === caseId)
+  if (idx === -1) return null
+  if (patch.title !== undefined) cases[idx].title = patch.title
+  if (patch.victim_context !== undefined) cases[idx].victim_context = patch.victim_context || undefined
+  cases[idx].updated_at = new Date().toISOString()
+  writeCases(cases)
+  return cases[idx]
+}
+
+/** Update the author_username on an existing evidence item. */
+export function updateEvidenceAuthor(
+  caseId: string,
+  evidenceId: string,
+  author_username: string,
+): Case | null {
+  const cases = readCases()
+  const idx = cases.findIndex(c => c.id === caseId)
+  if (idx === -1) return null
+  const evIdx = cases[idx].evidence_items.findIndex(e => e.id === evidenceId)
+  if (evIdx === -1) return null
+  cases[idx].evidence_items[evIdx].author_username = author_username
+  cases[idx].updated_at = new Date().toISOString()
+  writeCases(cases)
+  return cases[idx]
+}
+
+/** Persist the backend-assigned ID back into the local case record. */
+export function updateCaseBackendId(localId: string, backendId: string): void {
+  const cases = readCases()
+  const idx = cases.findIndex(c => c.id === localId)
+  if (idx !== -1) {
+    cases[idx].backend_id = backendId
+    writeCases(cases)
+  }
 }
 
 /** Delete a case. */
@@ -119,6 +166,36 @@ export function setBackendId(localCaseId: string, backendId: string): void {
   if (idx === -1) return
   cases[idx].backend_id = backendId
   writeCases(cases)
+}
+
+/** Serialize all local cases to a JSON blob. */
+export function exportCasesJson(): string {
+  const payload = {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    cases: readCases(),
+  }
+  return JSON.stringify(payload, null, 2)
+}
+
+/**
+ * Import cases from a JSON blob (produced by exportCasesJson).
+ * Strategy: merge by id — incoming wins on conflict.
+ * Returns the number of cases imported.
+ */
+export function importCasesJson(raw: string): number {
+  const parsed = JSON.parse(raw)
+  const incoming: Case[] = Array.isArray(parsed) ? parsed : parsed.cases
+  if (!Array.isArray(incoming)) throw new Error('Invalid backup file')
+
+  const existing = readCases()
+  const byId = new Map(existing.map(c => [c.id, c]))
+  for (const c of incoming) {
+    if (!c?.id) continue
+    byId.set(c.id, c)
+  }
+  writeCases(Array.from(byId.values()))
+  return incoming.length
 }
 
 function computeSeverity(items: EvidenceItem[]): Severity {
