@@ -2,11 +2,6 @@
 
 **Live:** [safevoice-vert.vercel.app](https://safevoice-vert.vercel.app)
 
-Repo notes:
-- [AGENTS.md](AGENTS.md) — repo priorities and low-interruption collaboration rules
-- [docs/strategy/COMPANY_THESIS_DE.md](docs/strategy/COMPANY_THESIS_DE.md)
-- [docs/strategy/EXECUTION_PLAN_DE.md](docs/strategy/EXECUTION_PLAN_DE.md)
-
 > **🧪 Status: Closed Beta · NGO-Partner-Pilot · Mai 2026**
 > Live deployt, anonym im Browser nutzbar, im Test mit Tutor + Team und ersten NGO-Partnern.
 > **Noch kein Produktivbetrieb für Massenanwendung** — Datenschutzerklärung & Impressum
