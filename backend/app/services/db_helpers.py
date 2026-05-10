@@ -209,7 +209,7 @@ def _build_recommended_actions(result: ClassificationResult, lang: str) -> str:
 
     if lang == "de":
         if is_critical:
-            actions.append("Sofort Strafanzeige erstatten (online: www.onlinewache.polizei.de)")
+            actions.append("Sofort Strafanzeige erstatten (online: www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html)")
             actions.append("NetzDG-Beschwerde bei der Plattform einreichen (24h Frist)")
             actions.append("Beweise sichern (Screenshots, Hash-Prüfung)")
         elif is_high:

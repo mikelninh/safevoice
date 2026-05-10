@@ -321,7 +321,7 @@ export default function Analyze({ lang }: Props) {
               </p>
               <div className="mt-4 flex flex-col sm:flex-row gap-2">
                 <a
-                  href="https://www.onlinewache.polizei.de"
+                  href="https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 text-center bg-red-700 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"

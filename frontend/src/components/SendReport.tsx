@@ -623,7 +623,7 @@ export default function SendReport({
         const formUrl =
           (selectedRecipient as Recipient).formUrl
           || (selectedRecipient as { onlinewacheUrl?: string }).onlinewacheUrl
-          || 'https://www.onlinewache.polizei.de'
+          || 'https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html'
         return (
           <div className="space-y-2 pt-2">
             <div className="bg-indigo-950/30 border border-indigo-800/50 rounded-xl p-3 space-y-3">

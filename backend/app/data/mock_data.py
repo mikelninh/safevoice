@@ -305,8 +305,8 @@ MOCK_CASES: list[Case] = [
                     summary="Explicit threat combined with claim of knowing victim's identity. CRITICAL - immediate police report recommended. § 241 StGB, § 126a StGB.",
                     summary_de="Explizite Drohung kombiniert mit Behauptung, die Identität des Opfers zu kennen. KRITISCH – sofortige Strafanzeige empfohlen. § 241 StGB, § 126a StGB.",
                     applicable_laws=[LAW_241, LAW_126A, NETZ_DG],
-                    potential_consequences="Up to 3 years imprisonment. File police report (Strafanzeige) immediately at local Polizeidienststelle or online via www.onlinewache.polizei.de",
-                    potential_consequences_de="Bis zu 3 Jahre Freiheitsstrafe. Sofortige Strafanzeige bei der lokalen Polizeidienststelle oder online über www.onlinewache.polizei.de"
+                    potential_consequences="Up to 3 years imprisonment. File police report (Strafanzeige) immediately at local Polizeidienststelle or online via www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html",
+                    potential_consequences_de="Bis zu 3 Jahre Freiheitsstrafe. Sofortige Strafanzeige bei der lokalen Polizeidienststelle oder online über www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html"
                 )
             ),
         ]

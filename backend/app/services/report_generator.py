@@ -182,7 +182,7 @@ def _police_report(case: Case, lang: str) -> dict:
         "report_type": "police",
         "generated_at": datetime.now().isoformat(),
         "case_id": case.id,
-        "online_report_url": "https://www.onlinewache.polizei.de",
+        "online_report_url": "https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html",
         "subject": subject,
         "body": _police_body(case, all_items, is_de),
         "what_to_bring": (
@@ -316,9 +316,9 @@ def _recommended_actions(case: Case, lang: str) -> list[str]:
 
     if has_critical:
         actions.append(
-            "SOFORT: Strafanzeige bei der Polizei erstatten (online: www.onlinewache.polizei.de)"
+            "SOFORT: Strafanzeige bei der Polizei erstatten (online: www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html)"
             if is_de
-            else "IMMEDIATELY: File police report (online: www.onlinewache.polizei.de)"
+            else "IMMEDIATELY: File police report (online: www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html)"
         )
         actions.append(
             "SOFORT: NetzDG-Meldung bei Instagram einreichen (24h-Löschfrist)"

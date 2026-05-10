@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react'
-import { fetchReport, downloadPdf, ensureBackendCase, resetServiceWorkerAndCaches, type VictimInfo } from '../services/api'
+import {
+  downloadPdf,
+  ensureBackendCase,
+  fetchReport,
+  resetServiceWorkerAndCaches,
+  type VictimInfo,
+} from '../services/api'
 import { t, type Lang } from '../i18n'
 import { getLocalCase, setBackendId } from '../services/storage'
 import SendReport from './SendReport'
@@ -79,7 +85,43 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [downloadedFor, setDownloadedFor] = useState<ReportType | null>(null)
   const [backendId, setResolvedBackendId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [resyncing, setResyncing] = useState(false)
+  const [resyncDone, setResyncDone] = useState(false)
   const isDE = lang === 'de'
+
+  const localCase = getLocalCase(caseId)
+  const localEvidenceCount = localCase?.evidence_items.length ?? 0
+  const reportCount = extractReportCount((report?.subject as string) ?? null)
+  const hasMismatch =
+    reportType === 'police' &&
+    !!localCase &&
+    !!reportCount &&
+    localEvidenceCount > reportCount
+
+  // Auto-sync on mismatch: ensureBackendCase already reconciles missing
+  // evidence on every call, but the report subject still reflects the old
+  // count until we re-fetch. So when a mismatch is detected, kick off a
+  // resync silently and refresh the report. No button needed.
+  useEffect(() => {
+    if (!hasMismatch || resyncing || resyncDone || !backendId || !localCase) return
+    let cancelled = false
+    ;(async () => {
+      setResyncing(true)
+      try {
+        await ensureBackendCase(localCase)
+        if (cancelled) return
+        setResyncDone(true)
+        // Trigger a re-fetch via object-identity bump
+        setAppliedVictim(v => ({ ...v }))
+      } finally {
+        if (!cancelled) setResyncing(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [hasMismatch, backendId])
+
 
   const isDirty =
     (victim.name ?? '') !== (appliedVictim.name ?? '') ||
@@ -100,6 +142,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
     setError(null)
     setReport(null)
     setDownloadedFor(null)
+    setResyncDone(false)
 
     // Step 1: ensure case exists on backend, then fetch the report.
     resolveBackendCaseId(caseId)
@@ -370,6 +413,15 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
                 </div>
               )}
 
+              {hasMismatch && !resyncing && !resyncDone && (
+                <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-3 text-slate-300 text-xs flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                  {isDE
+                    ? 'Belege werden im Hintergrund mit dem Backend synchronisiert…'
+                    : 'Syncing missing evidence to the backend…'}
+                </div>
+              )}
+
               {!!report.subject && (
                 <div>
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
@@ -466,7 +518,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
                       {isDE
                         ? 'Online: Lade die PDF in der '
                         : 'Online: upload the PDF in your state’s '}
-                      <a href="https://www.onlinewache.polizei.de" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">
+                      <a href="https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">
                         Onlinewache
                       </a>{' '}
                       {isDE ? 'deines Bundeslands hoch.' : 'police portal.'}

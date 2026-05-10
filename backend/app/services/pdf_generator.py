@@ -216,61 +216,61 @@ def generate_pdf(
                     )
                 )
                 elements.append(Spacer(1, 3 * mm))
-                assessment = (
-                    analysis.legal_assessment_de
-                    if is_de
-                    else analysis.legal_assessment_en
+                # analyze_case_legally returns a plain dict — use dict access.
+                assessment = analysis.get(
+                    "legal_assessment_de" if is_de else "legal_assessment_en", ""
                 )
                 if assessment:
                     elements.append(Paragraph(assessment, styles["Body"]))
                     elements.append(Spacer(1, 4 * mm))
 
-                # Risk + charges
-                risk = analysis.risk_assessment
-                risk_label = _l("Eskalationsrisiko", "Escalation risk", is_de)
-                risk_value = (risk.escalation_risk or "").upper()
-                risk_reason = risk.reason_de if is_de else risk.reason_en
-                elements.append(
-                    Paragraph(
-                        f"<b>{risk_label}:</b> {risk_value} — {risk_reason}",
-                        styles["Body"],
+                risk = analysis.get("risk_assessment") or {}
+                risk_value = (risk.get("escalation_risk") or "").upper()
+                risk_reason = risk.get("reason_de" if is_de else "reason_en") or ""
+                if risk_value:
+                    elements.append(
+                        Paragraph(
+                            f"<b>{_l('Eskalationsrisiko', 'Escalation risk', is_de)}:</b> {risk_value}"
+                            + (f" — {risk_reason}" if risk_reason else ""),
+                            styles["Body"],
+                        )
                     )
-                )
-                elements.append(Spacer(1, 3 * mm))
+                    elements.append(Spacer(1, 3 * mm))
 
-                if analysis.strongest_charges:
+                charges = analysis.get("strongest_charges") or []
+                if charges:
                     elements.append(
                         Paragraph(
                             f"<b>{_l('Stärkste Vorwürfe', 'Strongest charges', is_de)}:</b>",
                             styles["Body"],
                         )
                     )
-                    for ch in analysis.strongest_charges[:5]:
+                    for ch in charges[:5]:
+                        para = ch.get("paragraph", "?")
+                        strength = ch.get("strength", "")
                         elements.append(
-                            Paragraph(
-                                f"• {ch.paragraph} ({ch.strength})",
-                                styles["Body"],
-                            )
+                            Paragraph(f"• {para} ({strength})", styles["Body"])
                         )
                     elements.append(Spacer(1, 3 * mm))
 
-                if analysis.recommended_actions:
+                actions = analysis.get("recommended_actions") or []
+                if actions:
                     elements.append(
                         Paragraph(
                             f"<b>{_l('Empfohlene nächste Schritte', 'Recommended next steps', is_de)}:</b>",
                             styles["Body"],
                         )
                     )
-                    for act in analysis.recommended_actions[:5]:
-                        action_text = act.action_de if is_de else act.action_en
-                        deadline = (
-                            f" · {act.deadline}"
-                            if act.deadline and act.deadline != "none"
-                            else ""
+                    for act in actions[:5]:
+                        action_text = act.get("action_de" if is_de else "action_en", "")
+                        priority = act.get("priority", "")
+                        deadline = act.get("deadline") or ""
+                        deadline_str = (
+                            f" · {deadline}" if deadline and deadline != "none" else ""
                         )
                         elements.append(
                             Paragraph(
-                                f"• <i>{act.priority}{deadline}</i> — {action_text}",
+                                f"• <i>{priority}{deadline_str}</i> — {action_text}",
                                 styles["Body"],
                             )
                         )
