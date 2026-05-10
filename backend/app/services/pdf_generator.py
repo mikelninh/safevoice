@@ -86,12 +86,9 @@ def generate_pdf(
             _police_body,
         )  # local import: avoid cycle
 
-        critical_items = [
-            ev
-            for ev in case.evidence_items
-            if ev.classification and ev.classification.severity in ("high", "critical")
-        ] or list(case.evidence_items)
-        body = _police_body(case, critical_items, is_de=is_de)
+        # _police_body now flags critical pieces inline. Always pass ALL
+        # evidence — Beleidigung (§ 185) is reportable at any severity.
+        body = _police_body(case, list(case.evidence_items), is_de=is_de)
 
         sender_lines = [victim_name]
         if victim_address:
