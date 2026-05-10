@@ -83,6 +83,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const [downloadedFor, setDownloadedFor] = useState<ReportType | null>(null)
+  const [downloading, setDownloading] = useState(false)
   const [backendId, setResolvedBackendId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [resyncing, setResyncing] = useState(false)
@@ -168,11 +169,10 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
 
   const handleDownload = async () => {
     setDownloadError(null)
+    setDownloading(true)
     try {
       const resolved = backendId ?? (await resolveBackendCaseId(caseId))
       if (!backendId) setResolvedBackendId(resolved)
-      // If the user has unsaved form edits when they click Download, treat
-      // that click as an implicit confirm: persist + apply, then download.
       if (isDirty) {
         setAppliedVictim(victim)
         saveVictim(victim)
@@ -183,6 +183,8 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
       const msg = e instanceof Error ? e.message : String(e)
       console.error('[ReportModal] downloadPdf failed:', e)
       setDownloadError(msg)
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -595,18 +597,26 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
         {mode === 'preview' && (
           <div className="p-4 border-t border-slate-700 flex gap-3">
             <button
-              onClick={handleCopy}
-              disabled={!report}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
+              onClick={handleDownload}
+              disabled={!report || loading || downloading}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
-              {copied ? t(lang, 'report.copied') : t(lang, 'report.copy')}
+              {downloading && (
+                <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              )}
+              {downloading
+                ? (isDE ? 'PDF wird erstellt…' : 'Building PDF…')
+                : (isDE ? 'PDF herunterladen' : 'Download PDF')}
             </button>
             <button
-              onClick={handleDownload}
-              disabled={!report || loading}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors border border-slate-600"
+              onClick={handleCopy}
+              disabled={!report}
+              className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-100 font-semibold py-3 rounded-xl transition-colors border border-slate-600"
+              title={isDE
+                ? 'Volltext in Zwischenablage — z.B. zum Einfügen in ein Onlinewache-Formular'
+                : 'Copy full text to clipboard — e.g. to paste into an Onlinewache form'}
             >
-              {isDE ? 'PDF herunterladen' : 'Download PDF'}
+              {copied ? t(lang, 'report.copied') : t(lang, 'report.copy')}
             </button>
             <button
               onClick={onClose}
