@@ -5,6 +5,7 @@ import CategoryTag from './CategoryTag'
 import LawCard from './LawCard'
 import { useState } from 'react'
 import { updateEvidenceAuthor } from '../services/storage'
+import HashVerifier from './HashVerifier'
 
 interface Props {
   evidence: EvidenceItem
@@ -17,6 +18,7 @@ export default function EvidenceCard({ evidence, caseId, lang }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [editingAuthor, setEditingAuthor] = useState(false)
   const [authorDraft, setAuthorDraft] = useState(evidence.author_username)
+  const [showVerifier, setShowVerifier] = useState(false)
   const isDE = lang === 'de'
   const c = evidence.classification
 
@@ -148,6 +150,13 @@ export default function EvidenceCard({ evidence, caseId, lang }: Props) {
                     ? 'Eindeutiger Fingerabdruck des Inhalts zum Erfassungszeitpunkt. Polizei, Gericht, Anwält:in oder NGO können damit prüfen, dass der Text nachträglich nicht verändert wurde — den selben Hash über den Originalinhalt rechnen und vergleichen. Du musst damit nichts tun; er liegt deinem Bericht bei.'
                     : 'Unique fingerprint of the content at capture time. Police, court, lawyer or NGO can verify the text wasn\'t altered later — they recompute the same hash on the original and compare. You don\'t need to do anything with it; it\'s included in your report.'}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setShowVerifier(true)}
+                  className="text-indigo-300 hover:text-indigo-200 text-xs mt-2 underline-offset-2 hover:underline font-sans"
+                >
+                  {isDE ? '↗ Hash jetzt im Browser prüfen' : '↗ Verify hash in browser'}
+                </button>
               </div>
               {evidence.archived_url && (
                 <div>
@@ -161,6 +170,15 @@ export default function EvidenceCard({ evidence, caseId, lang }: Props) {
           </div>
         )}
       </div>
+
+      {showVerifier && (
+        <HashVerifier
+          expectedHash={evidence.content_hash}
+          originalText={evidence.content_text}
+          lang={lang}
+          onClose={() => setShowVerifier(false)}
+        />
+      )}
     </div>
   )
 }

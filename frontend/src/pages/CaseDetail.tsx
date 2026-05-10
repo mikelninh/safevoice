@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { downloadLegalPdf, ensureBackendCase, fetchCase, fetchLegalAnalysis } from '../services/api'
+import { ensureBackendCase, fetchCase, fetchLegalAnalysis } from '../services/api'
 import { t, type Lang } from '../i18n'
 import type { Case, LegalAnalysisPayload } from '../types'
 import SeverityBadge from '../components/SeverityBadge'
@@ -197,16 +197,6 @@ export default function CaseDetail({ lang }: Props) {
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => downloadLegalPdf(caseData.id)}
-            title={isDE
-              ? 'Lädt die juristische Bewertung mit Briefkopf als eigenständiges PDF — z.B. zur Weitergabe an Anwält:in oder NGO. NICHT die Strafanzeige.'
-              : 'Downloads the legal assessment with letterhead as a stand-alone PDF — e.g. to share with a lawyer or NGO. NOT the criminal complaint.'}
-            className="text-sm bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium rounded-lg px-3.5 py-2 transition-colors shrink-0"
-          >
-            {isDE ? 'Bewertung als PDF' : 'Assessment as PDF'}
-          </button>
         </div>
 
         {legalLoading && (

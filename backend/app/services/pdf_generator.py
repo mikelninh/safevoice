@@ -189,6 +189,109 @@ def generate_pdf(
                 )
             )
 
+    # AI legal assessment — appended as a final section ONLY for the police
+    # report type, so a single PDF doubles as both the Strafanzeige and a
+    # structured legal analysis the police can read alongside.
+    if report_type == "police":
+        try:
+            from app.services.legal_ai import analyze_case_legally
+
+            analysis = analyze_case_legally(case)
+            if analysis is not None:
+                elements.append(Spacer(1, 8 * mm))
+                elements.append(
+                    HRFlowable(
+                        width="100%", thickness=1, color=colors.HexColor("#4338ca")
+                    )
+                )
+                elements.append(Spacer(1, 3 * mm))
+                elements.append(
+                    Paragraph(
+                        _l(
+                            "KI-gestützte juristische Bewertung",
+                            "AI-assisted legal assessment",
+                            is_de,
+                        ),
+                        styles["ReportType"],
+                    )
+                )
+                elements.append(Spacer(1, 3 * mm))
+                assessment = (
+                    analysis.legal_assessment_de
+                    if is_de
+                    else analysis.legal_assessment_en
+                )
+                if assessment:
+                    elements.append(Paragraph(assessment, styles["Body"]))
+                    elements.append(Spacer(1, 4 * mm))
+
+                # Risk + charges
+                risk = analysis.risk_assessment
+                risk_label = _l("Eskalationsrisiko", "Escalation risk", is_de)
+                risk_value = (risk.escalation_risk or "").upper()
+                risk_reason = risk.reason_de if is_de else risk.reason_en
+                elements.append(
+                    Paragraph(
+                        f"<b>{risk_label}:</b> {risk_value} — {risk_reason}",
+                        styles["Body"],
+                    )
+                )
+                elements.append(Spacer(1, 3 * mm))
+
+                if analysis.strongest_charges:
+                    elements.append(
+                        Paragraph(
+                            f"<b>{_l('Stärkste Vorwürfe', 'Strongest charges', is_de)}:</b>",
+                            styles["Body"],
+                        )
+                    )
+                    for ch in analysis.strongest_charges[:5]:
+                        elements.append(
+                            Paragraph(
+                                f"• {ch.paragraph} ({ch.strength})",
+                                styles["Body"],
+                            )
+                        )
+                    elements.append(Spacer(1, 3 * mm))
+
+                if analysis.recommended_actions:
+                    elements.append(
+                        Paragraph(
+                            f"<b>{_l('Empfohlene nächste Schritte', 'Recommended next steps', is_de)}:</b>",
+                            styles["Body"],
+                        )
+                    )
+                    for act in analysis.recommended_actions[:5]:
+                        action_text = act.action_de if is_de else act.action_en
+                        deadline = (
+                            f" · {act.deadline}"
+                            if act.deadline and act.deadline != "none"
+                            else ""
+                        )
+                        elements.append(
+                            Paragraph(
+                                f"• <i>{act.priority}{deadline}</i> — {action_text}",
+                                styles["Body"],
+                            )
+                        )
+                    elements.append(Spacer(1, 4 * mm))
+
+                elements.append(
+                    Paragraph(
+                        _l(
+                            "Hinweis: Diese Bewertung ist eine KI-gestützte Vorab-Einschätzung — keine Rechtsberatung.",
+                            "Note: this assessment is an AI-assisted preliminary classification — not legal advice.",
+                            is_de,
+                        ),
+                        styles["Subtitle"],
+                    )
+                )
+        except Exception:
+            # Never let an LLM hiccup block the Strafanzeige PDF.
+            import logging
+
+            logging.getLogger(__name__).exception("Failed to embed legal AI in PDF")
+
     # Legal notice
     elements.append(Spacer(1, 8 * mm))
     elements.append(

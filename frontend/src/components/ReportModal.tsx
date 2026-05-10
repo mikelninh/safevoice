@@ -308,8 +308,17 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
                         type="text"
                         value={victim.address ?? ''}
                         onChange={e => updateVictim({ address: e.target.value })}
-                        placeholder={isDE ? 'Anschrift (Straße, PLZ, Ort)' : 'Postal address'}
+                        placeholder={isDE ? 'Straße und Hausnummer' : 'Street and number'}
                         className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm sm:col-span-2"
+                      />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={5}
+                        value={victim.plz ?? ''}
+                        onChange={e => updateVictim({ plz: e.target.value.replace(/\D/g, '') })}
+                        placeholder={isDE ? 'PLZ (5-stellig)' : 'Postal code (5 digits)'}
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm"
                       />
                       <input
                         type="tel"
@@ -323,7 +332,7 @@ export default function ReportModal({ caseId, lang, onClose }: Props) {
                         value={victim.email ?? ''}
                         onChange={e => updateVictim({ email: e.target.value })}
                         placeholder="E-Mail"
-                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm"
+                        className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-200 placeholder-slate-500 text-sm sm:col-span-2"
                       />
                       <p className="text-slate-500 text-xs sm:col-span-2 mt-1">
                         {isDE
