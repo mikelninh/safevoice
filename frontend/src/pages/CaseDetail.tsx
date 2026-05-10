@@ -20,6 +20,7 @@ export default function CaseDetail({ lang }: Props) {
   const [legalAnalysis, setLegalAnalysis] = useState<LegalAnalysisPayload | null>(null)
   const [legalLoading, setLegalLoading] = useState(false)
   const [legalError, setLegalError] = useState<string | null>(null)
+  const [legalUpdatedAt, setLegalUpdatedAt] = useState<Date | null>(null)
   const [loading, setLoading] = useState(true)
   const [showReport, setShowReport] = useState(false)
   const isDE = lang === 'de'
@@ -38,19 +39,19 @@ export default function CaseDetail({ lang }: Props) {
       .finally(() => setLoading(false))
   }, [id])
 
-  useEffect(() => {
-    if (!caseData) return
+  // Extracted so the manual "Aktualisieren" button can call the same code path.
+  const refetchLegal = (current: Case) => {
     setLegalLoading(true)
     setLegalError(null)
 
-    const isLocal = caseData.id.startsWith('case-local-')
+    const isLocal = current.id.startsWith('case-local-')
 
     const getBackendId = isLocal
-      ? ensureBackendCase(caseData).then(backendId => {
-          updateCaseBackendId(caseData.id, backendId)
+      ? ensureBackendCase(current).then(backendId => {
+          updateCaseBackendId(current.id, backendId)
           return backendId
         })
-      : Promise.resolve(caseData.backend_id ?? caseData.id)
+      : Promise.resolve(current.backend_id ?? current.id)
 
     // Retry once on 404: a stale local backend_id (e.g. from a prior deploy
     // whose DB is gone) can resolve to a phantom case. Force re-sync.
@@ -58,18 +59,26 @@ export default function CaseDetail({ lang }: Props) {
       fetchLegalAnalysis(backendId).catch(async err => {
         const msg = err instanceof Error ? err.message : String(err)
         if (!msg.includes('404')) throw err
-        const fresh = await ensureBackendCase({ ...caseData, backend_id: undefined })
-        updateCaseBackendId(caseData.id, fresh)
+        const fresh = await ensureBackendCase({ ...current, backend_id: undefined })
+        updateCaseBackendId(current.id, fresh)
         return fetchLegalAnalysis(fresh)
       })
 
     getBackendId
       .then(fetchWithRetry)
-      .then(res => setLegalAnalysis(res.analysis))
+      .then(res => {
+        setLegalAnalysis(res.analysis)
+        setLegalUpdatedAt(new Date())
+      })
       .catch(err => setLegalError(err instanceof Error ? err.message : 'Legal analysis unavailable'))
       .finally(() => setLegalLoading(false))
-    // Re-run when the evidence count or context changes — those are exactly
-    // the inputs the server-side legal AI builds its assessment from.
+  }
+
+  useEffect(() => {
+    if (!caseData) return
+    refetchLegal(caseData)
+    // Re-run when evidence count or context changes — exactly the inputs
+    // the server-side legal AI builds its assessment from.
   }, [caseData?.id, caseData?.evidence_items.length, caseData?.victim_context])
 
   if (loading) {
@@ -170,21 +179,42 @@ export default function CaseDetail({ lang }: Props) {
             </h2>
             <p className="text-slate-500 text-sm leading-relaxed">
               {isDE
-                ? 'Alle Belege werden zu einer Fallanalyse mit Risiken und nächsten Schritten zusammengeführt.'
-                : 'All evidence is consolidated into one case-level assessment with risks and next steps.'}
+                ? 'Alle Belege + Kontext werden zu einer Fallanalyse mit Risiken und nächsten Schritten zusammengeführt. Aktualisiert sich automatisch, wenn du Beweise hinzufügst oder den Kontext änderst.'
+                : 'All evidence + context is consolidated into one case-level assessment with risks and next steps. Auto-refreshes when you add evidence or edit the context.'}
             </p>
+            {legalUpdatedAt && !legalLoading && (
+              <p className="text-slate-600 text-xs mt-2">
+                {isDE ? 'Stand: ' : 'Last updated: '}
+                {legalUpdatedAt.toLocaleTimeString(isDE ? 'de-DE' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}
+                {' · '}
+                <button
+                  type="button"
+                  onClick={() => caseData && refetchLegal(caseData)}
+                  className="text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline"
+                >
+                  {isDE ? '↻ Jetzt aktualisieren' : '↻ Refresh now'}
+                </button>
+              </p>
+            )}
           </div>
           <button
             type="button"
             onClick={() => downloadLegalPdf(caseData.id)}
-            className="text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg px-3.5 py-2 transition-colors shrink-0"
+            title={isDE
+              ? 'Lädt die juristische Bewertung mit Briefkopf als eigenständiges PDF — z.B. zur Weitergabe an Anwält:in oder NGO. NICHT die Strafanzeige.'
+              : 'Downloads the legal assessment with letterhead as a stand-alone PDF — e.g. to share with a lawyer or NGO. NOT the criminal complaint.'}
+            className="text-sm bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium rounded-lg px-3.5 py-2 transition-colors shrink-0"
           >
-            {isDE ? 'Legal PDF laden' : 'Download legal PDF'}
+            {isDE ? 'Bewertung als PDF' : 'Assessment as PDF'}
           </button>
         </div>
 
         {legalLoading && (
-          <p className="text-slate-400 text-sm">{isDE ? 'Analyse wird geladen…' : 'Loading legal analysis…'}</p>
+          <p className="text-slate-400 text-sm">
+            {legalAnalysis
+              ? (isDE ? 'Wird mit neuen Belegen aktualisiert…' : 'Refreshing with new evidence…')
+              : (isDE ? 'Analyse wird geladen…' : 'Loading legal analysis…')}
+          </p>
         )}
 
         {!legalLoading && legalError && (

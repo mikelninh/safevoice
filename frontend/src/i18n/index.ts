@@ -82,7 +82,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'cases.empty.cta': 'Ersten Vorfall melden',
     'cases.evidence': 'Belege',
     'cases.patterns': 'Muster erkannt',
-    'cases.report': 'Bericht exportieren',
+    'cases.report': 'Strafanzeige & Berichte erstellen',
 
     'report.netzdg': 'NetzDG-Meldung',
     'report.police': 'Strafanzeige',
@@ -184,7 +184,7 @@ const translations: Record<Lang, Record<string, string>> = {
     'cases.empty.cta': 'Report first incident',
     'cases.evidence': 'Evidence items',
     'cases.patterns': 'Patterns detected',
-    'cases.report': 'Export report',
+    'cases.report': 'Create criminal complaint & reports',
 
     'report.netzdg': 'NetzDG Report',
     'report.police': 'Police Report',

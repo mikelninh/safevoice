@@ -193,7 +193,7 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
       <div className="flex items-center justify-between px-4 pt-2 border-b border-slate-700/60">
         <div className="flex">
           {tabBtn('evidence', isDE ? 'Beweis hinzufügen' : 'Add evidence')}
-          {tabBtn('context', isDE ? 'Kontext & Titel' : 'Context & title')}
+          {tabBtn('context', isDE ? 'Falldetails' : 'Case details')}
         </div>
         <button
           onClick={() => setOpen(false)}
@@ -276,19 +276,29 @@ export default function CaseEditor({ caseData, lang, onChange }: Props) {
 
         {tab === 'context' && (
           <div className="space-y-3">
+            <p className="text-slate-400 text-xs leading-relaxed bg-slate-900/40 border border-slate-700/50 rounded px-3 py-2">
+              {isDE
+                ? 'Diese Angaben gelten für den ganzen Fall — nicht pro Beweis. Titel und Kontext helfen der juristischen Gesamteinschätzung und der Strafanzeige, den Hintergrund einzuordnen.'
+                : 'These fields apply to the whole case — not per piece of evidence. Title and context help the legal assessment and the criminal complaint understand the bigger picture.'}
+            </p>
             <div>
               <label className="block text-slate-300 text-xs font-medium mb-1">
-                {isDE ? 'Titel' : 'Title'}
+                {isDE ? 'Titel des Falls' : 'Case title'}
               </label>
               <input
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm"
               />
+              <p className="text-slate-500 text-xs mt-1">
+                {isDE
+                  ? 'Erscheint in der Fall-Liste und im Bericht. Z.B. „Stalking durch Ex-Partner" oder „Hass-Kampagne nach Tweet".'
+                  : 'Shown in the case list and in reports. E.g. "Stalking by ex-partner" or "Hate campaign after tweet".'}
+              </p>
             </div>
             <div>
               <label className="block text-slate-300 text-xs font-medium mb-1">
-                {isDE ? 'Was ist passiert? (Kontext)' : 'What happened? (context)'}
+                {isDE ? 'Kontext zum Fall (optional)' : 'Case context (optional)'}
               </label>
               <textarea
                 value={context}
