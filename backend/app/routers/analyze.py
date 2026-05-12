@@ -275,6 +275,22 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
 class ChatRequest(BaseModel):
     question: str
     context: str  # original text + classification summary
+    lang: str = "de"  # "de" | "en" — controls answer language
+
+
+SYSTEM_PROMPT_DE = """Du bist ein juristischer Berater für Opfer digitaler Gewalt in Deutschland.
+Beantworte Fragen zum konkreten Fall basierend auf dem Kontext.
+Sei präzise, nenne konkrete Paragraphen und Strafen.
+Erkläre verständlich, nicht juristisch.
+Antworte auf Deutsch.
+Ende jede Antwort mit: 'Dies ist keine Rechtsberatung. Für verbindliche Auskunft wende dich an eine Anwältin oder an HateAid (hateaid.org).'"""
+
+SYSTEM_PROMPT_EN = """You are a legal advisor for victims of digital violence in Germany.
+Answer questions about the specific case based on the provided context.
+Be precise — cite concrete German statutes (§§) and the maximum penalties.
+Explain things in plain language, not legalese.
+Reply in English.
+End every answer with: 'This is not legal advice. For binding guidance, contact a lawyer or HateAid (hateaid.org).'"""
 
 
 @router.post("/chat")
@@ -282,12 +298,17 @@ def legal_chat(req: ChatRequest):
     """Answer follow-up legal questions about a classification."""
     import os
 
+    is_en = (req.lang or "de").lower().startswith("en")
     try:
         from openai import OpenAI
 
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            return {"answer": "AI nicht verfügbar. Bitte OPENAI_API_KEY setzen."}
+            return {
+                "answer": "AI unavailable. Set OPENAI_API_KEY."
+                if is_en
+                else "AI nicht verfügbar. Bitte OPENAI_API_KEY setzen."
+            }
 
         client = OpenAI(api_key=api_key)
         response = client.chat.completions.create(
@@ -297,23 +318,22 @@ def legal_chat(req: ChatRequest):
             messages=[
                 {
                     "role": "system",
-                    "content": """Du bist ein juristischer Berater für Opfer digitaler Gewalt in Deutschland.
-Beantworte Fragen zum konkreten Fall basierend auf dem Kontext.
-Sei präzise, nenne konkrete Paragraphen und Strafen.
-Erkläre verständlich, nicht juristisch.
-Antworte auf Deutsch.
-Ende jede Antwort mit: 'Dies ist keine Rechtsberatung. Für verbindliche Auskunft wende dich an eine Anwältin oder an HateAid (hateaid.org).'""",
+                    "content": SYSTEM_PROMPT_EN if is_en else SYSTEM_PROMPT_DE,
                 },
                 {
                     "role": "user",
-                    "content": f"Kontext zum Fall:\n{req.context}\n\nFrage: {req.question}",
+                    "content": (
+                        f"Case context:\n{req.context}\n\nQuestion: {req.question}"
+                        if is_en
+                        else f"Kontext zum Fall:\n{req.context}\n\nFrage: {req.question}"
+                    ),
                 },
             ],
         )
         answer = response.choices[0].message.content
         return {"answer": answer}
     except Exception as e:
-        return {"answer": f"Fehler: {str(e)}"}
+        return {"answer": (f"Error: {e}" if is_en else f"Fehler: {e}")}
 
 
 @router.post("/case", response_model=AnalyzeCaseResponse)

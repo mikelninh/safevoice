@@ -114,7 +114,7 @@ export default function LegalChat({ lang, originalText, classification }: Props)
       const res = await fetch('/api/analyze/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userQ, context }),
+        body: JSON.stringify({ question: userQ, context, lang }),
       })
 
       if (res.ok) {
