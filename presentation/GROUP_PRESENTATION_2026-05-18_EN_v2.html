@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SafeVoice · Group Presentation · 2026-05-18</title>
+  <style>
+    :root {
+      --bg-deep: #020617;
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-soft: rgba(30, 41, 59, 0.6);
+      --line: #334155;
+      --line-soft: rgba(51, 65, 85, 0.5);
+      --ink: #ffffff;
+      --ink-dim: #e2e8f0;
+      --muted: #94a3b8;
+      --subtle: #64748b;
+
+      --indigo: #6366f1;
+      --indigo-bright: #818cf8;
+      --indigo-deep: #4338ca;
+      --indigo-glow: rgba(99, 102, 241, 0.35);
+      --indigo-soft: rgba(99, 102, 241, 0.12);
+      --indigo-border: rgba(99, 102, 241, 0.3);
+
+      --amber: #f59e0b;
+      --amber-bg: rgba(120, 53, 15, 0.25);
+      --amber-border: rgba(146, 64, 14, 0.5);
+      --red: #ef4444;
+      --red-bg: rgba(127, 29, 29, 0.25);
+      --green: #10b981;
+      --green-bg: rgba(6, 78, 59, 0.25);
+
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { background: var(--bg-deep); color: var(--ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+    .deck { padding: 24px 0 64px; }
+    .slide { width: 1280px; min-height: 720px; margin: 0 auto 28px; background: var(--bg); border: 1px solid var(--line); border-radius: 24px; padding: 56px 64px; box-shadow: 0 24px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(99,102,241,0.04); page-break-after: always; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+    .slide::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 100% 0%, var(--indigo-soft) 0%, transparent 45%), radial-gradient(circle at 0% 100%, rgba(99,102,241,0.05) 0%, transparent 40%); pointer-events: none; }
+    .slide > * { position: relative; z-index: 1; }
+    .kicker { font: 600 11px/1.2 var(--font-sans); letter-spacing: 0.2em; text-transform: uppercase; color: var(--indigo-bright); margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px; }
+    .kicker::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--indigo-bright); box-shadow: 0 0 12px var(--indigo-glow); }
+    h1 { margin: 0 0 18px; font-size: 80px; line-height: 0.98; font-weight: 800; max-width: 1020px; letter-spacing: -0.035em; background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    h2 { margin: 0 0 16px; font-size: 42px; line-height: 1.08; font-weight: 700; max-width: 1000px; letter-spacing: -0.025em; color: var(--ink); }
+    h3 { margin: 0 0 8px; font-size: 20px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+    .lead { font-size: 22px; line-height: 1.45; color: var(--ink-dim); max-width: 940px; margin: 0 0 28px; font-weight: 400; }
+    p { font-size: 17px; line-height: 1.6; margin: 0 0 12px; color: var(--ink-dim); }
+    .muted { color: var(--muted); }
+    ul, ol { padding-left: 22px; margin: 0; }
+    li { font-size: 16px; line-height: 1.6; margin-bottom: 8px; color: var(--ink-dim); }
+    li::marker { color: var(--indigo-bright); }
+    .col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .col-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .card { background: var(--panel-soft); border: 1px solid var(--line-soft); border-radius: 16px; padding: 22px 24px; }
+    .card.indigo { background: var(--indigo-soft); border-color: var(--indigo-border); }
+    .card .meta { font: 600 10px/1.2 var(--font-sans); letter-spacing: 0.18em; text-transform: uppercase; color: var(--indigo-bright); margin-bottom: 10px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; background: var(--panel); color: var(--ink-dim); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font: 600 12px/1.2 var(--font-sans); letter-spacing: 0.02em; }
+    .pill.live { background: var(--green-bg); color: #6ee7b7; border-color: rgba(16,185,129,0.4); }
+    .pill.live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+    .pill.indigo { background: var(--indigo-soft); color: var(--indigo-bright); border-color: var(--indigo-border); }
+    .pill.amber { background: var(--amber-bg); color: #fcd34d; border-color: var(--amber-border); }
+    .pill.red { background: var(--red-bg); color: #fca5a5; border-color: rgba(239,68,68,0.4); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: middle; margin-right: 6px; }
+    .dot.green { background: var(--green); box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+    .dot.amber { background: var(--amber); box-shadow: 0 0 8px rgba(245,158,11,0.5); }
+    .dot.red { background: var(--red); box-shadow: 0 0 8px rgba(239,68,68,0.5); }
+    .stat .v { font-size: 56px; font-weight: 800; line-height: 1; background: linear-gradient(135deg, var(--indigo-bright) 0%, #c7d2fe 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.03em; }
+    .stat .l { font-size: 14px; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+    code, .mono { font-family: var(--font-mono); font-size: 14px; }
+    .codeblock { background: #020617; border: 1px solid var(--line); color: var(--ink-dim); padding: 18px 20px; border-radius: 12px; font-family: var(--font-mono); font-size: 13px; line-height: 1.65; white-space: pre; overflow-x: auto; }
+    .codeblock .k { color: #c084fc; }
+    .codeblock .s { color: #6ee7b7; }
+    .codeblock .c { color: var(--subtle); }
+    .codeblock .t { color: var(--indigo-bright); }
+    .codeblock .n { color: #fbbf24; }
+    .footer-line { margin-top: auto; padding-top: 22px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font: 500 11px/1 var(--font-sans); color: var(--subtle); letter-spacing: 0.08em; text-transform: uppercase; }
+    a { color: var(--indigo-bright); text-decoration: none; border-bottom: 1px solid var(--indigo-border); }
+    a:hover { color: var(--ink); border-bottom-color: var(--indigo-bright); }
+    .quote { color: var(--ink-dim); font-size: 20px; border-left: 3px solid var(--indigo-bright); padding-left: 22px; margin: 0 0 18px; line-height: 1.5; font-style: italic; }
+    .flow { display: flex; align-items: stretch; gap: 14px; margin: 22px 0; }
+    .flow .step { flex: 1; background: var(--panel-soft); border: 1px solid var(--line-soft); border-radius: 14px; padding: 20px 18px; position: relative; }
+    .flow .step .n { width: 28px; height: 28px; background: var(--indigo-soft); border: 1px solid var(--indigo-border); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font: 700 13px/1 var(--font-sans); color: var(--indigo-bright); margin-bottom: 10px; }
+    .flow .step h3 { font-size: 16px; margin: 0 0 6px; }
+    .flow .step p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.45; }
+    .flow .arr { color: var(--indigo-bright); font-size: 24px; align-self: center; font-weight: 300; }
+    .logo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+    .logo-mark { width: 38px; height: 38px; background: linear-gradient(135deg, var(--indigo) 0%, var(--indigo-deep) 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px var(--indigo-glow); }
+    .logo-mark span { color: white; font-weight: 800; font-size: 14px; letter-spacing: -0.02em; }
+    .logo-text { font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line-soft); color: var(--ink-dim); }
+    th { font: 600 11px/1.2 var(--font-sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+    td.mono { font-family: var(--font-mono); font-size: 13px; color: var(--ink-dim); }
+    .app-mock { background: var(--bg-deep); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    .app-mock .bar { background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 14px; display: flex; align-items: center; gap: 6px; }
+    .app-mock .bar .d { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+    .app-mock .bar .url { margin-left: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); flex: 1; padding: 4px 10px; background: var(--bg); border-radius: 6px; }
+    .app-mock .body { padding: 22px 24px; }
+    .app-mock .input-box { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-family: var(--font-mono); font-size: 13px; color: #fca5a5; line-height: 1.5; }
+    .app-mock .result { margin-top: 14px; background: var(--panel-soft); border: 1px solid var(--indigo-border); border-radius: 10px; padding: 14px 16px; }
+    .app-mock .result-label { font: 600 10px/1.2 var(--font-sans); letter-spacing: 0.18em; text-transform: uppercase; color: var(--indigo-bright); margin-bottom: 8px; }
+    .app-mock .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .pdf-mock { background: #fffdf8; color: #1a1a1a; border-radius: 8px; padding: 28px 30px; box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.05); font-family: Georgia, serif; }
+    .pdf-mock .pdf-kicker { font: 600 9px/1 -apple-system, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #67615a; margin-bottom: 6px; }
+    .pdf-mock .pdf-id { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: #1a1a1a; }
+    .pdf-mock h4 { font-family: Georgia, serif; font-size: 28px; margin: 22px 0 6px; font-weight: 700; }
+    .pdf-mock .pdf-sub { font-size: 11px; color: #67615a; margin-bottom: 14px; }
+    .pdf-mock hr { border: 0; border-top: 1px solid #ddd5c8; margin: 10px 0 14px; }
+    .pdf-mock .pdf-row { margin-bottom: 12px; }
+    .pdf-mock .pdf-row .l { font: 600 9px/1 -apple-system, sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: #67615a; margin-bottom: 4px; }
+    .pdf-mock .pdf-row .v { font-size: 13px; color: #1a1a1a; }
+    .slide.hero::before { background: radial-gradient(circle at 50% 30%, var(--indigo-glow) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(67,56,202,0.2) 0%, transparent 50%); }
+
+    /* Presentation mode — one slide at a time, click/keyboard navigation */
+    body.present { overflow: hidden; height: 100vh; }
+    body.present .deck { padding: 0; height: 100vh; display: flex; align-items: center; justify-content: center; }
+    body.present .slide { display: none; margin: 0; transform-origin: center center; }
+    body.present .slide.active { display: flex; }
+    body.present .slide { box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.06); }
+    .nav-ui { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 1000; display: none; align-items: center; gap: 14px; background: rgba(15,23,42,0.85); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; font: 500 13px var(--font-sans); color: var(--ink-dim); }
+    body.present .nav-ui { display: flex; }
+    .nav-ui button { background: transparent; border: 0; color: var(--ink-dim); cursor: pointer; padding: 4px 8px; font: inherit; border-radius: 8px; }
+    .nav-ui button:hover { background: var(--panel); color: var(--ink); }
+    .nav-ui .counter { min-width: 60px; text-align: center; font-variant-numeric: tabular-nums; color: var(--ink); }
+    .nav-ui .mode { font-size: 11px; color: var(--subtle); letter-spacing: 0.08em; text-transform: uppercase; border-left: 1px solid var(--line); padding-left: 14px; }
+    .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--indigo-bright); z-index: 1001; transition: width 0.2s ease; display: none; }
+    body.present .progress { display: block; }
+    .click-zone { position: fixed; top: 0; width: 30%; height: 100vh; z-index: 999; cursor: pointer; display: none; }
+    body.present .click-zone { display: block; }
+    .click-zone.prev { left: 0; }
+    .click-zone.next { right: 0; cursor: e-resize; }
+    .click-zone.prev { cursor: w-resize; }
+    @media print { body.present { overflow: visible; height: auto; } body.present .slide { display: flex !important; page-break-after: always; } body.present .nav-ui, body.present .progress, body.present .click-zone { display: none !important; } }
+  </style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- 1. Cover -->
+  <section class="slide hero">
+    <div class="logo">
+      <div class="logo-mark"><span>SV</span></div>
+      <div class="logo-text">SafeVoice</div>
+    </div>
+    <div class="kicker">Group Presentation · 2026-05-18</div>
+    <h1>Criminal complaints for<br/>digital harassment.</h1>
+    <p class="lead" style="margin-top: 8px;">In 30 seconds. Anonymous. With legal classification. Open source.</p>
+    <div style="display: flex; gap: 12px; align-items: center; margin-top: 8px;">
+      <span class="pill live">LIVE</span>
+      <a href="https://safevoice-vert.vercel.app" style="font-size: 18px; font-family: var(--font-mono);">safevoice-vert.vercel.app</a>
+    </div>
+    <div style="margin-top: 30px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <span class="pill">Open Source</span>
+      <span class="pill">GDPR-compliant</span>
+      <span class="pill">Free for victims</span>
+      <span class="pill indigo">React · FastAPI · gpt-4o-mini</span>
+    </div>
+    <div class="footer-line">
+      <span>Michael Ninh · Berlin</span>
+      <span>01 / 17</span>
+    </div>
+  </section>
+
+  <!-- 2. Problem -->
+  <section class="slide">
+    <div class="kicker">The Problem</div>
+    <h2>Online hate is daily — and mostly without consequences.</h2>
+    <div class="col-3" style="margin-top: 32px;">
+      <div class="card">
+        <div class="stat">
+          <div class="v">every 3 min</div>
+          <div class="l">someone in Germany is attacked online<br/><span style="color: var(--subtle);">Source: BKA, 2023</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="stat">
+          <div class="v">90 %</div>
+          <div class="l">of victims <strong style="color: var(--ink);">don't report</strong> the incident — too complicated, too time-consuming</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="stat">
+          <div class="v">~120 €/h</div>
+          <div class="l">Legal consultation — what most victims simply can't afford</div>
+        </div>
+      </div>
+    </div>
+    <p style="margin-top: 36px; font-size: 18px; color: var(--ink);">Three reasons why most cases disappear:</p>
+    <ol style="margin-top: 12px;">
+      <li><strong style="color: var(--ink);">Victims don't know which laws apply</strong> — insult, threat, incitement, stalking, doxxing: 16 statutory offenses in the German criminal code alone.</li>
+      <li><strong style="color: var(--ink);">Evidence disappears</strong> — platforms delete posts, accounts get suspended.</li>
+      <li><strong style="color: var(--ink);">Filing a complaint is paperwork</strong> — facts, timing, location, statute list, addresses. Hours of work, often at the victim's psychological limit.</li>
+    </ol>
+    <div class="footer-line">
+      <span>SafeVoice · The Problem</span>
+      <span>02 / 17</span>
+    </div>
+  </section>
+
+  <!-- 3. Solution -->
+  <section class="slide">
+    <div class="kicker">The Solution</div>
+    <h2>Document harassment. AI classifies. Complaint ready.</h2>
+    <p class="lead">SafeVoice is a controlled evidence-to-action workflow. Not a chatbot. Not a generic LLM tool. One tool that does one job: document online hate and translate it into a court-ready criminal complaint.</p>
+    <div class="flow">
+      <div class="step">
+        <div class="n">1</div>
+        <h3>Document harassment</h3>
+        <p>Text · URL · Screenshot — 10 s</p>
+      </div>
+      <div class="arr">→</div>
+      <div class="step">
+        <div class="n">2</div>
+        <h3>AI classifies</h3>
+        <p>Statutes · severity · recommendation — 3 s</p>
+      </div>
+      <div class="arr">→</div>
+      <div class="step">
+        <div class="n">3</div>
+        <h3>Evidence secured</h3>
+        <p>SHA-256 · archive · timestamp — instant</p>
+      </div>
+      <div class="arr">→</div>
+      <div class="step">
+        <div class="n">4</div>
+        <h3>Complaint PDF</h3>
+        <p>A4 · AI assessment · one click</p>
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 12px;">
+      <span class="pill">Anonymous in browser</span>
+      <span class="pill">No account</span>
+      <span class="pill">No tracking</span>
+      <span class="pill indigo">GDPR-by-design</span>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · The Solution</span>
+      <span>03 / 17</span>
+    </div>
+  </section>
+
+  <!-- 4. Live Demo -->
+  <section class="slide">
+    <div class="kicker">Live Demo</div>
+    <h2>safevoice-vert.vercel.app</h2>
+    <p class="lead" style="margin-bottom: 18px;">Four real-world examples. ~3 minutes end-to-end.</p>
+    <div class="col-2">
+      <div>
+        <h3 style="margin-bottom: 14px;">Demo flow</h3>
+        <ol>
+          <li><strong style="color: var(--ink);">Classic threat</strong> — critical severity, clear classification</li>
+          <li><strong style="color: var(--ink);">Idiom test</strong> — "you crack me up" → AI understands context</li>
+          <li><strong style="color: var(--ink);">Stalking + victim_context</strong> — ex-partner → § 238 (second-layer AI)</li>
+          <li><strong style="color: var(--ink);">PDF + Onlinewache</strong> — generate, sign, send to Berlin police</li>
+        </ol>
+        <p style="margin-top: 18px; font-size: 14px; color: var(--subtle);">Backup: screenshots of every output saved locally — in case the wifi acts up.</p>
+      </div>
+      <div class="app-mock">
+        <div class="bar">
+          <span class="d" style="background: #ef4444;"></span>
+          <span class="d" style="background: #f59e0b;"></span>
+          <span class="d" style="background: #10b981;"></span>
+          <span class="url">safevoice-vert.vercel.app/analyze</span>
+        </div>
+        <div class="body">
+          <div style="font: 600 10px/1.2 var(--font-sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;">Input — hate comment</div>
+          <div class="input-box">"nobody cares what you say, just shut up already"<br/>"we know where you live"<br/>"people like you don't belong in this country"</div>
+          <div class="result">
+            <div class="result-label">AI classification · 4.7 s</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span class="dot red"></span>
+              <span style="font-weight: 700; color: var(--ink); font-size: 15px;">Severity: critical</span>
+            </div>
+            <div style="font-size: 13px; color: var(--ink-dim); margin-bottom: 8px;">Confidence 0.94 · requires_immediate_action</div>
+            <div class="badges">
+              <span class="pill red">§ 185 StGB (insult)</span>
+              <span class="pill red">§ 241 StGB (threat)</span>
+              <span class="pill amber">NetzDG § 3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · Live Demo</span>
+      <span>04 / 17</span>
+    </div>
+  </section>
+
+  <!-- 5. KingZizis Demo (fictional, for laughs) -->
+  <section class="slide">
+    <div class="kicker">Bonus Demo · Heads up: fictional</div>
+    <h2>What if <span style="color: var(--indigo-bright);">KingZizis</span> were harassing us?</h2>
+    <p class="lead" style="margin-bottom: 18px;">Four fictional messages from our tutor Zisis in the role of demo villain. Plot: same workflow across four platforms — Discord, WhatsApp, Instagram, Email. Shows the range. Nobody got hurt.</p>
+    <div class="col-2" style="gap: 18px;">
+
+      <!-- Card 1: Discord -->
+      <div style="background: #2b2d31; border: 1px solid #1e1f22; border-radius: 14px; padding: 18px 20px; font-family: 'gg sans', var(--font-sans);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+          <div style="width: 32px; height: 32px; background: #5865f2; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 14px;">K</div>
+          <div>
+            <div style="color: #f2f3f5; font-weight: 600; font-size: 14px;">KingZizis <span style="color: #80848e; font-weight: 400; font-size: 11px;">#0420 · #safevoice-class · 23:47</span></div>
+          </div>
+        </div>
+        <p style="color: #dbdee1; font-size: 13px; line-height: 1.45; margin: 0 0 6px;">okay your code is so bad, I'm convinced</p>
+        <p style="color: #dbdee1; font-size: 13px; line-height: 1.45; margin: 0 0 6px;">your if-statements have shed more tears than your mother did at your birth</p>
+        <p style="color: #dbdee1; font-size: 13px; line-height: 1.45; margin: 0 0 10px;">1/10 would not review again</p>
+        <div style="display: flex; gap: 6px; padding-top: 10px; border-top: 1px solid #1e1f22;">
+          <span class="pill amber" style="font-size: 11px;">medium</span>
+          <span class="pill" style="font-size: 11px; background: rgba(245,158,11,0.15); color: #fcd34d; border-color: rgba(245,158,11,0.3);">§ 185 borderline (insult)</span>
+        </div>
+      </div>
+
+      <!-- Card 2: WhatsApp -->
+      <div style="background: #0b141a; border: 1px solid #1f2c33; border-radius: 14px; padding: 18px 20px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #1f2c33;">
+          <div style="width: 32px; height: 32px; background: #25d366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 13px;">Z</div>
+          <div>
+            <div style="color: #e9edef; font-weight: 600; font-size: 14px;">Zisis (Tutor)</div>
+            <div style="color: #8696a0; font-size: 11px;">online · 02:14</div>
+          </div>
+        </div>
+        <div style="background: #1f2c33; border-radius: 8px 8px 8px 2px; padding: 8px 12px; max-width: 90%;">
+          <p style="color: #e9edef; font-size: 12.5px; line-height: 1.5; margin: 0;">if you haven't ticked off 4 action items by tomorrow, I will be forced to give you the worst grade in class history. <strong>I will find you, Michael.</strong></p>
+          <div style="font-size: 10px; color: #8696a0; text-align: right; margin-top: 4px;">02:14 ✓✓</div>
+        </div>
+        <div style="display: flex; gap: 6px; margin-top: 12px;">
+          <span class="pill" style="font-size: 11px; background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.3);">high</span>
+          <span class="pill" style="font-size: 11px; background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.3);">§ 240 (coercion)</span>
+          <span class="pill" style="font-size: 11px; background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.3);">§ 241 (threat)</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Instagram -->
+      <div style="background: #000; border: 1px solid #262626; border-radius: 14px; padding: 18px 20px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+          <div style="width: 32px; height: 32px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 13px;">K</div>
+          <div>
+            <div style="color: #f5f5f5; font-weight: 600; font-size: 14px;">@kingzizis_official</div>
+            <div style="color: #a8a8a8; font-size: 11px;">Direct Message</div>
+          </div>
+        </div>
+        <p style="color: #f5f5f5; font-size: 13px; line-height: 1.5; margin: 0 0 6px;">I see your commit activity on github 👀</p>
+        <p style="color: #f5f5f5; font-size: 13px; line-height: 1.5; margin: 0 0 6px;">why are you committing on Sundays at 23:47 and not on your action items?</p>
+        <p style="color: #f5f5f5; font-size: 13px; line-height: 1.5; margin: 0 0 10px;"><strong>I know exactly where you are.</strong> push the code. <strong>PUSH IT.</strong></p>
+        <div style="display: flex; gap: 6px; padding-top: 10px; border-top: 1px solid #262626;">
+          <span class="pill red" style="font-size: 11px;">critical</span>
+          <span class="pill red" style="font-size: 11px;">§ 238 (stalking)</span>
+          <span class="pill red" style="font-size: 11px;">§ 240</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Email -->
+      <div style="background: #ffffff; color: #1a1a1a; border-radius: 14px; padding: 18px 22px; font-family: var(--font-sans);">
+        <div style="border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 12px;">
+          <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;"><strong style="color: #1a1a1a;">From:</strong> zisis.batzos@xu-university.de</div>
+          <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;"><strong style="color: #1a1a1a;">To:</strong> michael@safevoice.de</div>
+          <div style="font-size: 13px; color: #1a1a1a; margin-top: 4px;"><strong>Subject:</strong> RE: your criminal-complaint demo</div>
+        </div>
+        <p style="color: #1a1a1a; font-size: 12.5px; line-height: 1.55; margin: 0 0 6px;">Dear Michael,</p>
+        <p style="color: #1a1a1a; font-size: 12.5px; line-height: 1.55; margin: 0 0 6px;">this demo would convince your grandmother at best. Please prove me wrong before Thursday, <strong>otherwise I cannot guarantee anything.</strong></p>
+        <p style="color: #1a1a1a; font-size: 12.5px; line-height: 1.55; margin: 0;">Kind regards,<br/>Prof. Dr. h.c. KingZizis</p>
+        <div style="display: flex; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+          <span class="pill amber" style="font-size: 11px;">medium</span>
+          <span class="pill" style="font-size: 11px; background: rgba(245,158,11,0.15); color: #92400e; border-color: rgba(245,158,11,0.4);">§ 185 · conditional</span>
+        </div>
+      </div>
+
+    </div>
+    <p style="margin-top: 18px; font-size: 13px; color: var(--subtle); font-style: italic;">Disclaimer: all messages are fictional. Zisis is an excellent tutor and never sent any of these. We use him as a good-natured demo villain because he can take it — and because a tool you can also use playfully tends to actually get used.</p>
+    <div class="footer-line">
+      <span>SafeVoice · KingZizis Demo</span>
+      <span>05 / 17</span>
+    </div>
+  </section>
+
+  <!-- 6. Classification -->
+  <section class="slide">
+    <div class="kicker">Classification</div>
+    <h2>One LLM call. One schema. No hallucination.</h2>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <p><strong style="color: var(--ink);">OpenAI gpt-4o-mini</strong> with Pydantic Structured Outputs. 16 categories as a Python enum — the model can <em style="color: var(--indigo-bright); font-style: normal;">not</em> invent a category or a statute, because the schema is enforced server-side.</p>
+        <h3 style="margin-top: 22px; margin-bottom: 10px;">Few-shot prompt with:</h3>
+        <ul>
+          <li>Idiom false-positive — <em>"that's killing me"</em> → low</li>
+          <li>Obfuscation — <em>"you wh*re"</em> → critical despite asterisk</li>
+          <li>Far-right code — <em>"1488"</em> → § 130 (incitement)</li>
+          <li>Doxxing — address + phone → § 126a / § 238</li>
+          <li>victim_context rules — ex-partner → § 238 (stalking)</li>
+        </ul>
+        <p style="margin-top: 18px;"><strong style="color: var(--ink);">No silent fallback.</strong> Low confidence → 503. A weak regex classification would be <em>worse</em> than none for a criminal complaint.</p>
+      </div>
+      <div>
+<div class="codeblock"><span class="k">class</span> <span class="t">ClassificationResult</span>(<span class="t">BaseModel</span>):
+    severity: <span class="t">Severity</span>         <span class="c"># low|medium|high|critical</span>
+    categories: <span class="k">list</span>[<span class="t">Category</span>] <span class="c"># enum, 16 values</span>
+    confidence: <span class="k">float</span>          <span class="c"># 0–1</span>
+    requires_immediate_action: <span class="k">bool</span>
+    summary: <span class="k">str</span>               <span class="c"># EN</span>
+    summary_de: <span class="k">str</span>            <span class="c"># DE</span>
+    applicable_laws: <span class="k">list</span>[<span class="t">GermanLaw</span>]
+    potential_consequences: <span class="k">str</span>
+    potential_consequences_de: <span class="k">str</span></div>
+<div class="codeblock" style="margin-top: 14px;">client.chat.completions.parse(
+    model=<span class="s">"gpt-4o-mini"</span>,
+    response_format=<span class="t">ClassificationResult</span>,
+    messages=[...])</div>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · Classification</span>
+      <span>06 / 17</span>
+    </div>
+  </section>
+
+  <!-- 7. Two-layer AI -->
+  <section class="slide">
+    <div class="kicker">Second AI Layer</div>
+    <h2>From single piece of evidence to case-level analysis.</h2>
+    <p class="lead">A second prompt pass combines <em>all</em> pieces of evidence + the victim-supplied context into one case-wide legal assessment. This is what the police read.</p>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <h3>What the AI outputs</h3>
+        <ul>
+          <li><strong style="color: var(--ink);">Legal assessment</strong> — free-text paragraph with reasoning, DE + EN</li>
+          <li><strong style="color: var(--ink);">Escalation risk</strong> — low / medium / high with rationale</li>
+          <li><strong style="color: var(--ink);">Strongest charges</strong> — statutes with strength scores</li>
+          <li><strong style="color: var(--ink);">Next steps</strong> — prioritized with deadlines (24 h / 7 d / when_ready)</li>
+        </ul>
+      </div>
+      <div class="card indigo">
+        <div class="meta">Sample output · case with 4 pieces of evidence</div>
+        <p class="quote" style="margin-bottom: 14px;">"The statements are insulting and threatening, which is punishable under both § 185 StGB and § 241 StGB. The severity of the threat in the last message is critical and requires immediate action."</p>
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 16px;">
+          <span style="font-size: 12px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase;">Escalation risk</span>
+          <span class="pill red">HIGH</span>
+        </div>
+        <p style="font-size: 14px; color: var(--muted); margin-top: 10px;">"The threat of violence could lead to further escalation."</p>
+      </div>
+    </div>
+    <p style="margin-top: 22px; font-size: 15px; color: var(--muted);">Embedded in the complaint PDF with a clear disclaimer — typographically set apart so the officer immediately knows: this is the AI, not the victim.</p>
+    <div class="footer-line">
+      <span>SafeVoice · Second AI Layer</span>
+      <span>07 / 17</span>
+    </div>
+  </section>
+
+  <!-- 8. Iterations & Learnings -->
+  <section class="slide">
+    <div class="kicker">Iterations &amp; Learnings</div>
+    <h2>What we threw away until it worked.</h2>
+    <p class="lead" style="margin-bottom: 20px;">Six hard pivots. Each one an admission: "the first idea was wrong."</p>
+
+    <div class="col-2" style="gap: 24px;">
+      <div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">Pivot 1 · Classification</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Regex + keyword list + 3-tier fallback</span><br/>
+            <span style="color: var(--indigo-bright);">→ gpt-4o-mini with Pydantic Structured Outputs</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> regex flagged "that's killing me" as § 241. False-positive rate was unacceptable.</p>
+        </div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">Pivot 2 · Model selection</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Claude (Anthropic) + OpenAI in parallel</span><br/>
+            <span style="color: var(--indigo-bright);">→ gpt-4o-mini only · one-provider stack</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Tested:</strong> gpt-4o-mini vs gpt-4o vs gpt-5 (hyperparam sweep). gpt-5 marginally better on edge cases, but 8× more expensive + slower. gpt-4o-mini = best cost/quality ratio.</p>
+        </div>
+        <div class="card">
+          <div class="meta">Pivot 3 · Prompt engineering</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Minimalist prompt (v1)</span><br/>
+            <span style="color: var(--indigo-bright);">→ Few-shot with chain-of-thought (v2)</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Eval (35 cases):</strong> 66 % → <strong style="color: #6ee7b7;">86 % accuracy</strong> (+20 pp). Added counter-examples for idioms, obfuscation, victim_context.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">Pivot 4 · UX architecture</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Login-first · user account · email verification</span><br/>
+            <span style="color: var(--indigo-bright);">→ Anonymous-first · localStorage · no account</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> stalking victims shouldn't have to create an account that can later be used against them. GDPR data minimization. Account = bonus, not requirement.</p>
+        </div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">Pivot 5 · Hosting</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Railway · Docker · always-on</span><br/>
+            <span style="color: var(--indigo-bright);">→ Vercel Functions · Fluid Compute · FRA</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Effect:</strong> $20/mo fixed → $0–$3/mo at expected volume. Cold start &lt; 200 ms via Fluid Compute. One platform = one bill.</p>
+        </div>
+        <div class="card indigo">
+          <div class="meta">Pivot 6 · OCR (decided today)</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Tesseract + Vision fallback</span><br/>
+            <span style="color: var(--indigo-bright);">→ Vision-only (gpt-4o-mini)</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> Tesseract never ran on Vercel. Vision additionally returns sender_handle + platform_hint. Dev = prod. 200 fewer lines of code.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-line">
+      <span>SafeVoice · Iterations &amp; Learnings</span>
+      <span>08 / 17</span>
+    </div>
+  </section>
+
+  <!-- 9. DB Schema Pivot -->
+  <section class="slide">
+    <div class="kicker">DB Architecture · Before / After</div>
+    <h2>From a user-centric to a case-centric schema.</h2>
+    <p class="lead" style="margin-bottom: 22px;">The UX pivot "anonymous-first" forced a DB pivot. <code>user_id</code> stopped being required and became optional.</p>
+    <div class="col-2" style="gap: 28px;">
+
+      <div>
+        <h3 style="color: #fca5a5;"><span class="dot red"></span>Before · Login-first (v1)</h3>
+<div class="codeblock" style="margin-top: 10px;"><span class="t">users</span>
+  id <span class="t">PK</span>
+  email <span class="k">UNIQUE</span> <span class="k">NOT NULL</span>
+  password_hash
+  created_at
+
+<span class="t">cases</span>
+  id <span class="t">PK</span>
+  user_id <span class="t">FK</span> → users.id  <span class="c"># required</span>
+  title
+  context
+  ...
+
+<span class="t">evidence</span>
+  id <span class="t">PK</span>
+  case_id <span class="t">FK</span> → cases.id
+  user_id <span class="t">FK</span> → users.id  <span class="c"># redundant</span>
+  ...</div>
+        <p style="font-size: 13px; color: var(--muted); margin-top: 12px;">Problem: victim without an account = no case. Email verification as a barrier for someone in crisis. Duplicate FKs.</p>
+      </div>
+
+      <div>
+        <h3 style="color: #6ee7b7;"><span class="dot green"></span>Today · Anonymous-first (v2)</h3>
+<div class="codeblock" style="margin-top: 10px;"><span class="t">cases</span>
+  id <span class="t">PK</span>
+  user_id <span class="t">FK</span> → users.id <span class="k">NULL</span>  <span class="c"># optional!</span>
+  anonymous_token <span class="t">UNIQUE</span>  <span class="c"># browser-local</span>
+  title, context, severity
+
+<span class="t">evidence</span>
+  id <span class="t">PK</span>
+  case_id <span class="t">FK</span>
+  text, image_bytes
+  sha256_hash, archive_url
+  classification_json  <span class="c"># Pydantic SO</span>
+
+<span class="t">legal_analysis</span>  <span class="c"># 2nd AI layer</span>
+  case_id <span class="t">FK</span>
+  assessment, escalation_risk
+  applicable_laws
+
+<span class="t">users</span>  <span class="c"># only for power features</span>
+  id, email, password_hash</div>
+        <p style="font-size: 13px; color: var(--muted); margin-top: 12px;">Today 10 tables. Cases can exist <strong style="color: var(--ink);">without</strong> a user — purely browser-local. Login = optional upgrade path for NGOs / lawyers.</p>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · DB Pivot</span>
+      <span>09 / 17</span>
+    </div>
+  </section>
+
+  <!-- 10. Costs -->
+  <section class="slide">
+    <div class="kicker">Cost · honest breakdown</div>
+    <h2>What a criminal complaint costs us — in cents.</h2>
+    <p class="lead" style="margin-bottom: 22px;">All numbers based on real token counts (gpt-4o-mini @ $0.15/1M input · $0.60/1M output, as of 05/2026).</p>
+
+    <div class="col-3" style="margin-bottom: 24px;">
+      <div class="card">
+        <div class="meta">Per piece of evidence</div>
+        <div class="stat" style="margin: 8px 0 12px;">
+          <div class="v" style="font-size: 44px;">~ $0.0004</div>
+        </div>
+        <p style="font-size: 13px; color: var(--muted); margin: 0;">Classification: 500 input + 300 output tokens via Structured Outputs.</p>
+        <p style="font-size: 12px; color: var(--subtle); margin: 6px 0 0;">With screenshot: + $0.001–0.005 for Vision OCR.</p>
+      </div>
+      <div class="card">
+        <div class="meta">Per case (avg. 3 pieces)</div>
+        <div class="stat" style="margin: 8px 0 12px;">
+          <div class="v" style="font-size: 44px;">~ $0.007</div>
+        </div>
+        <p style="font-size: 13px; color: var(--muted); margin: 0;">3 × classification + 1 × legal-AI 2nd layer (1500 in + 600 out) + 1 × Vision OCR.</p>
+      </div>
+      <div class="card indigo">
+        <div class="meta">Per PDF generation</div>
+        <div class="stat" style="margin: 8px 0 12px;">
+          <div class="v" style="font-size: 44px;">~ $0.00002</div>
+        </div>
+        <p style="font-size: 13px; color: var(--muted); margin: 0;">ReportLab locally in a Vercel Function. Only compute time (~80 ms active CPU).</p>
+      </div>
+    </div>
+
+    <div class="col-2" style="gap: 24px;">
+      <div class="card">
+        <h3 style="margin-bottom: 12px;">Model comparison (35-case eval set)</h3>
+        <table>
+          <tr><th>Model</th><th>Acc.</th><th>$ / case</th><th>Latency</th></tr>
+          <tr><td class="mono">gpt-4o-mini</td><td style="color: #6ee7b7;">86 %</td><td class="mono">$0.007</td><td class="mono">3.2 s</td></tr>
+          <tr><td class="mono">gpt-4o</td><td style="color: #6ee7b7;">89 %</td><td class="mono">$0.058</td><td class="mono">5.1 s</td></tr>
+          <tr><td class="mono">gpt-5</td><td style="color: #6ee7b7;">91 %</td><td class="mono">$0.056</td><td class="mono">8.4 s</td></tr>
+          <tr><td class="mono">Regex v0</td><td style="color: #fca5a5;">52 %</td><td class="mono">$0.000</td><td class="mono">&lt; 5 ms</td></tr>
+        </table>
+        <p style="font-size: 13px; color: var(--muted); margin: 12px 0 0;"><strong style="color: var(--ink);">Decision:</strong> gpt-4o-mini — honestly, cost was the deciding factor. gpt-5 is +5 pp more accurate but does not justify 8× cost + 2.6× latency. At NGO scale (100k+ cases/year) this is the difference between $850/mo and $7 000/mo — and the +5 pp does not change a single legal outcome. The cost delta does. Regex (52 %) is unusable for a criminal complaint.</p>
+      </div>
+      <div class="card indigo">
+        <h3 style="margin-bottom: 12px;">NGO pilot scaling</h3>
+        <table>
+          <tr><th>Scenario</th><th>Cases / month</th><th>Cost / month</th></tr>
+          <tr><td>Small pilot</td><td class="mono">100</td><td class="mono">~ $0.70</td></tr>
+          <tr><td>Mid operation</td><td class="mono">1 000</td><td class="mono">~ $7</td></tr>
+          <tr><td>HateAid volume</td><td class="mono">10 000</td><td class="mono">~ $90 *</td></tr>
+          <tr><td><strong>Nationwide (BKA est.)</strong></td><td class="mono"><strong>100 000</strong></td><td class="mono"><strong>~ $850</strong></td></tr>
+          <tr><td style="color: var(--indigo-bright);"><strong>Mass-scale (worst case)</strong></td><td class="mono"><strong>1 000 000</strong></td><td class="mono"><strong>~ $8 500</strong></td></tr>
+        </table>
+        <p style="font-size: 12px; color: var(--subtle); margin-top: 8px; font-style: italic;">* incl. Vercel Functions active CPU (~$20 at 10k). Scales roughly linearly with volume.</p>
+
+        <div style="margin-top: 18px; padding: 14px 16px; background: rgba(99, 102, 241, 0.08); border-left: 3px solid var(--indigo-bright); border-radius: 6px;">
+          <p style="font-size: 13px; color: var(--muted); margin: 0 0 8px;"><strong style="color: var(--ink);">Anchor: 100 000 cases (BKA-estimated yearly nationwide hate-crime volume).</strong></p>
+          <table style="margin: 0;">
+            <tr><td>SafeVoice (gpt-4o-mini)</td><td class="mono" style="color: #6ee7b7;">~ $850 / yr</td></tr>
+            <tr><td>SafeVoice (gpt-5)</td><td class="mono">~ $7 000 / yr</td></tr>
+            <tr><td>Lawyer first-consultation @ €120</td><td class="mono" style="color: #fca5a5;">€ 12 000 000 / yr</td></tr>
+          </table>
+          <p style="font-size: 13px; color: var(--ink-dim); margin: 10px 0 0;">Cost factor lawyer vs. SafeVoice: <strong style="color: var(--indigo-bright);">~14 000×</strong>. That's the real comparison.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · Cost</span>
+      <span>10 / 17</span>
+    </div>
+  </section>
+
+  <!-- 11. Evidence -->
+  <section class="slide">
+    <div class="kicker">Evidence preservation</div>
+    <h2>SHA-256. archive.org. Browser verifier.</h2>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <p>Each piece of evidence gets a <strong style="color: var(--ink);">SHA-256 hash</strong> over the exact content at capture time — a 64-character fingerprint. Change a single character and the hash changes completely.</p>
+        <p style="margin-top: 14px;">Additionally:</p>
+        <ul>
+          <li>UTC timestamp with timezone (legally required)</li>
+          <li>archive.org backup link (when scraping a URL)</li>
+          <li>Hash chain between pieces of evidence — tampering with one invalidates the chain</li>
+        </ul>
+        <p style="margin-top: 14px;"><span class="pill indigo">NEW</span> &nbsp;<strong style="color: var(--ink);">Browser verifier.</strong> Police or lawyer pastes the original content; the browser computes the hash live via the Web Crypto API — no trust in our server required.</p>
+      </div>
+      <div>
+<div class="codeblock"><span class="c">// In the PDF</span>
+sha256:<span class="n">3a11c1c3813f43e8d7b9dbda0dfbc571bd</span>
+       <span class="n">362bf346c3d4412975d91475571c2a</span>
+
+<span class="c">// In SafeVoice (browser)</span>
+<span class="k">const</span> hash = <span class="k">await</span> sha256Hex(originalText)
+<span class="c">// → same hash → unchanged ✓</span>
+
+<span class="c">// In the terminal (anyone can do it)</span>
+$ shasum -a 256 evidence.txt
+<span class="n">3a11c1c3813f43e8d7b9d...</span>
+
+<span class="c">// Three-way verification. Police-grade.</span></div>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · Evidence preservation</span>
+      <span>11 / 17</span>
+    </div>
+  </section>
+
+  <!-- 12. PDF + Onlinewache -->
+  <section class="slide">
+    <div class="kicker">The deliverable</div>
+    <h2>A PDF the police can understand in 3 seconds.</h2>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <h3>What's in the PDF</h3>
+        <ol>
+          <li><strong style="color: var(--ink);">Header overview</strong> — complainant, severity badge, case ID, incidents, statute list</li>
+          <li><strong style="color: var(--ink);">Formal complaint</strong> — sender block, facts, timing, location, context</li>
+          <li><strong style="color: var(--ink);">Evidence</strong> — numbered exhibit cards with quote, classification, SHA-256</li>
+          <li><strong style="color: var(--ink);">AI assessment</strong> — typographically set apart with disclaimer</li>
+          <li><strong style="color: var(--ink);">Page footer</strong> with case ID, fold mark for envelope</li>
+        </ol>
+        <h3 style="margin-top: 20px;">How it reaches the police</h3>
+        <ul>
+          <li><strong style="color: var(--ink);">Onlinewache</strong> — federal state's online police portal: pick state, copy text, open form, paste (3-step flow built in)</li>
+          <li><strong style="color: var(--ink);">In person</strong> — PDF + ID card to the local station</li>
+          <li><strong style="color: var(--ink);">.eml file</strong> — double-click opens mail client with recipient, subject, attachments</li>
+        </ul>
+      </div>
+      <div class="pdf-mock">
+        <div class="pdf-kicker">CASE</div>
+        <div class="pdf-id">cd-1234</div>
+        <h4>Criminal Complaint</h4>
+        <div class="pdf-sub">Documentation platform for digital violence</div>
+        <hr/>
+        <div class="pdf-row">
+          <div class="l">Complainant</div>
+          <div class="v">Michael Ninh</div>
+        </div>
+        <div class="pdf-row">
+          <div class="l">Incidents</div>
+          <div class="v">3 · <span style="color: #b91c1c; font-weight: 600;">1 critical</span></div>
+        </div>
+        <div class="pdf-row">
+          <div class="l">Applicable statutes</div>
+          <div class="v">§ 185 StGB · § 241 StGB · NetzDG § 3</div>
+        </div>
+        <div class="pdf-row" style="margin-top: 18px;">
+          <div class="l">Severity</div>
+          <div class="v"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#b91c1c;margin-right:6px;"></span>Critical · immediate action advised</div>
+        </div>
+        <p style="font-size: 10px; color: #67615a; margin-top: 22px; font-style: italic;">Sketch of the PDF header · A4 · court-ready</p>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · The Deliverable</span>
+      <span>12 / 17</span>
+    </div>
+  </section>
+
+  <!-- 13. Tech / GDPR -->
+  <section class="slide">
+    <div class="kicker">Tech &amp; GDPR</div>
+    <h2>One platform. One bill. Frankfurt region.</h2>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <h3 style="margin-bottom: 12px;">Stack</h3>
+        <table>
+          <tr><th>Layer</th><th>Tech</th></tr>
+          <tr><td>Frontend</td><td class="mono">React 19 · TS · Vite · Tailwind 4</td></tr>
+          <tr><td>Backend</td><td class="mono">FastAPI · Python 3.12</td></tr>
+          <tr><td>Hosting</td><td class="mono">Vercel Fluid Compute · FRA</td></tr>
+          <tr><td>Database</td><td class="mono">Neon Postgres · eu-central</td></tr>
+          <tr><td>AI</td><td class="mono">gpt-4o-mini · Pydantic SO</td></tr>
+          <tr><td>OCR</td><td class="mono">OpenAI Vision (gpt-4o-mini)</td></tr>
+          <tr><td>PDF</td><td class="mono">ReportLab · A4 · court-ready</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3 style="margin-bottom: 12px;">GDPR-by-design</h3>
+        <ul>
+          <li><strong style="color: var(--ink);">Anonymous-first</strong> — no account, no email, no tracking</li>
+          <li><strong style="color: var(--ink);">Data minimization (Art. 5)</strong> — only what the complaint needs</li>
+          <li><strong style="color: var(--ink);">Local data sovereignty</strong> — cases in localStorage, JSON export</li>
+          <li><strong style="color: var(--ink);">Right to erasure (Art. 17)</strong> — hard-delete built in</li>
+          <li><strong style="color: var(--ink);">Right of access (Art. 20)</strong> — JSON export of all own data</li>
+          <li><strong style="color: var(--ink);">Frankfurt region</strong> — backend + DB in Germany</li>
+          <li><strong style="color: var(--ink);">SHA-256 + archive.org</strong> for independent verification</li>
+        </ul>
+        <p style="font-size: 13px; color: var(--subtle); margin-top: 14px;">Imprint + privacy policy: drafts, to be legally reviewed before production launch.</p>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · Tech &amp; GDPR</span>
+      <span>13 / 17</span>
+    </div>
+  </section>
+
+  <!-- 14. Why LLM -->
+  <section class="slide">
+    <div class="kicker">Why an LLM, why now</div>
+    <h2>Why does an LLM work where rule-based systems fail?</h2>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <h3>What makes the language hard</h3>
+        <ul>
+          <li><strong style="color: var(--ink);">Idioms</strong> — <em>"you're killing me"</em> is not a threat</li>
+          <li><strong style="color: var(--ink);">Obfuscation</strong> — <em>"wh*re"</em>, <em>"k!ll yourself"</em>, leetspeak</li>
+          <li><strong style="color: var(--ink);">Codes</strong> — <em>1488</em>, <em>88</em>, <em>"14 words"</em> — far-right subtext</li>
+          <li><strong style="color: var(--ink);">Context sensitivity</strong> — same sentence: § 185 or § 238 — depending on sender</li>
+          <li><strong style="color: var(--ink);">Multilingual</strong> — DE, EN, TR, AR in the same case</li>
+        </ul>
+      </div>
+      <div>
+        <h3>How we make it reliable</h3>
+        <ol>
+          <li><strong style="color: var(--ink);">Schema enforcement</strong> — Pydantic Structured Outputs. Model cannot invent.</li>
+          <li><strong style="color: var(--ink);">Few-shot with counter-examples</strong> — idioms, obfuscation, victim_context rules</li>
+          <li><strong style="color: var(--ink);">No silent fallback</strong> — 503 instead of a weak regex guess</li>
+          <li><strong style="color: var(--ink);">Second layer at case level</strong> — no single piece of evidence decides alone</li>
+          <li><strong style="color: var(--ink);">SHA-256 + hash verifier</strong> — police don't have to trust us</li>
+        </ol>
+        <div class="card indigo" style="margin-top: 18px;">
+          <div class="meta">Result</div>
+          <p style="font-size: 16px; color: var(--ink); margin: 0;">27 real-world test scenarios (DE/EN/TR/AR/ES) · <strong>0 failures</strong> · <strong>0 false positives</strong> on idioms · <strong>0 invented statutes</strong>.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · Why LLM</span>
+      <span>14 / 17</span>
+    </div>
+  </section>
+
+  <!-- 15. Roadmap -->
+  <section class="slide">
+    <div class="kicker">Status &amp; Roadmap</div>
+    <h2>Where we are. What comes next.</h2>
+    <div class="col-3" style="margin-top: 12px;">
+      <div class="card">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+          <span class="dot green"></span>
+          <h3 style="margin: 0; color: #6ee7b7;">Live today</h3>
+        </div>
+        <ul style="font-size: 15px;">
+          <li>Classifier + second legal-AI layer</li>
+          <li>Anonymous-first flow</li>
+          <li>Complaint PDF (A4, court-ready)</li>
+          <li>OCR via Vision</li>
+          <li>Browser-side hash verifier</li>
+          <li>Onlinewache 3-step flow</li>
+          <li>JSON export / import</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+          <span class="dot amber"></span>
+          <h3 style="margin: 0; color: #fcd34d;">Short-term · May / June</h3>
+        </div>
+        <ul style="font-size: 15px;">
+          <li>Migrate Neon DB to EU region (doable now)</li>
+          <li>Mobile polish — works manually, missing QA</li>
+          <li>Legal review of imprint + privacy policy</li>
+          <li>Vision-only OCR (Tesseract removed, code cleanup)</li>
+          <li>Expand eval suite (35 → 100 cases)</li>
+        </ul>
+      </div>
+      <div class="card indigo">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+          <span style="width: 9px; height: 9px; border-radius: 50%; background: var(--indigo-bright); box-shadow: 0 0 8px var(--indigo-glow);"></span>
+          <h3 style="margin: 0; color: var(--indigo-bright);">Mid-term</h3>
+        </div>
+        <ul style="font-size: 15px;">
+          <li>Approach HateAid as host organization</li>
+          <li>Prototype Fund grant application (Q3)</li>
+          <li>UI translations TR, AR</li>
+          <li>NGO onboarding (custom letterheads in PDF)</li>
+          <li><em>Bonus:</em> witness + sworn-statement fields</li>
+        </ul>
+      </div>
+    </div>
+    <p style="margin-top: 28px; font-size: 15px; color: var(--muted);"><strong style="color: var(--ink);">Looking for a host organization:</strong> SafeVoice needs a host (HateAid or similar) before we recommend it broadly. Legal review of the texts is a must. Foundation grants as the secondary path.</p>
+    <div class="footer-line">
+      <span>SafeVoice · Roadmap</span>
+      <span>15 / 17</span>
+    </div>
+  </section>
+
+  <!-- 16. Q&A -->
+  <section class="slide">
+    <div class="kicker">FAQ · also live on safevoice.app/faq</div>
+    <h2>Six questions we always get asked.</h2>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">1 · Is this legally binding evidence?</div>
+          <p style="font-size: 14px; margin: 0;">The PDF itself isn't a court verdict — it's a structured complaint document. The <strong style="color: var(--ink);">SHA-256 hash + archive.org backup + UTC timestamp</strong> make the underlying screenshot forensically verifiable. Police and prosecutors can use it directly.</p>
+        </div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">2 · Can the AI hallucinate a wrong law (§ StGB)?</div>
+          <p style="font-size: 14px; margin: 0;">No. The 16 categories are a Pydantic enum, enforced server-side via OpenAI Structured Outputs. The model literally <em>cannot</em> return a value outside the enum. Confidence scores below 0.7 are flagged for human review.</p>
+        </div>
+        <div class="card">
+          <div class="meta">3 · What happens to my data?</div>
+          <p style="font-size: 14px; margin: 0;">Anonymous-first: no account needed, everything in browser localStorage by default. Server-side: only what's actively being processed (Vercel Functions Frankfurt, no logs of content). GDPR Art. 25 by design.</p>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">4 · Why open source?</div>
+          <p style="font-size: 14px; margin: 0;">Victims of digital violence shouldn't have to trust a black box. NGOs (HateAid, neue deutsche medienmacher*innen) need to be able to audit and self-host. And: prosecutors can verify our hash-chain logic line by line.</p>
+        </div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">5 · What about false positives?</div>
+          <p style="font-size: 14px; margin: 0;">86 % accuracy means 14 % needs review. The PDF always shows confidence + reasoning per classification. A human (victim or NGO) confirms before filing. We replace 4 hours of manual work, not the human judgment call.</p>
+        </div>
+        <div class="card indigo">
+          <div class="meta">6 · Who pays for this?</div>
+          <p style="font-size: 14px; margin: 0;">Free for victims, forever. NGO/government pilots cover infra ($90/mo at 10k cases). Funding application track: Prototype Fund, Schöpflin, Bertelsmann. Goal: pilot with HateAid in Q3 2026.</p>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top: 22px; font-size: 13px; color: var(--subtle); font-style: italic;">Also published on <a href="https://safevoice.app/faq">safevoice.app/faq</a> — shareable + linkable per question.</p>
+    <div class="footer-line">
+      <span>SafeVoice · FAQ</span>
+      <span>16 / 17</span>
+    </div>
+  </section>
+
+  <!-- 17. Discussion / Get involved -->
+  <section class="slide">
+    <div class="kicker">Discussion</div>
+    <h2>Questions. Criticism. Ways to join.</h2>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <h3>Questions I ask myself</h3>
+        <ul>
+          <li>Is an AI pre-assessment in a criminal-complaint PDF legally clean, or does it unduly influence the investigation?</li>
+          <li>Should we automate platform submissions (NetzDG forms), or keep them intentionally manual?</li>
+          <li>Anonymous-first vs. NGO / lawyer accounts — where to draw the line?</li>
+          <li>How do you scale a complaint template when each federal state has its own forms?</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Get involved</h3>
+        <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 14px;">
+          <div class="card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <span class="pill live">LIVE</span>
+            </div>
+            <a href="https://safevoice-vert.vercel.app" style="font-family: var(--font-mono); font-size: 16px;">safevoice-vert.vercel.app</a>
+          </div>
+          <div class="card indigo">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+              <span class="pill indigo">CODE</span>
+            </div>
+            <a href="https://github.com/mikelninh/safevoice" style="font-family: var(--font-mono); font-size: 16px;">github.com/mikelninh/safevoice</a>
+          </div>
+        </div>
+        <p style="font-size: 14px; color: var(--muted); margin-top: 18px;">Open source. PRs welcome. Test feedback via issues or directly to me.</p>
+        <p style="font-size: 14px; color: var(--muted); margin-top: 6px;">Contact: Michael Ninh · Berlin</p>
+      </div>
+    </div>
+    <p style="margin-top: 32px; font-size: 13px; color: var(--subtle); font-style: italic; line-height: 1.6;">SafeVoice is part of an open-source ecosystem for digital democracy — <strong style="color: var(--muted);">FairEint</strong> (what should Germany do differently?) · <strong style="color: var(--muted);">GitLaw</strong> (what does the law say?) · <strong style="color: var(--muted);">Public Money Mirror</strong> (where do my taxes go?) · <strong style="color: var(--muted);">SafeVoice</strong> (who is being attacked online?).</p>
+    <div class="footer-line">
+      <span>SafeVoice · 2026-05-18 · Thank you for listening</span>
+      <span>17 / 17</span>
+    </div>
+  </section>
+
+</div>
+
+<div class="progress" id="progress"></div>
+<div class="click-zone prev" id="zone-prev" title="Previous slide (←)"></div>
+<div class="click-zone next" id="zone-next" title="Next slide (→ or click)"></div>
+<div class="nav-ui">
+  <button id="nav-prev" title="Previous (←)">←</button>
+  <span class="counter" id="nav-counter">1 / 1</span>
+  <button id="nav-next" title="Next (→ / Space)">→</button>
+  <span class="mode" id="nav-mode" title="Toggle scroll mode (press S)">PRESENT</span>
+</div>
+
+<script>
+(function () {
+  const slides = Array.from(document.querySelectorAll('.deck .slide'));
+  const counter = document.getElementById('nav-counter');
+  const progress = document.getElementById('progress');
+  const navMode = document.getElementById('nav-mode');
+  let current = 0;
+  let presentMode = true;
+
+  function fitSlide() {
+    if (!presentMode) return;
+    const active = slides[current];
+    if (!active) return;
+    active.style.transform = '';
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const rect = active.getBoundingClientRect();
+    const scale = Math.min(vw / rect.width, vh / rect.height, 1) * 0.95;
+    active.style.transform = `scale(${scale})`;
+  }
+
+  function go(i) {
+    current = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = `${current + 1} / ${slides.length}`;
+    progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+    history.replaceState(null, '', `#${current + 1}`);
+    fitSlide();
+  }
+
+  function next() { go(current + 1); }
+  function prev() { go(current - 1); }
+
+  function setMode(present) {
+    presentMode = present;
+    document.body.classList.toggle('present', present);
+    navMode.textContent = present ? 'PRESENT' : 'SCROLL';
+    if (present) { go(current); } else {
+      slides.forEach(s => { s.style.transform = ''; s.classList.remove('active'); });
+      slides[current] && slides[current].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { e.preventDefault(); go(0); }
+    else if (e.key === 'End') { e.preventDefault(); go(slides.length - 1); }
+    else if (e.key === 's' || e.key === 'S') { setMode(!presentMode); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+
+  document.getElementById('nav-next').addEventListener('click', next);
+  document.getElementById('nav-prev').addEventListener('click', prev);
+  document.getElementById('zone-next').addEventListener('click', next);
+  document.getElementById('zone-prev').addEventListener('click', prev);
+  navMode.addEventListener('click', () => setMode(!presentMode));
+
+  window.addEventListener('resize', fitSlide);
+
+  const initial = parseInt(window.location.hash.replace('#', ''), 10);
+  setMode(true);
+  go(Number.isFinite(initial) && initial > 0 ? initial - 1 : 0);
+})();
+</script>
+
+</body>
+</html>
