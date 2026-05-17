@@ -38,10 +38,7 @@ Paste a hateful message, link, or screenshot → AI classifies it under German c
 ### 1. Get content in (3 paths)
 - **Paste text** — copy a hateful comment from anywhere, paste it. Most common path.
 - **Paste a URL** — public news/blog URLs work directly. Instagram/X/TikTok/Facebook block server-side scraping by design — for those, screenshot is the reliable path and is also DSGVO-cleaner since SafeVoice never touches the platform.
-- **Upload a screenshot** — OCR runs in two tiers:
-  1. Tesseract locally (Docker / dev)
-  2. **OpenAI Vision (gpt-4o-mini) fallback on Vercel**, where system packages aren't available
-  Vision returns structured JSON: extracted text + sender_handle + platform_hint, so the @username and platform auto-fill from the screenshot.
+- **Upload a screenshot** — OCR is Vision-only via **OpenAI Vision (gpt-4o-mini)**. One codepath in dev and prod, no system-package dependency. Vision returns structured JSON: extracted text + sender_handle + platform_hint, so the @username and platform auto-fill from the screenshot.
 
 ### 2. AI classifies it
 Single-tier LLM classifier — OpenAI `gpt-4o-mini` with Pydantic Structured Outputs. Detects **16 offense categories** including death_threat, volksverhetzung, doxxing, intimate_images, sexual_harassment, stalking. Returns severity, applicable German paragraphs, bilingual summary (DE + EN), and a `requires_immediate_action` flag.
@@ -113,7 +110,7 @@ DATABASE_URL=…        # optional, defaults to sqlite:///./safevoice.db
 | Frontend (Vite SPA) | Vercel static |
 | Backend (FastAPI) | Vercel Python Function via `api/proxy.py` |
 | Database | Neon Postgres (Vercel Marketplace integration) |
-| OCR | Tesseract locally · OpenAI Vision in serverless |
+| OCR | OpenAI Vision (`gpt-4o-mini`) — single codepath |
 | Classifier + Legal AI | OpenAI `gpt-4o-mini` |
 
 `vercel.json` rewrites `/api/(.*)` → `/api/proxy?_p=$1`; the ASGI shim in `api/proxy.py` re-applies the original path before delegating to the FastAPI app whose routers are mounted at both `/` and `/api/`.
@@ -151,7 +148,7 @@ POST   /reports/{id}/eml                — RFC 5322 .eml export with attachment
 GET    /legal/{case_id}                 — case-level analysis (auto-cached server-side)
 
 # Upload  (backend/app/routers/upload.py)
-POST   /upload/screenshot               — OCR (Tesseract → Vision fallback)
+POST   /upload/screenshot               — OCR via OpenAI Vision (gpt-4o-mini)
 
 # Auth (optional, NGO/lawyer flow)  (backend/app/routers/auth.py)
 POST   /auth/login                      — magic link
@@ -194,7 +191,7 @@ Full interactive OpenAPI docs: `http://localhost:8000/docs` (or `/api/docs` on V
 | Hosting | Vercel (frontend static + Python Fluid Compute) · Frankfurt |
 | Database | Neon Postgres (Vercel Marketplace) |
 | AI Classifier | OpenAI `gpt-4o-mini` (Pydantic structured outputs) |
-| OCR | Tesseract (Docker) · OpenAI Vision (serverless fallback) |
+| OCR | OpenAI Vision (`gpt-4o-mini`) |
 | Evidence | SHA-256 hash chain + browser-side Web-Crypto verifier |
 | Reports | ReportLab (A4 PDF) + Python `email` (RFC 5322 .eml) |
 | Auth (optional) | Magic-link, DB-backed sessions |
@@ -214,7 +211,7 @@ safevoice/
 │   │   ├── classifier.py              — orchestrator (single-tier LLM)
 │   │   ├── classifier_llm_v2.py       — gpt-4o-mini + Pydantic .parse()
 │   │   ├── legal_ai.py                — case-level second-layer analysis
-│   │   ├── ocr.py                     — Tesseract → OpenAI Vision fallback
+│   │   ├── ocr.py                     — OpenAI Vision OCR (gpt-4o-mini)
 │   │   ├── scraper.py                 — public web scraper
 │   │   ├── evidence.py                — SHA-256 hashing
 │   │   ├── pdf_generator.py           — A4 Strafanzeige PDF (exec summary + exhibits + AI block)

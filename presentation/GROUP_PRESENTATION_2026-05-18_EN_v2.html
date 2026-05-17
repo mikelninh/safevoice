@@ -141,6 +141,7 @@
 <body>
 <div class="deck">
 
+
   <!-- 1. Cover -->
   <section class="slide hero">
     <div class="logo">
@@ -165,6 +166,7 @@
       <span>01 / 17</span>
     </div>
   </section>
+
 
   <!-- 2. Problem -->
   <section class="slide">
@@ -201,6 +203,7 @@
       <span>02 / 17</span>
     </div>
   </section>
+
 
   <!-- 3. Solution -->
   <section class="slide">
@@ -243,6 +246,7 @@
       <span>03 / 17</span>
     </div>
   </section>
+
 
   <!-- 4. Live Demo -->
   <section class="slide">
@@ -291,6 +295,7 @@
       <span>04 / 17</span>
     </div>
   </section>
+
 
   <!-- 5. KingZizis Demo (fictional, for laughs) -->
   <section class="slide">
@@ -379,6 +384,7 @@
     </div>
   </section>
 
+
   <!-- 6. Classification -->
   <section class="slide">
     <div class="kicker">Classification</div>
@@ -419,6 +425,7 @@
     </div>
   </section>
 
+
   <!-- 7. Two-layer AI -->
   <section class="slide">
     <div class="kicker">Second AI Layer</div>
@@ -451,134 +458,6 @@
     </div>
   </section>
 
-  <!-- 8. Iterations & Learnings -->
-  <section class="slide">
-    <div class="kicker">Iterations &amp; Learnings</div>
-    <h2>What we threw away until it worked.</h2>
-    <p class="lead" style="margin-bottom: 20px;">Six hard pivots. Each one an admission: "the first idea was wrong."</p>
-
-    <div class="col-2" style="gap: 24px;">
-      <div>
-        <div class="card" style="margin-bottom: 12px;">
-          <div class="meta">Pivot 1 · Classification</div>
-          <p style="font-size: 14px; margin: 0;">
-            <span style="text-decoration: line-through; color: var(--subtle);">Regex + keyword list + 3-tier fallback</span><br/>
-            <span style="color: var(--indigo-bright);">→ gpt-4o-mini with Pydantic Structured Outputs</span>
-          </p>
-          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> regex flagged "that's killing me" as § 241. False-positive rate was unacceptable.</p>
-        </div>
-        <div class="card" style="margin-bottom: 12px;">
-          <div class="meta">Pivot 2 · Model selection</div>
-          <p style="font-size: 14px; margin: 0;">
-            <span style="text-decoration: line-through; color: var(--subtle);">Claude (Anthropic) + OpenAI in parallel</span><br/>
-            <span style="color: var(--indigo-bright);">→ gpt-4o-mini only · one-provider stack</span>
-          </p>
-          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Tested:</strong> gpt-4o-mini vs gpt-4o vs gpt-5 (hyperparam sweep). gpt-5 marginally better on edge cases, but 8× more expensive + slower. gpt-4o-mini = best cost/quality ratio.</p>
-        </div>
-        <div class="card">
-          <div class="meta">Pivot 3 · Prompt engineering</div>
-          <p style="font-size: 14px; margin: 0;">
-            <span style="text-decoration: line-through; color: var(--subtle);">Minimalist prompt (v1)</span><br/>
-            <span style="color: var(--indigo-bright);">→ Few-shot with chain-of-thought (v2)</span>
-          </p>
-          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Eval (35 cases):</strong> 66 % → <strong style="color: #6ee7b7;">86 % accuracy</strong> (+20 pp). Added counter-examples for idioms, obfuscation, victim_context.</p>
-        </div>
-      </div>
-
-      <div>
-        <div class="card" style="margin-bottom: 12px;">
-          <div class="meta">Pivot 4 · UX architecture</div>
-          <p style="font-size: 14px; margin: 0;">
-            <span style="text-decoration: line-through; color: var(--subtle);">Login-first · user account · email verification</span><br/>
-            <span style="color: var(--indigo-bright);">→ Anonymous-first · localStorage · no account</span>
-          </p>
-          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> stalking victims shouldn't have to create an account that can later be used against them. GDPR data minimization. Account = bonus, not requirement.</p>
-        </div>
-        <div class="card" style="margin-bottom: 12px;">
-          <div class="meta">Pivot 5 · Hosting</div>
-          <p style="font-size: 14px; margin: 0;">
-            <span style="text-decoration: line-through; color: var(--subtle);">Railway · Docker · always-on</span><br/>
-            <span style="color: var(--indigo-bright);">→ Vercel Functions · Fluid Compute · FRA</span>
-          </p>
-          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Effect:</strong> $20/mo fixed → $0–$3/mo at expected volume. Cold start &lt; 200 ms via Fluid Compute. One platform = one bill.</p>
-        </div>
-        <div class="card indigo">
-          <div class="meta">Pivot 6 · OCR (decided today)</div>
-          <p style="font-size: 14px; margin: 0;">
-            <span style="text-decoration: line-through; color: var(--subtle);">Tesseract + Vision fallback</span><br/>
-            <span style="color: var(--indigo-bright);">→ Vision-only (gpt-4o-mini)</span>
-          </p>
-          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> Tesseract never ran on Vercel. Vision additionally returns sender_handle + platform_hint. Dev = prod. 200 fewer lines of code.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer-line">
-      <span>SafeVoice · Iterations &amp; Learnings</span>
-      <span>08 / 17</span>
-    </div>
-  </section>
-
-  <!-- 9. DB Schema Pivot -->
-  <section class="slide">
-    <div class="kicker">DB Architecture · Before / After</div>
-    <h2>From a user-centric to a case-centric schema.</h2>
-    <p class="lead" style="margin-bottom: 22px;">The UX pivot "anonymous-first" forced a DB pivot. <code>user_id</code> stopped being required and became optional.</p>
-    <div class="col-2" style="gap: 28px;">
-
-      <div>
-        <h3 style="color: #fca5a5;"><span class="dot red"></span>Before · Login-first (v1)</h3>
-<div class="codeblock" style="margin-top: 10px;"><span class="t">users</span>
-  id <span class="t">PK</span>
-  email <span class="k">UNIQUE</span> <span class="k">NOT NULL</span>
-  password_hash
-  created_at
-
-<span class="t">cases</span>
-  id <span class="t">PK</span>
-  user_id <span class="t">FK</span> → users.id  <span class="c"># required</span>
-  title
-  context
-  ...
-
-<span class="t">evidence</span>
-  id <span class="t">PK</span>
-  case_id <span class="t">FK</span> → cases.id
-  user_id <span class="t">FK</span> → users.id  <span class="c"># redundant</span>
-  ...</div>
-        <p style="font-size: 13px; color: var(--muted); margin-top: 12px;">Problem: victim without an account = no case. Email verification as a barrier for someone in crisis. Duplicate FKs.</p>
-      </div>
-
-      <div>
-        <h3 style="color: #6ee7b7;"><span class="dot green"></span>Today · Anonymous-first (v2)</h3>
-<div class="codeblock" style="margin-top: 10px;"><span class="t">cases</span>
-  id <span class="t">PK</span>
-  user_id <span class="t">FK</span> → users.id <span class="k">NULL</span>  <span class="c"># optional!</span>
-  anonymous_token <span class="t">UNIQUE</span>  <span class="c"># browser-local</span>
-  title, context, severity
-
-<span class="t">evidence</span>
-  id <span class="t">PK</span>
-  case_id <span class="t">FK</span>
-  text, image_bytes
-  sha256_hash, archive_url
-  classification_json  <span class="c"># Pydantic SO</span>
-
-<span class="t">legal_analysis</span>  <span class="c"># 2nd AI layer</span>
-  case_id <span class="t">FK</span>
-  assessment, escalation_risk
-  applicable_laws
-
-<span class="t">users</span>  <span class="c"># only for power features</span>
-  id, email, password_hash</div>
-        <p style="font-size: 13px; color: var(--muted); margin-top: 12px;">Today 10 tables. Cases can exist <strong style="color: var(--ink);">without</strong> a user — purely browser-local. Login = optional upgrade path for NGOs / lawyers.</p>
-      </div>
-    </div>
-    <div class="footer-line">
-      <span>SafeVoice · DB Pivot</span>
-      <span>09 / 17</span>
-    </div>
-  </section>
 
   <!-- 10. Costs -->
   <section class="slide">
@@ -648,46 +527,10 @@
     </div>
     <div class="footer-line">
       <span>SafeVoice · Cost</span>
-      <span>10 / 17</span>
+      <span>08 / 17</span>
     </div>
   </section>
 
-  <!-- 11. Evidence -->
-  <section class="slide">
-    <div class="kicker">Evidence preservation</div>
-    <h2>SHA-256. archive.org. Browser verifier.</h2>
-    <div class="col-2" style="margin-top: 8px;">
-      <div>
-        <p>Each piece of evidence gets a <strong style="color: var(--ink);">SHA-256 hash</strong> over the exact content at capture time — a 64-character fingerprint. Change a single character and the hash changes completely.</p>
-        <p style="margin-top: 14px;">Additionally:</p>
-        <ul>
-          <li>UTC timestamp with timezone (legally required)</li>
-          <li>archive.org backup link (when scraping a URL)</li>
-          <li>Hash chain between pieces of evidence — tampering with one invalidates the chain</li>
-        </ul>
-        <p style="margin-top: 14px;"><span class="pill indigo">NEW</span> &nbsp;<strong style="color: var(--ink);">Browser verifier.</strong> Police or lawyer pastes the original content; the browser computes the hash live via the Web Crypto API — no trust in our server required.</p>
-      </div>
-      <div>
-<div class="codeblock"><span class="c">// In the PDF</span>
-sha256:<span class="n">3a11c1c3813f43e8d7b9dbda0dfbc571bd</span>
-       <span class="n">362bf346c3d4412975d91475571c2a</span>
-
-<span class="c">// In SafeVoice (browser)</span>
-<span class="k">const</span> hash = <span class="k">await</span> sha256Hex(originalText)
-<span class="c">// → same hash → unchanged ✓</span>
-
-<span class="c">// In the terminal (anyone can do it)</span>
-$ shasum -a 256 evidence.txt
-<span class="n">3a11c1c3813f43e8d7b9d...</span>
-
-<span class="c">// Three-way verification. Police-grade.</span></div>
-      </div>
-    </div>
-    <div class="footer-line">
-      <span>SafeVoice · Evidence preservation</span>
-      <span>11 / 17</span>
-    </div>
-  </section>
 
   <!-- 12. PDF + Onlinewache -->
   <section class="slide">
@@ -737,9 +580,10 @@ $ shasum -a 256 evidence.txt
     </div>
     <div class="footer-line">
       <span>SafeVoice · The Deliverable</span>
-      <span>12 / 17</span>
+      <span>09 / 17</span>
     </div>
   </section>
+
 
   <!-- 13. Tech / GDPR -->
   <section class="slide">
@@ -775,9 +619,10 @@ $ shasum -a 256 evidence.txt
     </div>
     <div class="footer-line">
       <span>SafeVoice · Tech &amp; GDPR</span>
-      <span>13 / 17</span>
+      <span>10 / 17</span>
     </div>
   </section>
+
 
   <!-- 14. Why LLM -->
   <section class="slide">
@@ -811,9 +656,10 @@ $ shasum -a 256 evidence.txt
     </div>
     <div class="footer-line">
       <span>SafeVoice · Why LLM</span>
-      <span>14 / 17</span>
+      <span>11 / 17</span>
     </div>
   </section>
+
 
   <!-- 15. Roadmap -->
   <section class="slide">
@@ -865,9 +711,10 @@ $ shasum -a 256 evidence.txt
     <p style="margin-top: 28px; font-size: 15px; color: var(--muted);"><strong style="color: var(--ink);">Looking for a host organization:</strong> SafeVoice needs a host (HateAid or similar) before we recommend it broadly. Legal review of the texts is a must. Foundation grants as the secondary path.</p>
     <div class="footer-line">
       <span>SafeVoice · Roadmap</span>
-      <span>15 / 17</span>
+      <span>12 / 17</span>
     </div>
   </section>
+
 
   <!-- 16. Q&A -->
   <section class="slide">
@@ -907,9 +754,10 @@ $ shasum -a 256 evidence.txt
     <p style="margin-top: 22px; font-size: 13px; color: var(--subtle); font-style: italic;">Also published on <a href="https://safevoice.app/faq">safevoice.app/faq</a> — shareable + linkable per question.</p>
     <div class="footer-line">
       <span>SafeVoice · FAQ</span>
-      <span>16 / 17</span>
+      <span>13 / 17</span>
     </div>
   </section>
+
 
   <!-- 17. Discussion / Get involved -->
   <section class="slide">
@@ -948,10 +796,178 @@ $ shasum -a 256 evidence.txt
     <p style="margin-top: 32px; font-size: 13px; color: var(--subtle); font-style: italic; line-height: 1.6;">SafeVoice is part of an open-source ecosystem for digital democracy — <strong style="color: var(--muted);">FairEint</strong> (what should Germany do differently?) · <strong style="color: var(--muted);">GitLaw</strong> (what does the law say?) · <strong style="color: var(--muted);">Public Money Mirror</strong> (where do my taxes go?) · <strong style="color: var(--muted);">SafeVoice</strong> (who is being attacked online?).</p>
     <div class="footer-line">
       <span>SafeVoice · 2026-05-18 · Thank you for listening</span>
-      <span>17 / 17</span>
+      <span>14 / 17</span>
     </div>
   </section>
 
+
+  <!-- 8. Iterations & Learnings -->
+  <section class="slide">
+    <div class="kicker">Iterations &amp; Learnings</div>
+    <h2>What we threw away until it worked.</h2>
+    <p class="lead" style="margin-bottom: 20px;">Six hard pivots. Each one an admission: "the first idea was wrong."</p>
+
+    <div class="col-2" style="gap: 24px;">
+      <div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">Pivot 1 · Classification</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Regex + keyword list + 3-tier fallback</span><br/>
+            <span style="color: var(--indigo-bright);">→ gpt-4o-mini with Pydantic Structured Outputs</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> regex flagged "that's killing me" as § 241. False-positive rate was unacceptable.</p>
+        </div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">Pivot 2 · Model selection</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Claude (Anthropic) + OpenAI in parallel</span><br/>
+            <span style="color: var(--indigo-bright);">→ gpt-4o-mini only · one-provider stack</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Tested:</strong> gpt-4o-mini vs gpt-4o vs gpt-5 (hyperparam sweep). gpt-5 marginally better on edge cases, but 8× more expensive + slower. gpt-4o-mini = best cost/quality ratio.</p>
+        </div>
+        <div class="card">
+          <div class="meta">Pivot 3 · Prompt engineering</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Minimalist prompt (v1)</span><br/>
+            <span style="color: var(--indigo-bright);">→ Few-shot with chain-of-thought (v2)</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Eval (35 cases):</strong> 66 % → <strong style="color: #6ee7b7;">86 % accuracy</strong> (+20 pp). Added counter-examples for idioms, obfuscation, victim_context.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">Pivot 4 · UX architecture</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Login-first · user account · email verification</span><br/>
+            <span style="color: var(--indigo-bright);">→ Anonymous-first · localStorage · no account</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> stalking victims shouldn't have to create an account that can later be used against them. GDPR data minimization. Account = bonus, not requirement.</p>
+        </div>
+        <div class="card" style="margin-bottom: 12px;">
+          <div class="meta">Pivot 5 · Hosting</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Railway · Docker · always-on</span><br/>
+            <span style="color: var(--indigo-bright);">→ Vercel Functions · Fluid Compute · FRA</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Effect:</strong> $20/mo fixed → $0–$3/mo at expected volume. Cold start &lt; 200 ms via Fluid Compute. One platform = one bill.</p>
+        </div>
+        <div class="card indigo">
+          <div class="meta">Pivot 6 · OCR (decided today)</div>
+          <p style="font-size: 14px; margin: 0;">
+            <span style="text-decoration: line-through; color: var(--subtle);">Tesseract + Vision fallback</span><br/>
+            <span style="color: var(--indigo-bright);">→ Vision-only (gpt-4o-mini)</span>
+          </p>
+          <p style="font-size: 13px; color: var(--muted); margin: 6px 0 0;"><strong style="color: var(--ink);">Why:</strong> Tesseract never ran on Vercel. Vision additionally returns sender_handle + platform_hint. Dev = prod. 200 fewer lines of code.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-line">
+      <span>SafeVoice · Iterations &amp; Learnings</span>
+      <span>15 / 17</span>
+    </div>
+  </section>
+
+
+  <!-- 9. DB Schema Pivot -->
+  <section class="slide">
+    <div class="kicker">DB Architecture · Before / After</div>
+    <h2>From a user-centric to a case-centric schema.</h2>
+    <p class="lead" style="margin-bottom: 22px;">The UX pivot "anonymous-first" forced a DB pivot. <code>user_id</code> stopped being required and became optional.</p>
+    <div class="col-2" style="gap: 28px;">
+
+      <div>
+        <h3 style="color: #fca5a5;"><span class="dot red"></span>Before · Login-first (v1)</h3>
+<div class="codeblock" style="margin-top: 10px;"><span class="t">users</span>
+  id <span class="t">PK</span>
+  email <span class="k">UNIQUE</span> <span class="k">NOT NULL</span>
+  password_hash
+  created_at
+
+<span class="t">cases</span>
+  id <span class="t">PK</span>
+  user_id <span class="t">FK</span> → users.id  <span class="c"># required</span>
+  title
+  context
+  ...
+
+<span class="t">evidence</span>
+  id <span class="t">PK</span>
+  case_id <span class="t">FK</span> → cases.id
+  user_id <span class="t">FK</span> → users.id  <span class="c"># redundant</span>
+  ...</div>
+        <p style="font-size: 13px; color: var(--muted); margin-top: 12px;">Problem: victim without an account = no case. Email verification as a barrier for someone in crisis. Duplicate FKs.</p>
+      </div>
+
+      <div>
+        <h3 style="color: #6ee7b7;"><span class="dot green"></span>Today · Anonymous-first (v2)</h3>
+<div class="codeblock" style="margin-top: 10px;"><span class="t">cases</span>
+  id <span class="t">PK</span>
+  user_id <span class="t">FK</span> → users.id <span class="k">NULL</span>  <span class="c"># optional!</span>
+  anonymous_token <span class="t">UNIQUE</span>  <span class="c"># browser-local</span>
+  title, context, severity
+
+<span class="t">evidence</span>
+  id <span class="t">PK</span>
+  case_id <span class="t">FK</span>
+  text, image_bytes
+  sha256_hash, archive_url
+  classification_json  <span class="c"># Pydantic SO</span>
+
+<span class="t">legal_analysis</span>  <span class="c"># 2nd AI layer</span>
+  case_id <span class="t">FK</span>
+  assessment, escalation_risk
+  applicable_laws
+
+<span class="t">users</span>  <span class="c"># only for power features</span>
+  id, email, password_hash</div>
+        <p style="font-size: 13px; color: var(--muted); margin-top: 12px;">Today 10 tables. Cases can exist <strong style="color: var(--ink);">without</strong> a user — purely browser-local. Login = optional upgrade path for NGOs / lawyers.</p>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · DB Pivot</span>
+      <span>16 / 17</span>
+    </div>
+  </section>
+
+
+  <!-- 11. Evidence -->
+  <section class="slide">
+    <div class="kicker">Evidence preservation</div>
+    <h2>SHA-256. archive.org. Browser verifier.</h2>
+    <div class="col-2" style="margin-top: 8px;">
+      <div>
+        <p>Each piece of evidence gets a <strong style="color: var(--ink);">SHA-256 hash</strong> over the exact content at capture time — a 64-character fingerprint. Change a single character and the hash changes completely.</p>
+        <p style="margin-top: 14px;">Additionally:</p>
+        <ul>
+          <li>UTC timestamp with timezone (legally required)</li>
+          <li>archive.org backup link (when scraping a URL)</li>
+          <li>Hash chain between pieces of evidence — tampering with one invalidates the chain</li>
+        </ul>
+        <p style="margin-top: 14px;"><span class="pill indigo">NEW</span> &nbsp;<strong style="color: var(--ink);">Browser verifier.</strong> Police or lawyer pastes the original content; the browser computes the hash live via the Web Crypto API — no trust in our server required.</p>
+      </div>
+      <div>
+<div class="codeblock"><span class="c">// In the PDF</span>
+sha256:<span class="n">3a11c1c3813f43e8d7b9dbda0dfbc571bd</span>
+       <span class="n">362bf346c3d4412975d91475571c2a</span>
+
+<span class="c">// In SafeVoice (browser)</span>
+<span class="k">const</span> hash = <span class="k">await</span> sha256Hex(originalText)
+<span class="c">// → same hash → unchanged ✓</span>
+
+<span class="c">// In the terminal (anyone can do it)</span>
+$ shasum -a 256 evidence.txt
+<span class="n">3a11c1c3813f43e8d7b9d...</span>
+
+<span class="c">// Three-way verification. Police-grade.</span></div>
+      </div>
+    </div>
+    <div class="footer-line">
+      <span>SafeVoice · Evidence preservation</span>
+      <span>17 / 17</span>
+    </div>
+  </section>
 </div>
 
 <div class="progress" id="progress"></div>
