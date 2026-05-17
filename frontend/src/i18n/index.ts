@@ -24,8 +24,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'home.hero.cases': 'Meine Fälle ansehen',
 
     'home.steps.title': 'In drei Schritten zur Anzeige',
-    'home.steps.1.title': 'Teilen',
-    'home.steps.1.desc': 'Teile den Link (Instagram, X, ...) oder gib den Text direkt ein.',
+    'home.steps.1.title': 'Einfügen',
+    'home.steps.1.desc': 'Screenshot hochladen oder Text einfügen (zuverlässigster Weg). Öffentliche Links (News, Blogs) funktionieren auch.',
     'home.steps.2.title': 'Analysieren',
     'home.steps.2.desc': 'SafeVoice klassifiziert den Inhalt und ordnet ihn rechtlich ein.',
     'home.steps.3.title': 'Melden',
@@ -126,8 +126,8 @@ const translations: Record<Lang, Record<string, string>> = {
     'home.hero.cases': 'View my cases',
 
     'home.steps.title': 'Three steps to a report',
-    'home.steps.1.title': 'Share',
-    'home.steps.1.desc': 'Share the link (Instagram, X, ...) or paste the text directly.',
+    'home.steps.1.title': 'Paste',
+    'home.steps.1.desc': 'Upload a screenshot or paste the text (most reliable path). Public links (news, blogs) also work.',
     'home.steps.2.title': 'Analyze',
     'home.steps.2.desc': 'SafeVoice classifies the content and maps it to applicable laws.',
     'home.steps.3.title': 'Report',

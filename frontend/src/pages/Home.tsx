@@ -65,8 +65,8 @@ export default function Home({ lang }: Props) {
           <ul className="text-amber-100/75 space-y-2 list-disc list-outside ml-5 leading-relaxed">
             <li>
               {isDE
-                ? 'Der Klassifikator arbeitet zuverlässig (47 reale Test-Cases bestanden), aber falsch-positive Ergebnisse sind möglich — bitte vor Versand selbst prüfen.'
-                : 'The classifier is reliable (47 real-world tests passed), but false positives are possible — please review before sending.'}
+                ? 'Der Klassifikator arbeitet zuverlässig (35 reale Test-Cases bestanden), aber falsch-positive Ergebnisse sind möglich — bitte vor Versand selbst prüfen.'
+                : 'The classifier is reliable (35 real-world tests passed), but false positives are possible — please review before sending.'}
             </li>
             <li>
               {isDE

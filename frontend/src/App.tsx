@@ -45,7 +45,6 @@ function NavBar({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
         <div className="flex items-center gap-5">
           {navLink('/analyze', t(lang, 'nav.new'))}
           {navLink('/cases', t(lang, 'nav.cases'))}
-          {navLink('/dashboard', 'Dashboard')}
           {navLink('/login', localStorage.getItem('sv_session') ? t(lang, 'nav.account') : t(lang, 'nav.login'))}
           <button
             onClick={() => setLang(lang === 'de' ? 'en' : 'de')}
