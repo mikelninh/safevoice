@@ -4,6 +4,7 @@
 
 > **🧪 Status: Closed Beta · NGO-Partner-Pilot · Mai 2026**
 > Live deployt, anonym im Browser nutzbar, im Test mit Tutor + Team und ersten NGO-Partnern.
+> Klassifikator gegen **35 reale Test-Cases** validiert. **12 deutsche Paragraphen** (11 StGB + NetzDG) durch das Schema garantiert.
 > **Noch kein Produktivbetrieb für Massenanwendung** — Datenschutzerklärung & Impressum
 > sind Vorab-Versionen, nicht anwaltlich geprüft. Postanschrift gemäß § 5 TMG wird
 > vor Live-Gang ergänzt. Wir suchen Trägerschaft (z. B. HateAid).
@@ -11,7 +12,7 @@
 
 **Document digital harassment. Classify under German law. Generate court-ready Strafanzeige in 30 seconds.**
 
-Anonymous-first (no account needed). Bilingual UI (DE/EN). Classifier on OpenAI `gpt-4o-mini` with Pydantic Structured Outputs. DSGVO-by-design — no personal data leaves your browser unless you explicitly submit it. Turkish + Arabic classifier coverage works today; UI translations on the roadmap.
+Anonymous-first (no account needed). UI in **DE + EN**; the OpenAI `gpt-4o-mini` classifier handles Turkish and Arabic input text out of the box — UI translations for TR/AR are on the roadmap. DSGVO-by-design: no personal data leaves your browser unless you explicitly submit it.
 
 ---
 
@@ -176,9 +177,12 @@ Full interactive OpenAPI docs: `http://localhost:8000/docs` (or `/api/docs` on V
 | § 238 StGB | Nachstellung (Stalking) | 3 years (5 with aggravating factors) |
 | § 241 StGB | Bedrohung (Threat) | 2 years |
 | § 126a StGB | Gefährdende Verbreitung personenbezogener Daten · Strafbare Bedrohung | 3 years |
-| § 263 / § 263a StGB | Betrug · Computerbetrug | 5 years |
+| § 263 StGB | Betrug (Fraud) | 5 years |
+| § 263a StGB | Computerbetrug (Computer fraud) | 5 years |
 | § 269 StGB | Fälschung beweiserheblicher Daten | 5 years |
 | NetzDG § 3 | Platform removal obligation | €50M fine |
+
+> 12 entries total — exhaustive list, enforced server-side via Pydantic enum (model literally cannot return anything else).
 
 ---
 
