@@ -254,6 +254,13 @@ def _police_body(case, items, is_de: bool) -> str:
             + ("…" if len(ev.content_text) > 140 else "")
         )
 
+    # Derive Tatort + applicable laws from the actual evidence — the old
+    # hardcoded "Instagram, Meta Platforms Ireland" mislabels every X /
+    # TikTok / YouTube case and is the kind of detail that destroys
+    # credibility when an Anwält:in reads the PDF.
+    tatort_de, tatort_en = _build_tatort_lines(items)
+    laws_de, laws_en = _build_laws_paragraph(items)
+
     if is_de:
         header = (
             f"Dokumentierte Vorfälle ({len(items)} gesamt"
@@ -269,10 +276,10 @@ Anzeigeerstatterin/Anzeigeerstatter: [NAME DES OPFERS]
 Datum: {datetime.now().strftime("%d.%m.%Y")}
 
 Sachverhalt:
-Ich erstatte Strafanzeige gegen unbekannte bzw. bekannte Täter wegen digitaler Belästigung, Bedrohung und/oder übler Nachrede über die Plattform Instagram.
+Ich erstatte Strafanzeige gegen unbekannte bzw. bekannte Täter wegen digitaler Belästigung, Bedrohung und/oder übler Nachrede über {tatort_de["sachverhalt"]}.
 
 Tatzeit: {case.created_at.strftime("%d.%m.%Y")} bis {case.updated_at.strftime("%d.%m.%Y")}
-Tatort: Instagram (online), Plattform betrieben von Meta Platforms Ireland Limited
+Tatort: {tatort_de["tatort"]}
 
 Kontext:
 {case.victim_context or "Siehe Anlagen."}
@@ -281,7 +288,7 @@ Kontext:
 {listing}
 
 Rechtliche Einordnung:
-Die beschriebenen Handlungen erfüllen möglicherweise die Tatbestände der §§ 185, 186, 241 StGB sowie ggf. § 126a StGB.
+{laws_de}
 
 Alle Beweise wurden digital archiviert und mit Prüfsummen gesichert. Archivierungslinks sowie Bildschirmfotos sind beigefügt.
 
@@ -301,10 +308,10 @@ Complainant: [VICTIM NAME]
 Date: {datetime.now().strftime("%Y-%m-%d")}
 
 Facts:
-I hereby file a criminal complaint against unknown and/or identified perpetrators for digital harassment, threats, and/or defamation via Instagram.
+I hereby file a criminal complaint against unknown and/or identified perpetrators for digital harassment, threats, and/or defamation via {tatort_en["sachverhalt"]}.
 
 Time of offense: {case.created_at.strftime("%Y-%m-%d")} to {case.updated_at.strftime("%Y-%m-%d")}
-Location: Instagram (online), platform operated by Meta Platforms Ireland Limited
+Location: {tatort_en["tatort"]}
 
 Context:
 {case.victim_context or "See attachments."}
@@ -313,13 +320,155 @@ Context:
 {listing}
 
 Legal classification:
-The described conduct may constitute offenses under §§ 185, 186, 241 StGB and potentially § 126a StGB.
+{laws_en}
 
 All evidence has been digitally archived and secured with checksums. Archive links and screenshots are attached.
 
 I request that this complaint be recorded and appropriate investigations initiated.
 
 [SIGNATURE]"""
+
+
+_PLATFORM_OPERATORS: dict[str, str] = {
+    "instagram": "Meta Platforms Ireland Ltd.",
+    "facebook": "Meta Platforms Ireland Ltd.",
+    "threads": "Meta Platforms Ireland Ltd.",
+    "whatsapp": "Meta Platforms Ireland Ltd.",
+    "tiktok": "TikTok Technology Ltd. (Irland)",
+    "x": "X Corp. / Twitter International Unlimited Company",
+    "twitter": "X Corp. / Twitter International Unlimited Company",
+    "youtube": "Google Ireland Ltd.",
+    "reddit": "Reddit Inc.",
+    "telegram": "Telegram FZ-LLC",
+    "discord": "Discord Netherlands B.V.",
+    "linkedin": "LinkedIn Ireland Unlimited Company",
+}
+
+_PLATFORM_DISPLAY: dict[str, str] = {
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "threads": "Threads",
+    "whatsapp": "WhatsApp",
+    "tiktok": "TikTok",
+    "x": "X (vormals Twitter)",
+    "twitter": "X (vormals Twitter)",
+    "youtube": "YouTube",
+    "reddit": "Reddit",
+    "telegram": "Telegram",
+    "discord": "Discord",
+    "linkedin": "LinkedIn",
+}
+
+
+def _build_tatort_lines(items) -> tuple[dict[str, str], dict[str, str]]:
+    """Build the Tatort + Sachverhalt-Plattform-Phrase from the evidence
+    list. Empty platforms collapse to "Onlineplattformen". Multi-platform
+    cases list every operator distinctly so the StA can route NetzDG
+    requests correctly.
+    """
+    platforms_seen: list[str] = []
+    for ev in items:
+        p = (getattr(ev, "platform", "") or "").lower().strip()
+        if p and p != "unknown" and p not in platforms_seen:
+            platforms_seen.append(p)
+
+    if not platforms_seen:
+        return (
+            {
+                "sachverhalt": "Onlineplattformen",
+                "tatort": "Onlineplattformen (Internet); Plattformbetreiber siehe Beweismittel",
+            },
+            {
+                "sachverhalt": "online platforms",
+                "tatort": "online platforms (internet); operators listed in evidence",
+            },
+        )
+
+    display_de = [_PLATFORM_DISPLAY.get(p, p.capitalize()) for p in platforms_seen]
+    operators = []
+    for p in platforms_seen:
+        op = _PLATFORM_OPERATORS.get(p)
+        if op and op not in operators:
+            operators.append(op)
+
+    sachverhalt = (
+        f"die Plattform {display_de[0]}"
+        if len(display_de) == 1
+        else f"die Plattformen {', '.join(display_de[:-1])} und {display_de[-1]}"
+    )
+    operator_clause = (
+        (
+            f", betrieben von {operators[0]}"
+            if len(operators) == 1
+            else f", betrieben von {'; '.join(operators)}"
+        )
+        if operators
+        else ""
+    )
+
+    tatort_de = (
+        f"{display_de[0]} (online){operator_clause}"
+        if len(display_de) == 1
+        else f"{', '.join(display_de)} (online){operator_clause}"
+    )
+    tatort_en = (
+        f"{display_de[0]} (online){operator_clause}"
+        if len(display_de) == 1
+        else f"{', '.join(display_de)} (online){operator_clause}"
+    )
+
+    return (
+        {"sachverhalt": sachverhalt, "tatort": tatort_de},
+        {
+            "sachverhalt": (
+                f"the platform {display_de[0]}"
+                if len(display_de) == 1
+                else f"the platforms {', '.join(display_de[:-1])} and {display_de[-1]}"
+            ),
+            "tatort": tatort_en,
+        },
+    )
+
+
+def _build_laws_paragraph(items) -> tuple[str, str]:
+    """Build the "Rechtliche Einordnung" paragraph from the actual statutes
+    cited in the case's classifications. Avoids the previous hardcoded
+    "§§ 185, 186, 241 StGB sowie ggf. § 126a StGB" which mislabels e.g. a
+    pure death-threat case as a defamation case."""
+    seen: list[str] = []
+    for ev in items:
+        c = getattr(ev, "classification", None)
+        if not c:
+            continue
+        for law in getattr(c, "applicable_laws", []) or []:
+            ref = getattr(law, "paragraph", None) or getattr(law, "section", None)
+            if ref and ref not in seen:
+                seen.append(str(ref))
+
+    if not seen:
+        return (
+            "Die beschriebenen Handlungen können diverse Tatbestände des "
+            "Strafrechts erfüllen. Die einschlägigen Paragraphen sind in "
+            "den einzelnen Beweismittel-Abschnitten aufgeführt.",
+            "The described conduct may fulfil multiple criminal offences. "
+            "The applicable statutes are listed per evidence item.",
+        )
+
+    de = (
+        "Die beschriebenen Handlungen erfüllen möglicherweise die Tatbestände der "
+        + ", ".join(seen[:-1])
+        + (" sowie " if len(seen) > 1 else "")
+        + seen[-1]
+        + "."
+    )
+    en = (
+        "The described conduct may constitute offences under "
+        + ", ".join(seen[:-1])
+        + (" and " if len(seen) > 1 else "")
+        + seen[-1]
+        + "."
+    )
+    return de, en
 
 
 def _recommended_actions(case: Case, lang: str) -> list[str]:

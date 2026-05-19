@@ -18,6 +18,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.platypus import Flowable
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
@@ -172,8 +173,11 @@ def generate_pdf(
     )
     elements.append(Spacer(1, 8 * mm))
 
-    # ── 2. Executive summary — letterhead style ────────────────────────────
-    elements.append(_executive_summary(case, victim_name, is_de, styles, now))
+    # ── 2. One-line meta strip ─────────────────────────────────────────────
+    # Replaces the previous heavy "executive summary" card which duplicated
+    # everything the formal body says again. A Strafanzeige is a letter,
+    # not a dashboard — keep the metadata as a single restrained line.
+    elements.append(_meta_strip(case, is_de, styles, now))
     elements.append(Spacer(1, 10 * mm))
 
     # ── 3. Strafanzeige body (formal complaint) ────────────────────────────
@@ -228,8 +232,8 @@ def generate_pdf(
         )
         elements.append(
             Paragraph(
-                f"<font color='{GREY_600}'>{_tracked(_l('Betreff', 'Subject', is_de))}</font>"
-                f"&nbsp;&nbsp;&nbsp;{_escape(subject)}",
+                f"<font color='{GREY_600}'>{_l('Betreff', 'Subject', is_de)}:</font>"
+                f"&nbsp;&nbsp;{_escape(subject)}",
                 styles["Subject"],
             )
         )
@@ -405,9 +409,13 @@ def generate_pdf(
     return buf.getvalue()
 
 
-# ── Section label (tracked-out caps) ──────────────────────────────────────
+# ── Section label ─────────────────────────────────────────────────────────
 def _section_label(text: str, styles: dict):
-    return Paragraph(_tracked(text), styles["SectionLabel"])
+    """Plain bold label — was previously tracked-out caps. After review:
+    tracked-out caps used 15+ times in a single document is design-tic
+    noise, not a functional signal. Keep them only for the single major
+    page-internal divider (the BEWEISMITTEL header below)."""
+    return Paragraph(text, styles["SectionLabel"])
 
 
 # ── Executive summary — letterhead style ──────────────────────────────────
@@ -528,6 +536,53 @@ def _executive_summary(
     return wrap
 
 
+# ── Meta strip — replaces the heavy executive summary ────────────────────
+def _meta_strip(case: Case, is_de: bool, styles: dict, now) -> Paragraph:
+    """One-line meta strip: severity pill + incident count + case-id + date.
+
+    Replaces the old letterhead-style executive-summary table that took
+    half of page 1 to repeat what the formal body says anyway. The
+    Strafanzeige itself is the document; the meta strip is a quiet
+    contextual line, not a dashboard."""
+    sev_bg, sev_fg, _ = _severity_colors(case.overall_severity)
+    sev_text = _severity_label(case.overall_severity, is_de)
+
+    n = len(case.evidence_items)
+    crit_count = sum(
+        1
+        for ev in case.evidence_items
+        if ev.classification and ev.classification.requires_immediate_action
+    )
+    incidents_label = f"{n} {_l('Vorfall', 'incident', is_de) if n == 1 else _l('Vorfälle', 'incidents', is_de)}"
+    if crit_count:
+        incidents_label += f", {crit_count} {_l('kritisch', 'critical', is_de)}"
+
+    case_id = (case.id or "—")[:8]
+    date_str = _fmt_dt(now, is_de, with_time=False)
+
+    # Inline severity pill as styled span (Paragraph supports <font> + bg via
+    # styled spans only via separate ParagraphStyle, so we render a soft
+    # coloured dot + label instead of a true pill — same visual weight,
+    # simpler markup).
+    sev_dot = (
+        f"<font color='{_hex(sev_fg)}'>●</font> "
+        f"<font color='{_hex(sev_fg)}'><b>{_escape(sev_text)}</b></font>"
+    )
+
+    line = (
+        f"{sev_dot}"
+        f"  <font color='{GREY_400}'>·</font>  "
+        f"<font color='{INK}'>{incidents_label}</font>"
+        f"  <font color='{GREY_400}'>·</font>  "
+        f"<font color='{GREY_500}'>{_l('Fall', 'Case', is_de)}</font> "
+        f"<font name='Courier' color='{INK}'>{case_id}</font>"
+        f"  <font color='{GREY_400}'>·</font>  "
+        f"<font color='{GREY_500}'>{date_str}</font>"
+    )
+
+    return Paragraph(line, styles["MetaStrip"])
+
+
 # ── Evidence card — exhibit page ──────────────────────────────────────────
 def _evidence_card(ev: EvidenceItem, idx: int, is_de: bool, styles: dict):
     """Thin top rule, large numeral on the left, content flowing beneath.
@@ -620,11 +675,11 @@ def _evidence_card(ev: EvidenceItem, idx: int, is_de: bool, styles: dict):
         cats = ", ".join(cat.value for cat in c.categories)
         body_inner.append(
             Paragraph(
-                f"<font color='{GREY_500}'>{_tracked(_l('Kategorien', 'Categories', is_de))}</font>"
-                f"&nbsp;&nbsp;{_escape(cats)}"
+                f"<font color='{GREY_500}'>{_l('Kategorien', 'Categories', is_de)}:</font>"
+                f"&nbsp;{_escape(cats)}"
                 f"&nbsp;&nbsp;<font color='{GREY_400}'>·</font>&nbsp;&nbsp;"
-                f"<font color='{GREY_500}'>{_tracked(_l('Konfidenz', 'Confidence', is_de))}</font>"
-                f"&nbsp;&nbsp;{c.confidence:.0%}",
+                f"<font color='{GREY_500}'>{_l('Konfidenz', 'Confidence', is_de)}:</font>"
+                f"&nbsp;{c.confidence:.0%}",
                 styles["MetaLine"],
             )
         )
@@ -638,9 +693,7 @@ def _evidence_card(ev: EvidenceItem, idx: int, is_de: bool, styles: dict):
             body_inner.append(Spacer(1, 3 * mm))
             body_inner.append(
                 Paragraph(
-                    _tracked(
-                        _l("Anwendbare Paragraphen", "Applicable statutes", is_de)
-                    ),
+                    _l("Anwendbare Paragraphen", "Applicable statutes", is_de),
                     styles["FieldLabel"],
                 )
             )
@@ -720,12 +773,10 @@ def _ai_assessment_block(analysis: dict, is_de: bool, styles: dict) -> list:
 
     elems.append(
         Paragraph(
-            _tracked(
-                _l(
-                    "KI-gestützte Bewertung · nicht bindend",
-                    "AI-assisted assessment · non-binding",
-                    is_de,
-                )
+            _l(
+                "Maschinelle Einordnung · nicht bindend",
+                "Machine-generated assessment · non-binding",
+                is_de,
             ),
             styles["SectionLabel"],
         )
@@ -760,8 +811,8 @@ def _ai_assessment_block(analysis: dict, is_de: bool, styles: dict) -> list:
         elems.append(
             Paragraph(
                 f"<font color='{GREY_500}'>"
-                f"{_tracked(_l('Eskalationsrisiko', 'Escalation risk', is_de))}"
-                f"</font>&nbsp;&nbsp;"
+                f"{_l('Eskalationsrisiko', 'Escalation risk', is_de)}:"
+                f"</font>&nbsp;"
                 f"<font color='{_hex(risk_fg)}'><b>{risk_value}</b></font>"
                 + (f" — {_escape(risk_reason)}" if risk_reason else ""),
                 styles["Body"],
@@ -773,7 +824,7 @@ def _ai_assessment_block(analysis: dict, is_de: bool, styles: dict) -> list:
     if charges:
         elems.append(
             Paragraph(
-                _tracked(_l("Stärkste Vorwürfe", "Strongest charges", is_de)),
+                _l("Stärkste Vorwürfe", "Strongest charges", is_de),
                 styles["FieldLabel"],
             )
         )
@@ -799,9 +850,7 @@ def _ai_assessment_block(analysis: dict, is_de: bool, styles: dict) -> list:
     if actions:
         elems.append(
             Paragraph(
-                _tracked(
-                    _l("Empfohlene nächste Schritte", "Recommended next steps", is_de)
-                ),
+                _l("Empfohlene nächste Schritte", "Recommended next steps", is_de),
                 styles["FieldLabel"],
             )
         )
@@ -839,21 +888,15 @@ def _draw_footer(canvas, doc_, ctx):
     page_w, page_h = doc_.pagesize
     total = getattr(doc_, "page", page_num)  # ReportLab tracks current
 
+    # Quieter footer. Previous version stacked SafeVoice + safevoice.app +
+    # Erstellt-Datum + Fall — four data points with three separators on a
+    # legal document the recipient doesn't care which tool made it. Keep
+    # only what helps: case-id (so the StA can refer back) + page number.
     if ctx["is_de"]:
-        left = (
-            f"SafeVoice  ·  safevoice.app  ·  Erstellt {ctx['generated']}"
-            f"  ·  Fall {ctx['case_short']}"
-        )
-        right = (
-            f"{page_num} / {page_num}"  # ReportLab two-pass would be needed for total
-        )
-        right = f"{page_num}"
+        left = f"Fall {ctx['case_short']}"
     else:
-        left = (
-            f"SafeVoice  ·  safevoice.app  ·  Generated {ctx['generated']}"
-            f"  ·  Case {ctx['case_short']}"
-        )
-        right = f"{page_num}"
+        left = f"Case {ctx['case_short']}"
+    right = f"{page_num}"
 
     # thin rule above footer
     canvas.setStrokeColor(colors.HexColor(RULE_SOFT))
@@ -949,6 +992,24 @@ def _get_styles() -> dict:
         fontSize=9,
         leading=12,
         textColor=colors.HexColor(GREY_600),
+    )
+    s["MetaStrip"] = ParagraphStyle(
+        "SVMetaStrip",
+        parent=base["Normal"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor(INK),
+        alignment=0,
+    )
+    s["FormHint"] = ParagraphStyle(
+        "SVFormHint",
+        parent=base["Normal"],
+        fontName="Helvetica-Oblique",
+        fontSize=8,
+        leading=11,
+        textColor=colors.HexColor(GREY_500),
+        alignment=2,
     )
     s["Body"] = ParagraphStyle(
         "SVBody",
