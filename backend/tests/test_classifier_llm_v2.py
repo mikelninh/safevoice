@@ -13,8 +13,14 @@ from unittest.mock import patch, MagicMock
 
 from app.models.evidence import Severity, Category
 from app.services.classifier_llm_v2 import (
-    LLMClassification, LLMSeverity, LLMCategory, LLMLaw,
-    _to_domain, classify_with_llm, is_available, build_user_message,
+    LLMClassification,
+    LLMSeverity,
+    LLMCategory,
+    LLMLaw,
+    _to_domain,
+    classify_with_llm,
+    is_available,
+    build_user_message,
 )
 from app.data.mock_data import NETZ_DG, LAW_241
 
@@ -44,9 +50,11 @@ class TestLLMClassificationSchema:
                 categories=[],
                 confidence=0.5,
                 requires_immediate_action=False,
-                summary="x", summary_de="x",
+                summary="x",
+                summary_de="x",
                 applicable_laws=[],
-                potential_consequences="x", potential_consequences_de="x",
+                potential_consequences="x",
+                potential_consequences_de="x",
             )
 
     def test_confidence_out_of_range_rejected(self):
@@ -56,23 +64,29 @@ class TestLLMClassificationSchema:
                 categories=[LLMCategory.harassment],
                 confidence=1.5,  # > 1.0
                 requires_immediate_action=False,
-                summary="x", summary_de="x",
+                summary="x",
+                summary_de="x",
                 applicable_laws=[LLMLaw.netzdg_3],
-                potential_consequences="x", potential_consequences_de="x",
+                potential_consequences="x",
+                potential_consequences_de="x",
             )
 
     def test_unknown_category_rejected(self):
         """Strings outside the enum are rejected at construction."""
         with pytest.raises(Exception):
-            LLMClassification.model_validate({
-                "severity": "low",
-                "categories": ["made_up_category"],
-                "confidence": 0.5,
-                "requires_immediate_action": False,
-                "summary": "x", "summary_de": "x",
-                "applicable_laws": ["NetzDG § 3"],
-                "potential_consequences": "x", "potential_consequences_de": "x",
-            })
+            LLMClassification.model_validate(
+                {
+                    "severity": "low",
+                    "categories": ["made_up_category"],
+                    "confidence": 0.5,
+                    "requires_immediate_action": False,
+                    "summary": "x",
+                    "summary_de": "x",
+                    "applicable_laws": ["NetzDG § 3"],
+                    "potential_consequences": "x",
+                    "potential_consequences_de": "x",
+                }
+            )
 
 
 class TestDomainMapping:
@@ -84,9 +98,11 @@ class TestDomainMapping:
             categories=[LLMCategory.harassment],
             confidence=0.8,
             requires_immediate_action=False,
-            summary="Classification", summary_de="Klassifikation",
+            summary="Classification",
+            summary_de="Klassifikation",
             applicable_laws=[LLMLaw.stgb_241],
-            potential_consequences="...", potential_consequences_de="...",
+            potential_consequences="...",
+            potential_consequences_de="...",
         )
         base.update(overrides)
         return LLMClassification(**base)
@@ -96,9 +112,11 @@ class TestDomainMapping:
         assert result.severity == Severity.HIGH
 
     def test_categories_map(self):
-        result = _to_domain(self._minimal(
-            categories=[LLMCategory.death_threat, LLMCategory.harassment],
-        ))
+        result = _to_domain(
+            self._minimal(
+                categories=[LLMCategory.death_threat, LLMCategory.harassment],
+            )
+        )
         assert Category.DEATH_THREAT in result.categories
         assert Category.HARASSMENT in result.categories
 
@@ -109,9 +127,11 @@ class TestDomainMapping:
         assert LAW_241 in result.applicable_laws
 
     def test_netzdg_not_duplicated_when_already_present(self):
-        result = _to_domain(self._minimal(
-            applicable_laws=[LLMLaw.stgb_241, LLMLaw.netzdg_3],
-        ))
+        result = _to_domain(
+            self._minimal(
+                applicable_laws=[LLMLaw.stgb_241, LLMLaw.netzdg_3],
+            )
+        )
         netzdg_count = sum(1 for l in result.applicable_laws if l == NETZ_DG)
         assert netzdg_count == 1
 
@@ -134,7 +154,7 @@ class TestClassifyWithLLM:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         assert is_available() is True
 
-    @patch("app.services.classifier_llm_v2.OpenAI")
+    @patch("app.services.llm_gateway.OpenAI")
     def test_refusal_returns_none(self, mock_openai_cls, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         mock_client = MagicMock()
@@ -148,7 +168,7 @@ class TestClassifyWithLLM:
 
         assert classify_with_llm("some text") is None
 
-    @patch("app.services.classifier_llm_v2.OpenAI")
+    @patch("app.services.llm_gateway.OpenAI")
     def test_successful_classification(self, mock_openai_cls, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
         mock_client = MagicMock()
@@ -159,9 +179,11 @@ class TestClassifyWithLLM:
             categories=[LLMCategory.threat],
             confidence=0.9,
             requires_immediate_action=True,
-            summary="Threat", summary_de="Bedrohung",
+            summary="Threat",
+            summary_de="Bedrohung",
             applicable_laws=[LLMLaw.stgb_241],
-            potential_consequences="x", potential_consequences_de="x",
+            potential_consequences="x",
+            potential_consequences_de="x",
         )
         completion = MagicMock()
         completion.choices = [MagicMock()]
@@ -175,7 +197,7 @@ class TestClassifyWithLLM:
         assert Category.THREAT in result.categories
         assert NETZ_DG in result.applicable_laws
 
-    @patch("app.services.classifier_llm_v2.OpenAI")
+    @patch("app.services.llm_gateway.OpenAI")
     def test_api_exception_returns_none(self, mock_openai_cls, monkeypatch):
         """Broad exception handling: a failed API call falls through to tier 2/3."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")

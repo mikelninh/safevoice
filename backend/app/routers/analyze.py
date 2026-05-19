@@ -9,7 +9,13 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.services.classifier import classify, ClassifierUnavailableError
+from app.services.classifier import (
+    classify,
+    classify_with_meta,
+    ClassifierUnavailableError,
+)
+from app.services.classifier_llm_v2 import PROMPT_VERSION as _CLASSIFIER_PROMPT_VERSION
+from app.schemas import LLMMetadata
 from app.services.pattern_detector import detect_patterns, compute_overall_severity
 from app.services.evidence import hash_content, capture_timestamp, archive_url_sync
 from app.services.scraper import scrape_url_sync, detect_platform
@@ -37,15 +43,44 @@ class AnalyzeCaseResponse(BaseModel):
     evidence_count: int
 
 
-@router.post("/text", response_model=ClassificationResult)
+class AnalyzeTextResponse(ClassificationResult):
+    """Classification result + per-request LLM telemetry.
+
+    Backward compatible: all `ClassificationResult` fields stay at the top
+    level (severity, categories, applicable_laws, …) — existing clients keep
+    working. New clients can read `metadata` for tokens / cost / model.
+    """
+
+    metadata: LLMMetadata
+
+
+def _meta_from_chat_result(chat_result, *, llm_calls: int = 1) -> LLMMetadata:
+    """Build the client-facing LLMMetadata schema from a gateway ChatResult."""
+    return LLMMetadata(
+        model=chat_result.model,
+        prompt_tokens=chat_result.usage.prompt_tokens,
+        completion_tokens=chat_result.usage.completion_tokens,
+        total_tokens=chat_result.usage.total_tokens,
+        estimated_cost_usd=round(chat_result.estimated_cost_usd, 8),
+        request_id=chat_result.request_id,
+        prompt_version=_CLASSIFIER_PROMPT_VERSION,
+        llm_calls=llm_calls,
+    )
+
+
+@router.post("/text", response_model=AnalyzeTextResponse)
 def analyze_text(req: AnalyzeTextRequest):
     """Quick classification — no persistence, no case needed.
 
     Dynamic-prompt context (victim_context, jurisdiction, user_lang) is
     optional; absent it the prompt falls back to the legacy default.
+
+    The response carries all classification fields at the top level **plus**
+    a `metadata` object with model, token counts, USD cost, request_id and
+    the prompt revision used. Clients that ignore `metadata` keep working.
     """
     try:
-        return classify(
+        classification, chat_result = classify_with_meta(
             req.text,
             victim_context=req.victim_context,
             jurisdiction=req.jurisdiction,
@@ -53,6 +88,11 @@ def analyze_text(req: AnalyzeTextRequest):
         )
     except ClassifierUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+    return AnalyzeTextResponse(
+        **classification.model_dump(),
+        metadata=_meta_from_chat_result(chat_result),
+    )
 
 
 @router.post("/ingest")
@@ -67,14 +107,17 @@ def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Text content is required")
 
     try:
-        classification = classify(
+        classification, chat_result = classify_with_meta(
             text,
             victim_context=req.victim_context,
             jurisdiction=req.jurisdiction,
             user_lang=req.user_lang,
+            db=db,
+            case_id=req.case_id,
         )
     except ClassifierUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e))
+    metadata = _meta_from_chat_result(chat_result)
     content_hash = hash_content(text)
     captured_at = capture_timestamp()
 
@@ -108,6 +151,7 @@ def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
             "content_hash": content_hash,
             "persisted": True,
             "message": "Evidence classified and saved to case.",
+            "metadata": metadata,
         }
 
     # Ephemeral result (no case_id)
@@ -127,6 +171,7 @@ def ingest_content(req: IngestRequest, db: Session = Depends(get_db)):
         "classification": classification,
         "persisted": False,
         "message": "Evidence classified (not saved — provide case_id to persist).",
+        "metadata": metadata,
     }
 
 
@@ -156,7 +201,7 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
 
     # Classify the main post
     try:
-        classification = classify(
+        classification, main_chat = classify_with_meta(
             scraped.content_text,
             victim_context=req.victim_context,
             jurisdiction=req.jurisdiction,
@@ -164,6 +209,12 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
         )
     except ClassifierUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e))
+    # Aggregate token / cost across main post + every comment classification.
+    agg_prompt_tokens = main_chat.usage.prompt_tokens
+    agg_completion_tokens = main_chat.usage.completion_tokens
+    agg_total_tokens = main_chat.usage.total_tokens
+    agg_cost = main_chat.estimated_cost_usd
+    agg_calls = 1
     content_hash = hash_content(scraped.content_text)
     captured_at = capture_timestamp()
     archived_url = archive_url_sync(url)
@@ -194,12 +245,17 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
         for comment in scraped.comments[:20]:
             if not comment.get("text"):
                 continue
-            c_result = classify(
+            c_result, c_chat = classify_with_meta(
                 comment["text"],
                 victim_context=req.victim_context,
                 jurisdiction=req.jurisdiction,
                 user_lang=req.user_lang,
             )
+            agg_prompt_tokens += c_chat.usage.prompt_tokens
+            agg_completion_tokens += c_chat.usage.completion_tokens
+            agg_total_tokens += c_chat.usage.total_tokens
+            agg_cost += c_chat.estimated_cost_usd
+            agg_calls += 1
             prev = get_last_hash(db, req.case_id)
             c_evidence = add_evidence_with_classification(
                 db=db,
@@ -223,6 +279,16 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
             "platform": platform,
             "persisted": True,
             "message": f"Content from {platform} classified and saved ({1 + len(comment_ids)} items).",
+            "metadata": LLMMetadata(
+                model=main_chat.model,
+                prompt_tokens=agg_prompt_tokens,
+                completion_tokens=agg_completion_tokens,
+                total_tokens=agg_total_tokens,
+                estimated_cost_usd=round(agg_cost, 8),
+                request_id=main_chat.request_id,
+                prompt_version=_CLASSIFIER_PROMPT_VERSION,
+                llm_calls=agg_calls,
+            ),
         }
 
     # Ephemeral result
@@ -243,12 +309,17 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
     for comment in scraped.comments[:20]:
         if not comment.get("text"):
             continue
-        c_classification = classify(
+        c_classification, c_chat = classify_with_meta(
             comment["text"],
             victim_context=req.victim_context,
             jurisdiction=req.jurisdiction,
             user_lang=req.user_lang,
         )
+        agg_prompt_tokens += c_chat.usage.prompt_tokens
+        agg_completion_tokens += c_chat.usage.completion_tokens
+        agg_total_tokens += c_chat.usage.total_tokens
+        agg_cost += c_chat.estimated_cost_usd
+        agg_calls += 1
         comment_evidence.append(
             EvidenceItem(
                 id=str(uuid.uuid4()),
@@ -269,6 +340,16 @@ def analyze_url(req: AnalyzeUrlRequest, db: Session = Depends(get_db)):
         "platform": platform,
         "persisted": False,
         "message": f"Content from {platform} classified (not saved — provide case_id to persist).",
+        "metadata": LLMMetadata(
+            model=main_chat.model,
+            prompt_tokens=agg_prompt_tokens,
+            completion_tokens=agg_completion_tokens,
+            total_tokens=agg_total_tokens,
+            estimated_cost_usd=round(agg_cost, 8),
+            request_id=main_chat.request_id,
+            prompt_version=_CLASSIFIER_PROMPT_VERSION,
+            llm_calls=agg_calls,
+        ),
     }
 
 

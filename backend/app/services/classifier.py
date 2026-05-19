@@ -17,7 +17,11 @@ from __future__ import annotations
 import logging
 
 from app.models.evidence import ClassificationResult
-from app.services.classifier_llm_v2 import classify_with_llm, is_available as llm_available
+from app.services.classifier_llm_v2 import (
+    classify_with_llm,
+    classify_with_llm_meta,
+    is_available as llm_available,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +41,9 @@ def classify(
     victim_context: str | None = None,
     jurisdiction: str = "DE",
     user_lang: str = "de",
+    db=None,
+    case_id: str | None = None,
+    user_id: str | None = None,
 ) -> ClassificationResult:
     """
     Classify text using the LLM classifier.
@@ -68,6 +75,9 @@ def classify(
         victim_context=victim_context,
         jurisdiction=jurisdiction,
         user_lang=user_lang,
+        db=db,
+        case_id=case_id,
+        user_id=user_id,
     )
     if result is None:
         raise ClassifierUnavailableError(
@@ -76,6 +86,48 @@ def classify(
 
     logger.info("Classified with LLM (tier 1)")
     return result
+
+
+def classify_with_meta(
+    text: str,
+    *,
+    victim_context: str | None = None,
+    jurisdiction: str = "DE",
+    user_lang: str = "de",
+    db=None,
+    case_id: str | None = None,
+    user_id: str | None = None,
+):
+    """Like `classify()` but additionally returns the LLM `ChatResult`.
+
+    Returns `(ClassificationResult, ChatResult)`. Raises
+    `ClassifierUnavailableError` for the same reasons as `classify()`.
+
+    API routes use this to surface model / token / cost metadata to clients.
+    Persistence-side code (cases, upload, partners, bulk_import) keeps using
+    the simpler `classify()`.
+    """
+    if not llm_available():
+        raise ClassifierUnavailableError(
+            "LLM classifier unavailable — OPENAI_API_KEY not configured."
+        )
+
+    pair = classify_with_llm_meta(
+        text,
+        victim_context=victim_context,
+        jurisdiction=jurisdiction,
+        user_lang=user_lang,
+        db=db,
+        case_id=case_id,
+        user_id=user_id,
+    )
+    if pair is None:
+        raise ClassifierUnavailableError(
+            "LLM classification failed. Please try again in a moment."
+        )
+
+    logger.info("Classified with LLM (tier 1, with metadata)")
+    return pair
 
 
 def is_configured() -> bool:

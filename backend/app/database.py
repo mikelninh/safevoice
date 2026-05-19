@@ -6,7 +6,19 @@ Supports both PostgreSQL (production) and SQLite (development/testing).
 """
 
 import os
-from sqlalchemy import create_engine, Column, String, Text, DateTime, Float, Integer, Boolean, ForeignKey, Table, Enum as SAEnum
+from sqlalchemy import (
+    create_engine,
+    Column,
+    String,
+    Text,
+    DateTime,
+    Float,
+    Integer,
+    Boolean,
+    ForeignKey,
+    Table,
+    Enum as SAEnum,
+)
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from datetime import datetime
@@ -46,6 +58,7 @@ def gen_uuid():
 
 # ── Enums ──
 
+
 class SeverityLevel(str, enum.Enum):
     none = "none"
     low = "low"
@@ -63,19 +76,26 @@ class EvidenceSource(str, enum.Enum):
 # ── Junction Tables ──
 
 classification_categories = Table(
-    "classification_categories", Base.metadata,
-    Column("classification_id", String, ForeignKey("classifications.id"), primary_key=True),
+    "classification_categories",
+    Base.metadata,
+    Column(
+        "classification_id", String, ForeignKey("classifications.id"), primary_key=True
+    ),
     Column("category_id", String, ForeignKey("categories.id"), primary_key=True),
 )
 
 classification_laws = Table(
-    "classification_laws", Base.metadata,
-    Column("classification_id", String, ForeignKey("classifications.id"), primary_key=True),
+    "classification_laws",
+    Base.metadata,
+    Column(
+        "classification_id", String, ForeignKey("classifications.id"), primary_key=True
+    ),
     Column("law_id", String, ForeignKey("laws.id"), primary_key=True),
 )
 
 
 # ── Models ──
+
 
 class User(Base):
     __tablename__ = "users"
@@ -101,6 +121,7 @@ class User(Base):
 
 class MagicLinkToken(Base):
     """Magic-link auth token — single-use, short-lived. Persisted to survive restarts."""
+
     __tablename__ = "magic_link_tokens"
 
     id = Column(String, primary_key=True, default=gen_uuid)
@@ -114,6 +135,7 @@ class MagicLinkToken(Base):
 
 class SessionToken(Base):
     """Session token — long-lived (30 days), persisted so Railway cold-starts don't log users out."""
+
     __tablename__ = "session_tokens"
 
     id = Column(String, primary_key=True, default=gen_uuid)
@@ -126,10 +148,13 @@ class SessionToken(Base):
 
 class Org(Base):
     """An organization (NGO, victim support service, etc.) that uses SafeVoice."""
+
     __tablename__ = "orgs"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    slug = Column(String, unique=True, nullable=False)  # URL-safe: "hateaid", "weisser-ring"
+    slug = Column(
+        String, unique=True, nullable=False
+    )  # URL-safe: "hateaid", "weisser-ring"
     display_name = Column(String, nullable=False)
     contact_email = Column(String)
     # Org-level settings (PDF letterhead URL, default language, branding color, etc.)
@@ -140,12 +165,15 @@ class Org(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
-    members = relationship("OrgMember", back_populates="org", cascade="all, delete-orphan")
+    members = relationship(
+        "OrgMember", back_populates="org", cascade="all, delete-orphan"
+    )
     cases = relationship("Case", back_populates="org")
 
 
 class OrgMember(Base):
     """Many-to-many: users belong to orgs with a role."""
+
     __tablename__ = "org_members"
 
     user_id = Column(String, ForeignKey("users.id"), primary_key=True)
@@ -156,7 +184,9 @@ class OrgMember(Base):
     invited_by = Column(String, ForeignKey("users.id"), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="org_memberships", foreign_keys=[user_id])
+    user = relationship(
+        "User", back_populates="org_memberships", foreign_keys=[user_id]
+    )
     org = relationship("Org", back_populates="members")
 
 
@@ -165,9 +195,15 @@ class Case(Base):
 
     id = Column(String, primary_key=True, default=gen_uuid)
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
-    org_id = Column(String, ForeignKey("orgs.id"), nullable=True)  # Multi-tenant: optional org ownership
-    assigned_to = Column(String, ForeignKey("users.id"), nullable=True)  # Which caseworker owns this
-    visibility = Column(String, default="private")  # private (creator only) / org (all org members)
+    org_id = Column(
+        String, ForeignKey("orgs.id"), nullable=True
+    )  # Multi-tenant: optional org ownership
+    assigned_to = Column(
+        String, ForeignKey("users.id"), nullable=True
+    )  # Which caseworker owns this
+    visibility = Column(
+        String, default="private"
+    )  # private (creator only) / org (all org members)
 
     title = Column(String)  # AI_POPULATED initially, user-editable
     summary = Column(Text)  # AI_POPULATED
@@ -182,7 +218,11 @@ class Case(Base):
     assignee = relationship("User", foreign_keys=[assigned_to])
     org = relationship("Org", back_populates="cases")
     evidence_items = relationship("EvidenceItem", back_populates="case")
-    case_analyses = relationship("CaseAnalysisRow", back_populates="case", order_by="CaseAnalysisRow.generated_at.desc()")
+    case_analyses = relationship(
+        "CaseAnalysisRow",
+        back_populates="case",
+        order_by="CaseAnalysisRow.generated_at.desc()",
+    )
 
 
 class EvidenceItem(Base):
@@ -203,18 +243,24 @@ class EvidenceItem(Base):
 
     # Relationships
     case = relationship("Case", back_populates="evidence_items")
-    classification = relationship("Classification", back_populates="evidence_item", uselist=False)
+    classification = relationship(
+        "Classification", back_populates="evidence_item", uselist=False
+    )
 
 
 class Classification(Base):
     __tablename__ = "classifications"
 
     id = Column(String, primary_key=True, default=gen_uuid)
-    evidence_item_id = Column(String, ForeignKey("evidence_items.id"), nullable=False, unique=True)
+    evidence_item_id = Column(
+        String, ForeignKey("evidence_items.id"), nullable=False, unique=True
+    )
     severity = Column(String, default="none")  # AI_POPULATED
     confidence = Column(Float, default=0.0)  # AI_POPULATED: 0.0-1.0
     classifier_tier = Column(Integer)  # system_generated: 1=LLM, 2=transformer, 3=regex
-    prompt_version = Column(String, default="v1")  # system_generated — the system-prompt version that produced this classification. Bumped when the prompt materially changes; lets us re-run history and detect drift.
+    prompt_version = Column(
+        String, default="v1"
+    )  # system_generated — the system-prompt version that produced this classification. Bumped when the prompt materially changes; lets us re-run history and detect drift.
     summary = Column(Text)  # AI_POPULATED
     summary_de = Column(Text)  # AI_POPULATED
     potential_consequences = Column(Text)  # AI_POPULATED
@@ -258,6 +304,7 @@ class CaseAnalysisRow(Base):
     analyses preserve history rather than mutate it. The case row caches the
     latest summary fields for fast read; this table holds the full audit trail.
     """
+
     __tablename__ = "case_analyses"
 
     id = Column(String, primary_key=True, default=gen_uuid)
@@ -266,24 +313,55 @@ class CaseAnalysisRow(Base):
     # AI_POPULATED — the structured output of analyze_case_legally
     legal_assessment_de = Column(Text, nullable=False)
     legal_assessment_en = Column(Text, nullable=False)
-    strongest_charges_json = Column(Text, nullable=False)        # JSON array of Charge dicts
-    recommended_actions_json = Column(Text, nullable=False)      # JSON array of Action dicts
-    risk_assessment_json = Column(Text, nullable=False)          # JSON object: {escalation_risk, reason_de, reason_en}
-    evidence_gaps_json = Column(Text, nullable=False)            # JSON array of EvidenceGap dicts
+    strongest_charges_json = Column(Text, nullable=False)  # JSON array of Charge dicts
+    recommended_actions_json = Column(
+        Text, nullable=False
+    )  # JSON array of Action dicts
+    risk_assessment_json = Column(
+        Text, nullable=False
+    )  # JSON object: {escalation_risk, reason_de, reason_en}
+    evidence_gaps_json = Column(Text, nullable=False)  # JSON array of EvidenceGap dicts
     cross_references = Column(Text, nullable=False)
     disclaimer_de = Column(Text, nullable=False)
     disclaimer_en = Column(Text, nullable=False)
 
     # system_generated — audit trail
     generated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    model_used = Column(String, nullable=False)                  # e.g. "gpt-4o-mini"
-    prompt_version = Column(String, nullable=False)              # e.g. "v1"
-    cited_law_sources_json = Column(Text, default="[]")          # AI_POPULATED — provenance of authoritative statute texts injected into the prompt; each entry has paragraph, source_path, last_updated, text_sha256
+    model_used = Column(String, nullable=False)  # e.g. "gpt-4o-mini"
+    prompt_version = Column(String, nullable=False)  # e.g. "v1"
+    cited_law_sources_json = Column(
+        Text, default="[]"
+    )  # AI_POPULATED — provenance of authoritative statute texts injected into the prompt; each entry has paragraph, source_path, last_updated, text_sha256
 
     case = relationship("Case", back_populates="case_analyses")
 
 
+class LLMUsage(Base):
+    """One row per LLM call routed through `services.llm_gateway`.
+
+    Mirrors the equivalent table in GitLaw so a cross-project cost dashboard
+    can union both without column renaming. Nullable case_id/user_id because
+    not every call site has a request-scoped case or authenticated user
+    (e.g. ad-hoc classification before a case exists).
+    """
+
+    __tablename__ = "llm_usage"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    ts = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    case_id = Column(String, ForeignKey("cases.id"), nullable=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    route = Column(String, nullable=False, index=True)
+    model = Column(String, nullable=False, index=True)
+    prompt_tokens = Column(Integer, nullable=False, default=0)
+    completion_tokens = Column(Integer, nullable=False, default=0)
+    total_tokens = Column(Integer, nullable=False, default=0)
+    estimated_cost_usd = Column(Float, nullable=False, default=0.0)
+    request_id = Column(String, nullable=False, index=True)
+
+
 # ── Create all tables ──
+
 
 def _lightweight_migrations():
     """Additive migrations for environments without a migration runner.
@@ -294,6 +372,7 @@ def _lightweight_migrations():
     data. Safe to run on every boot.
     """
     from sqlalchemy import inspect, text
+
     inspector = inspect(engine)
     if "users" not in inspector.get_table_names():
         return  # create_all will handle it
@@ -301,7 +380,9 @@ def _lightweight_migrations():
     existing_cols = {c["name"] for c in inspector.get_columns("users")}
     statements: list[str] = []
     if "status" not in existing_cols:
-        statements.append("ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'active'")
+        statements.append(
+            "ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'active'"
+        )
     if "last_login" not in existing_cols:
         statements.append("ALTER TABLE users ADD COLUMN last_login TIMESTAMP")
 
@@ -309,13 +390,17 @@ def _lightweight_migrations():
     if "classifications" in inspector.get_table_names():
         cls_cols = {c["name"] for c in inspector.get_columns("classifications")}
         if "prompt_version" not in cls_cols:
-            statements.append("ALTER TABLE classifications ADD COLUMN prompt_version VARCHAR DEFAULT 'v1'")
+            statements.append(
+                "ALTER TABLE classifications ADD COLUMN prompt_version VARCHAR DEFAULT 'v1'"
+            )
 
     # case_analyses.cited_law_sources_json — added 2026-04-26 for GitLaw RAG provenance
     if "case_analyses" in inspector.get_table_names():
         ca_cols = {c["name"] for c in inspector.get_columns("case_analyses")}
         if "cited_law_sources_json" not in ca_cols:
-            statements.append("ALTER TABLE case_analyses ADD COLUMN cited_law_sources_json TEXT DEFAULT '[]'")
+            statements.append(
+                "ALTER TABLE case_analyses ADD COLUMN cited_law_sources_json TEXT DEFAULT '[]'"
+            )
 
     # case_analyses table — added 2026-04-26 for Legal-AI CRUD demo
     if "case_analyses" not in inspector.get_table_names():
@@ -360,7 +445,11 @@ def seed_categories_and_laws():
         ("cyberstalking", "Cyberstalking / Stalking", "Cyberstalking / Nachstellung"),
         ("sexual_harassment", "Sexual Harassment", "Sexuelle Belästigung"),
         ("volksverhetzung", "Incitement to Hatred", "Volksverhetzung"),
-        ("intimate_images", "Non-consensual Intimate Images / Deepfakes", "Nicht einvernehmliche intime Bildaufnahmen / Deepfakes"),
+        (
+            "intimate_images",
+            "Non-consensual Intimate Images / Deepfakes",
+            "Nicht einvernehmliche intime Bildaufnahmen / Deepfakes",
+        ),
         ("body_shaming", "Body Shaming", "Body-Shaming"),
         ("misogyny", "Misogyny", "Misogynie"),
         ("scam", "Scam / Fraud", "Betrug / Scam"),
@@ -377,17 +466,66 @@ def seed_categories_and_laws():
 
     # German laws
     laws = [
-        ("stgb-130", "stgb", "130", "Incitement to Hatred", "Volksverhetzung", "Up to 5 years"),
+        (
+            "stgb-130",
+            "stgb",
+            "130",
+            "Incitement to Hatred",
+            "Volksverhetzung",
+            "Up to 5 years",
+        ),
         ("stgb-185", "stgb", "185", "Insult", "Beleidigung", "Up to 1 year or fine"),
-        ("stgb-186", "stgb", "186", "Defamation", "Üble Nachrede", "Up to 1 year or fine"),
+        (
+            "stgb-186",
+            "stgb",
+            "186",
+            "Defamation",
+            "Üble Nachrede",
+            "Up to 1 year or fine",
+        ),
         ("stgb-187", "stgb", "187", "Slander", "Verleumdung", "Up to 5 years"),
-        ("stgb-201a", "stgb", "201a", "Intimate Image Violation", "Verletzung des höchstpersönlichen Lebensbereichs durch Bildaufnahmen", "Up to 2 years"),
-        ("stgb-238", "stgb", "238", "Stalking", "Nachstellung", "Up to 3 years (up to 5 in serious cases)"),
+        (
+            "stgb-201a",
+            "stgb",
+            "201a",
+            "Intimate Image Violation",
+            "Verletzung des höchstpersönlichen Lebensbereichs durch Bildaufnahmen",
+            "Up to 2 years",
+        ),
+        (
+            "stgb-238",
+            "stgb",
+            "238",
+            "Stalking",
+            "Nachstellung",
+            "Up to 3 years (up to 5 in serious cases)",
+        ),
         ("stgb-241", "stgb", "241", "Threat", "Bedrohung", "Up to 1 year or fine"),
-        ("stgb-126a", "stgb", "126a", "Criminal Threat", "Schwere Drohung", "Up to 3 years"),
+        (
+            "stgb-126a",
+            "stgb",
+            "126a",
+            "Criminal Threat",
+            "Schwere Drohung",
+            "Up to 3 years",
+        ),
         ("stgb-263", "stgb", "263", "Fraud", "Betrug", "Up to 5 years or fine"),
-        ("stgb-269", "stgb", "269", "Data Falsification", "Urkundenfälschung", "Up to 5 years"),
-        ("netzdg-3", "netzdg", "3", "NetzDG Platform Obligations", "NetzDG Plattformpflichten", "Up to 50M fine"),
+        (
+            "stgb-269",
+            "stgb",
+            "269",
+            "Data Falsification",
+            "Urkundenfälschung",
+            "Up to 5 years",
+        ),
+        (
+            "netzdg-3",
+            "netzdg",
+            "3",
+            "NetzDG Platform Obligations",
+            "NetzDG Plattformpflichten",
+            "Up to 50M fine",
+        ),
     ]
 
     for id_name, code, section, name, name_de, penalty in laws:
@@ -399,7 +537,16 @@ def seed_categories_and_laws():
             existing.name_de = name_de
             existing.max_penalty = penalty
         else:
-            db.add(Law(id=id_name, code=code, section=section, name=name, name_de=name_de, max_penalty=penalty))
+            db.add(
+                Law(
+                    id=id_name,
+                    code=code,
+                    section=section,
+                    name=name,
+                    name_de=name_de,
+                    max_penalty=penalty,
+                )
+            )
 
     db.commit()
     db.close()

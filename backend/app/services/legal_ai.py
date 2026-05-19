@@ -23,6 +23,7 @@ from typing import Literal
 
 try:
     from openai import OpenAI
+
     _openai_installed = True
 except ImportError:
     _openai_installed = False
@@ -46,6 +47,7 @@ You are NOT a lawyer. Always include a disclaimer in both languages. Your analys
 
 
 # ── Pydantic schemas — server-side-enforced by OpenAI Structured Outputs ────
+
 
 class Charge(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -80,6 +82,7 @@ class EvidenceGap(BaseModel):
 
 class CaseAnalysis(BaseModel):
     """Full case-level legal assessment — the structured output of analyze_case_legally."""
+
     model_config = ConfigDict(extra="forbid")
 
     legal_assessment_de: str
@@ -95,6 +98,7 @@ class CaseAnalysis(BaseModel):
 
 class SingleEvidenceAnalysis(BaseModel):
     """Lightweight legal lens on a single evidence item."""
+
     model_config = ConfigDict(extra="forbid")
 
     analysis_de: str
@@ -107,6 +111,7 @@ class SingleEvidenceAnalysis(BaseModel):
 
 
 # ── Public API ─────────────────────────────────────────────────────────────
+
 
 def is_available() -> bool:
     """Whether the Legal AI layer can run (SDK installed + key present)."""
@@ -146,7 +151,7 @@ def analyze_and_persist_case(case_id: str, db) -> dict | None:
 
     # Reuse the existing read-only function for retrieve + augment + generate.
     # Then layer the write on top so the read path stays callable in isolation.
-    analysis = analyze_case_legally(pydantic_case)
+    analysis = analyze_case_legally(pydantic_case, db=db)
     if analysis is None:
         return None
 
@@ -159,6 +164,7 @@ def analyze_and_persist_case(case_id: str, db) -> dict | None:
     cited_law_sources = []
     try:
         from app.services.law_text import get_law_text
+
         seen = set()
         for ev in pydantic_case.evidence_items:
             if not ev.classification:
@@ -169,14 +175,16 @@ def analyze_and_persist_case(case_id: str, db) -> dict | None:
                 seen.add(law.paragraph)
                 lt = get_law_text(law.paragraph)
                 if lt is not None:
-                    cited_law_sources.append({
-                        "paragraph": lt.paragraph,
-                        "title": lt.title,
-                        "law_abbr": lt.law_abbr,
-                        "source_path": lt.source_path,
-                        "last_updated": lt.last_updated,
-                        "text_sha256": lt.text_sha256,
-                    })
+                    cited_law_sources.append(
+                        {
+                            "paragraph": lt.paragraph,
+                            "title": lt.title,
+                            "law_abbr": lt.law_abbr,
+                            "source_path": lt.source_path,
+                            "last_updated": lt.last_updated,
+                            "text_sha256": lt.text_sha256,
+                        }
+                    )
     except Exception as _e:  # pragma: no cover — provenance is best-effort
         pass
 
@@ -184,10 +192,16 @@ def analyze_and_persist_case(case_id: str, db) -> dict | None:
         case_id=case_id,
         legal_assessment_de=analysis.get("legal_assessment_de", ""),
         legal_assessment_en=analysis.get("legal_assessment_en", ""),
-        strongest_charges_json=_json.dumps(analysis.get("strongest_charges", []), ensure_ascii=False),
-        recommended_actions_json=_json.dumps(analysis.get("recommended_actions", []), ensure_ascii=False),
+        strongest_charges_json=_json.dumps(
+            analysis.get("strongest_charges", []), ensure_ascii=False
+        ),
+        recommended_actions_json=_json.dumps(
+            analysis.get("recommended_actions", []), ensure_ascii=False
+        ),
         risk_assessment_json=_json.dumps(risk, ensure_ascii=False),
-        evidence_gaps_json=_json.dumps(analysis.get("evidence_gaps", []), ensure_ascii=False),
+        evidence_gaps_json=_json.dumps(
+            analysis.get("evidence_gaps", []), ensure_ascii=False
+        ),
         cross_references=analysis.get("cross_references", ""),
         disclaimer_de=analysis.get("disclaimer_de", ""),
         disclaimer_en=analysis.get("disclaimer_en", ""),
@@ -219,7 +233,9 @@ def analyze_and_persist_case(case_id: str, db) -> dict | None:
     }
 
 
-def analyze_case_legally(case: Case) -> dict | None:
+def analyze_case_legally(
+    case: Case, db=None, user_id: str | None = None
+) -> dict | None:
     """Deep legal analysis of an entire case.
 
     Returns a dict shaped like `CaseAnalysis`, or a rule-based fallback when
@@ -230,7 +246,7 @@ def analyze_case_legally(case: Case) -> dict | None:
         return _fallback_analysis(case)
 
     try:
-        client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        from app.services import llm_gateway
 
         # RETRIEVE + AUGMENT — pull evidence + classifications, structure as context
         evidence_summary = []
@@ -256,6 +272,7 @@ def analyze_case_legally(case: Case) -> dict | None:
         # current text instead of model-recall. Falls back silently when a
         # paragraph isn't in the corpus (e.g. NetzDG is in a different file).
         from app.services.law_text import get_law_text, format_authoritative_block
+
         law_texts = [get_law_text(c) for c in cited_laws]
         law_texts = [lt for lt in law_texts if lt is not None]
         authoritative_block = format_authoritative_block(law_texts)
@@ -267,7 +284,7 @@ def analyze_case_legally(case: Case) -> dict | None:
 Case ID: {case.id}
 Title: {case.title}
 Overall severity: {case.overall_severity.value}
-Victim context: {case.victim_context or 'Not provided'}
+Victim context: {case.victim_context or "Not provided"}
 
 Evidence ({len(case.evidence_items)} items):
 {json.dumps(evidence_summary, indent=2, ensure_ascii=False)}
@@ -276,24 +293,39 @@ Produce a structured legal assessment. Use German as the primary language for
 the `_de` fields and English as the secondary for `_en` fields. Include at
 least one item in `recommended_actions`. Always include both disclaimers."""
 
-        # GENERATE — schema-enforced by OpenAI
-        completion = client.chat.completions.parse(
-            model="gpt-4o-mini",
-            temperature=0.2,
-            max_tokens=2048,
+        # GENERATE — schema-enforced by OpenAI, routed through gateway for usage capture
+        result = llm_gateway.parse(
             messages=[
                 {"role": "system", "content": LEGAL_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
             ],
             response_format=CaseAnalysis,
+            model="gpt-4o-mini",
+            temperature=0.2,
+            max_tokens=2048,
         )
 
-        msg = completion.choices[0].message
-        if msg.refusal:
-            logger.warning("OpenAI refused legal analysis: %s", msg.refusal)
+        if db is not None:
+            llm_gateway.record_usage(
+                db,
+                result,
+                route="legal_ai.analyze_case_legally",
+                case_id=case.id,
+                user_id=user_id,
+            )
+
+        if result.error:
+            logger.warning("Legal AI failed [%s]: %s", result.request_id, result.error)
+            return _fallback_analysis(case)
+        if result.refusal:
+            logger.warning(
+                "OpenAI refused legal analysis [%s]: %s",
+                result.request_id,
+                result.refusal,
+            )
             return _fallback_analysis(case)
 
-        parsed = msg.parsed
+        parsed = result.parsed
         if parsed is None:
             logger.warning("OpenAI returned no parsed result despite no refusal")
             return _fallback_analysis(case)
@@ -307,6 +339,8 @@ least one item in `recommended_actions`. Always include both disclaimers."""
 
 def analyze_single_evidence(evidence: EvidenceItem) -> dict | None:
     """Quick legal analysis of a single evidence item. Returns None on failure."""
+    # TODO(llm-gateway): route through app.services.llm_gateway.parse() and
+    # record_usage so this call site shows up in the cost dashboard.
     if not is_available():
         return None
 
@@ -343,6 +377,7 @@ Produce a structured legal-lens analysis."""
 
 # ── Fallback — rule-based analysis when OpenAI is unavailable ──────────────
 
+
 def _fallback_analysis(case: Case) -> dict:
     """Honest rule-based analysis for when the Legal AI layer is unavailable.
 
@@ -354,25 +389,31 @@ def _fallback_analysis(case: Case) -> dict:
 
     actions = []
     if case.overall_severity in (Severity.CRITICAL, Severity.HIGH):
-        actions.append({
-            "priority": "immediate",
-            "action_de": "Strafanzeige bei der Polizei erstatten (Onlinewache oder Dienststelle)",
-            "action_en": "File a police report (Onlinewache or police station)",
-            "deadline": "24h",
-        })
-        actions.append({
-            "priority": "immediate",
-            "action_de": "NetzDG-Meldung bei der Plattform einreichen",
-            "action_en": "File NetzDG report with the platform",
-            "deadline": "24h",
-        })
+        actions.append(
+            {
+                "priority": "immediate",
+                "action_de": "Strafanzeige bei der Polizei erstatten (Onlinewache oder Dienststelle)",
+                "action_en": "File a police report (Onlinewache or police station)",
+                "deadline": "24h",
+            }
+        )
+        actions.append(
+            {
+                "priority": "immediate",
+                "action_de": "NetzDG-Meldung bei der Plattform einreichen",
+                "action_en": "File NetzDG report with the platform",
+                "deadline": "24h",
+            }
+        )
 
-    actions.append({
-        "priority": "soon",
-        "action_de": "Beratung bei HateAid (hateaid.org) oder Weisser Ring suchen",
-        "action_en": "Seek counseling at HateAid (hateaid.org) or Weisser Ring",
-        "deadline": "none",
-    })
+    actions.append(
+        {
+            "priority": "soon",
+            "action_de": "Beratung bei HateAid (hateaid.org) oder Weisser Ring suchen",
+            "action_en": "Seek counseling at HateAid (hateaid.org) or Weisser Ring",
+            "deadline": "none",
+        }
+    )
 
     all_laws = set()
     has_threat = False
@@ -380,10 +421,17 @@ def _fallback_analysis(case: Case) -> dict:
         if ev.classification:
             for law in ev.classification.applicable_laws:
                 all_laws.add(law.paragraph)
-            if Category.THREAT in ev.classification.categories or Category.DEATH_THREAT in ev.classification.categories:
+            if (
+                Category.THREAT in ev.classification.categories
+                or Category.DEATH_THREAT in ev.classification.categories
+            ):
                 has_threat = True
 
-    escalation = "high" if has_threat else ("medium" if case.overall_severity == Severity.HIGH else "low")
+    escalation = (
+        "high"
+        if has_threat
+        else ("medium" if case.overall_severity == Severity.HIGH else "low")
+    )
 
     return {
         "legal_assessment_de": (
@@ -397,14 +445,24 @@ def _fallback_analysis(case: Case) -> dict:
             "Detailed AI analysis available when OPENAI_API_KEY is set."
         ),
         "strongest_charges": [
-            {"paragraph": p, "strength": "medium", "reason_de": "Basierend auf Regelanalyse", "reason_en": "Based on rule analysis"}
-            for p in sorted(all_laws) if p != "NetzDG § 3"
+            {
+                "paragraph": p,
+                "strength": "medium",
+                "reason_de": "Basierend auf Regelanalyse",
+                "reason_en": "Based on rule analysis",
+            }
+            for p in sorted(all_laws)
+            if p != "NetzDG § 3"
         ],
         "recommended_actions": actions,
         "risk_assessment": {
             "escalation_risk": escalation,
-            "reason_de": "Basierend auf erkannten Bedrohungs- und Eskalationsmustern" if has_threat else "Basierend auf Schweregrad",
-            "reason_en": "Based on detected threat and escalation patterns" if has_threat else "Based on severity level",
+            "reason_de": "Basierend auf erkannten Bedrohungs- und Eskalationsmustern"
+            if has_threat
+            else "Basierend auf Schweregrad",
+            "reason_en": "Based on detected threat and escalation patterns"
+            if has_threat
+            else "Based on severity level",
         },
         "evidence_gaps": [],
         "cross_references": "",

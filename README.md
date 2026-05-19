@@ -48,6 +48,8 @@ Schema enforcement is server-side. Categories and laws are exhaustive Python enu
 
 Few-shot prompt strategy with explicit doxxing example, idiom false-positive (*"Das bringt mich um"* → low) and obfuscation case (*"Stirbt endlich, du H\*re"* → critical).
 
+Every `/analyze/*` response carries an `LLMMetadata` block — model, prompt/completion/total tokens, estimated USD cost, request_id, and the prompt version that produced it. Same telemetry is persisted to an `llm_usage` audit table per request via a central `llm_gateway` module, so per-user / per-feature cost dashboards read from one source of truth. Prompt revisions are versioned (`PROMPT_VERSION = "v2"`) and stored on every classification row, so historical classifications stay attributable when the prompt changes.
+
 ### 3. Case-level legal AI (second layer)
 Once a case has multiple pieces of evidence, a second AI pass produces a **Juristische Gesamteinschätzung**: free-text assessment, escalation risk + reason, strongest charges with strength scores (`strong` / `medium` / `weak`), and prioritised next steps with deadlines. Auto-refreshes when evidence or victim_context changes. Embedded in the Strafanzeige PDF so the police get one document.
 
@@ -214,6 +216,7 @@ safevoice/
 │   ├── services/
 │   │   ├── classifier.py              — orchestrator (single-tier LLM)
 │   │   ├── classifier_llm_v2.py       — gpt-4o-mini + Pydantic .parse()
+│   │   ├── llm_gateway.py             — central LLM gateway (tokens + cost + request_id)
 │   │   ├── legal_ai.py                — case-level second-layer analysis
 │   │   ├── ocr.py                     — OpenAI Vision OCR (gpt-4o-mini)
 │   │   ├── scraper.py                 — public web scraper

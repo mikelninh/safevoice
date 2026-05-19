@@ -10,6 +10,7 @@ from typing import Optional
 
 # ── Response schemas ──
 
+
 class CategoryOut(BaseModel):
     id: str
     name: str
@@ -80,6 +81,7 @@ class CaseOut(BaseModel):
 
 class CaseListOut(BaseModel):
     """Lighter schema for listing cases (no nested evidence)."""
+
     id: str
     title: Optional[str] = None
     status: str = "open"
@@ -92,6 +94,7 @@ class CaseListOut(BaseModel):
 
 
 # ── Request schemas ──
+
 
 class CaseCreate(BaseModel):
     title: Optional[str] = None
@@ -106,6 +109,7 @@ class CaseUpdate(BaseModel):
 
 class EvidenceCreate(BaseModel):
     """Add evidence to a case — text, URL, or pre-extracted content."""
+
     content_type: str = "text"  # text | url | screenshot
     text: str
     source_url: Optional[str] = None
@@ -115,6 +119,27 @@ class EvidenceCreate(BaseModel):
     # When present, gets stored in metadata_json and embedded into legal PDFs.
     # Max ~10 MB recommended — larger images are still accepted but slow the PDF.
     screenshot_base64: Optional[str] = None
+
+
+class LLMMetadata(BaseModel):
+    """Per-request LLM telemetry returned to API clients.
+
+    Exposes what every production AI endpoint should return:
+    model, token counts, estimated USD cost, and a request id for
+    tracing. `prompt_version` lets clients correlate results with the
+    exact classifier prompt revision. `llm_calls` is ≥ 1 — endpoints
+    that fan out (e.g. URL scrape + comment classification) aggregate
+    token/cost across all sub-calls and report the count here.
+    """
+
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    estimated_cost_usd: float
+    request_id: str
+    prompt_version: Optional[str] = None
+    llm_calls: int = 1
 
 
 class AnalyzeTextRequest(BaseModel):
@@ -147,6 +172,7 @@ class AnalyzeUrlRequest(BaseModel):
 
 
 # ── Org / multi-tenant schemas ──
+
 
 class OrgCreate(BaseModel):
     slug: str
@@ -196,8 +222,10 @@ class MemberOut(BaseModel):
 
 # ── Bulk import ──
 
+
 class BulkImportItem(BaseModel):
     """One row from a bulk import CSV."""
+
     text: str
     source_url: Optional[str] = None
     author_username: str = "unknown"
@@ -218,6 +246,7 @@ class BulkImportResult(BaseModel):
 
 
 # ── GDPR Art. 20 data portability export ──
+
 
 class ExportClassification(BaseModel):
     severity: str = "none"
@@ -282,6 +311,7 @@ class UserExport(BaseModel):
 
 class EmlBuildRequest(BaseModel):
     """Request to build a downloadable .eml file for a case."""
+
     recipient_email: str
     victim_name: Optional[str] = None
     victim_email: Optional[str] = None

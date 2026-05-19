@@ -325,12 +325,83 @@ def build_user_message(
     return "\n\n".join(parts)
 
 
+def classify_with_llm_meta(
+    text: str,
+    *,
+    victim_context: str | None = None,
+    jurisdiction: str = "DE",
+    user_lang: str = "de",
+    db=None,
+    case_id: str | None = None,
+    user_id: str | None = None,
+):
+    """Same as `classify_with_llm` but additionally returns the LLM gateway
+    `ChatResult` so callers can surface token usage and cost metadata to the
+    API client.
+
+    Returns `(ClassificationResult, ChatResult) | None`. None on any error
+    (missing key, refusal, parse failure).
+    """
+    from app.services import llm_gateway
+
+    if not llm_gateway.is_available():
+        return None
+
+    user_message = build_user_message(
+        text,
+        victim_context=victim_context,
+        jurisdiction=jurisdiction,
+        user_lang=user_lang,
+    )
+
+    result = llm_gateway.parse(
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        response_format=LLMClassification,
+        model="gpt-4o-mini",
+        temperature=0,
+        max_tokens=1024,
+    )
+
+    if db is not None:
+        llm_gateway.record_usage(
+            db,
+            result,
+            route="classifier_llm_v2.classify",
+            case_id=case_id,
+            user_id=user_id,
+        )
+
+    if result.error:
+        logger.warning(
+            "LLM classifier failed [%s]: %s", result.request_id, result.error
+        )
+        return None
+    if result.refusal:
+        logger.warning(
+            "LLM refused classification [%s]: %s", result.request_id, result.refusal
+        )
+        return None
+    if result.parsed is None:
+        logger.warning(
+            "LLM returned no parsed result despite no refusal [%s]", result.request_id
+        )
+        return None
+
+    return _to_domain(result.parsed), result
+
+
 def classify_with_llm(
     text: str,
     *,
     victim_context: str | None = None,
     jurisdiction: str = "DE",
     user_lang: str = "de",
+    db=None,
+    case_id: str | None = None,
+    user_id: str | None = None,
 ) -> ClassificationResult | None:
     """
     Classify text using OpenAI Structured Outputs with Pydantic schema enforcement.
@@ -339,52 +410,25 @@ def classify_with_llm(
     injected into the user-role message via `build_user_message`. When all are
     left at their defaults the prompt is identical to the legacy one.
 
+    When `db` is provided, token/cost usage is appended to the `llm_usage`
+    table via the central gateway. Telemetry failures never break the call.
+
     Returns None on any error (missing key, SDK not installed, API error, refusal).
     The orchestrator in `classifier.py::classify` surfaces None as 503.
     """
-    if not _openai_installed:
+    pair = classify_with_llm_meta(
+        text,
+        victim_context=victim_context,
+        jurisdiction=jurisdiction,
+        user_lang=user_lang,
+        db=db,
+        case_id=case_id,
+        user_id=user_id,
+    )
+    if pair is None:
         return None
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        return None
-
-    try:
-        client = OpenAI(api_key=api_key)
-        user_message = build_user_message(
-            text,
-            victim_context=victim_context,
-            jurisdiction=jurisdiction,
-            user_lang=user_lang,
-        )
-        # .parse() is the modern structured-output method — schema-enforced server-side.
-        completion = client.chat.completions.parse(
-            model="gpt-4o-mini",
-            temperature=0,
-            max_tokens=1024,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_message},
-            ],
-            response_format=LLMClassification,
-        )
-
-        # Check for refusal (OpenAI may decline to classify for safety reasons).
-        msg = completion.choices[0].message
-        if msg.refusal:
-            logger.warning(f"LLM refused classification: {msg.refusal}")
-            return None
-
-        # `.parsed` is a validated Pydantic instance — or None if OpenAI failed to conform.
-        llm_result = msg.parsed
-        if llm_result is None:
-            logger.warning("LLM returned no parsed result despite no refusal")
-            return None
-
-        return _to_domain(llm_result)
-
-    except Exception as e:
-        logger.warning(f"LLM classifier failed: {e}")
-        return None
+    classification, _meta = pair
+    return classification
 
 
 def _to_domain(llm: LLMClassification) -> ClassificationResult:

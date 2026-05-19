@@ -10,16 +10,25 @@ import logging
 
 try:
     from openai import OpenAI
+
     _openai_installed = True
 except ImportError:
     _openai_installed = False
 
-from app.models.evidence import (
-    ClassificationResult, Severity, Category, GermanLaw
-)
+from app.models.evidence import ClassificationResult, Severity, Category, GermanLaw
 from app.data.mock_data import (
-    LAW_185, LAW_186, LAW_187, LAW_241, LAW_126A, LAW_130, LAW_201A, LAW_238,
-    NETZ_DG, LAW_263, LAW_263A, LAW_269
+    LAW_185,
+    LAW_186,
+    LAW_187,
+    LAW_241,
+    LAW_126A,
+    LAW_130,
+    LAW_201A,
+    LAW_238,
+    NETZ_DG,
+    LAW_263,
+    LAW_263A,
+    LAW_269,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,7 +112,10 @@ RESPONSE_SCHEMA = {
         "schema": {
             "type": "object",
             "properties": {
-                "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+                "severity": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "critical"],
+                },
                 "categories": {"type": "array", "items": {"type": "string"}},
                 "confidence": {"type": "number"},
                 "requires_immediate_action": {"type": "boolean"},
@@ -111,14 +123,22 @@ RESPONSE_SCHEMA = {
                 "summary_de": {"type": "string"},
                 "applicable_laws": {"type": "array", "items": {"type": "string"}},
                 "potential_consequences": {"type": "string"},
-                "potential_consequences_de": {"type": "string"}
+                "potential_consequences_de": {"type": "string"},
             },
-            "required": ["severity", "categories", "confidence", "requires_immediate_action",
-                         "summary", "summary_de", "applicable_laws",
-                         "potential_consequences", "potential_consequences_de"],
-            "additionalProperties": False
-        }
-    }
+            "required": [
+                "severity",
+                "categories",
+                "confidence",
+                "requires_immediate_action",
+                "summary",
+                "summary_de",
+                "applicable_laws",
+                "potential_consequences",
+                "potential_consequences_de",
+            ],
+            "additionalProperties": False,
+        },
+    },
 }
 
 
@@ -126,6 +146,8 @@ def is_available() -> bool:
     return _openai_installed and bool(os.environ.get("OPENAI_API_KEY"))
 
 
+# TODO(llm-gateway): legacy v1 path — superseded by classifier_llm_v2.
+# Route through app.services.llm_gateway if this is ever reactivated.
 def classify_with_llm(text: str) -> ClassificationResult | None:
     if not _openai_installed:
         return None
@@ -184,5 +206,5 @@ def _parse_result(data: dict) -> ClassificationResult:
         summary_de=data.get("summary_de", "Inhalt analysiert."),
         applicable_laws=applicable_laws,
         potential_consequences=data.get("potential_consequences", ""),
-        potential_consequences_de=data.get("potential_consequences_de", "")
+        potential_consequences_de=data.get("potential_consequences_de", ""),
     )
