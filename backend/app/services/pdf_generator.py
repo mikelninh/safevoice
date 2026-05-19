@@ -119,12 +119,17 @@ def generate_pdf(
     # product-tagline ("Dokumentationsplattform für digitale Gewalt"
     # reads like marketing copy on a legal document) and surface a
     # restrained, defensibility-focused line instead.
-    if report_type == "police":
-        subtitle_de = "Beweissicherung mit Hash-Kette · Archive.org-Sicherung"
-        subtitle_en = "Evidence chain with SHA-256 hashes · Archive.org snapshots"
-    elif report_type == "netzdg":
+    # No subtitle for the Strafanzeige — the document type label is enough.
+    # The previous "Beweissicherung mit Hash-Kette · Archive.org-Sicherung"
+    # was tech-speak; the reader (police / Staatsanwält:in) doesn't need
+    # our infrastructure choices on the title page. Trust-building moves to
+    # the new "Hinweise für die ermittelnde Behörde" section instead.
+    if report_type == "netzdg":
         subtitle_de = "Plattform-Meldung nach Netzwerkdurchsetzungsgesetz"
         subtitle_en = "Platform takedown notice under NetzDG"
+    elif report_type == "police":
+        subtitle_de = ""
+        subtitle_en = ""
     else:
         subtitle_de = "Dokumentationsplattform für digitale Gewalt"
         subtitle_en = "Digital Violence Documentation Platform"
@@ -314,6 +319,15 @@ def generate_pdf(
         elements.append(
             HRFlowable(width="35%", thickness=0.4, color=colors.HexColor(RULE))
         )
+        elements.append(Spacer(1, 8 * mm))
+
+        # ── 3b. Hinweise für die ermittelnde Behörde ──────────────────────
+        # Saves the officer 10-15 minutes of their own research per case:
+        # antrag deadlines (so they don't risk missing them), suggested
+        # § 14 NetzDG Auskunfts­procedure, § 200a StPO recommendation when
+        # doxxing/stalking, and how to verify the hashes themselves.
+        for el in _behoerden_hinweise(case, is_de, styles):
+            elements.append(el)
         elements.append(Spacer(1, 8 * mm))
 
     # ── 4. Victim context ──────────────────────────────────────────────────
@@ -534,6 +548,161 @@ def _executive_summary(
         )
     )
     return wrap
+
+
+# ── Hinweise für die ermittelnde Behörde ─────────────────────────────────
+
+
+# Platforms whose Bestandsdaten can be requested via § 14 NetzDG procedure.
+# The contact info is the public Zustellungsbevollmächtigte per platform —
+# kept here so the officer doesn't have to look it up themselves.
+_NETZDG_AUSKUNFT_CONTACTS: dict[str, str] = {
+    "instagram": "Meta Platforms Ireland Ltd., Beardstown 4, 4 Grand Canal Square, Dublin (DE-Zustellung: Meta Germany)",
+    "facebook": "Meta Platforms Ireland Ltd. (DE-Zustellung: Meta Germany)",
+    "tiktok": "TikTok Technology Ltd., Dublin",
+    "x": "X Corp. / Twitter International Unlimited Company, Dublin",
+    "twitter": "X Corp. / Twitter International Unlimited Company, Dublin",
+    "youtube": "Google Ireland Ltd., Dublin",
+}
+
+
+def _behoerden_hinweise(case: Case, is_de: bool, styles: dict) -> list:
+    """Section that delivers concrete handles for the receiving officer.
+
+    The previous PDF told the recipient "we used SHA-256 + Archive.org" —
+    correct but not useful. This section answers the questions a
+    Sachbearbeiter:in actually has:
+      • Welche Plattform-Auskunft brauche ich für welchen Account?
+      • Welche Antragsfrist tickt für welchen § noch?
+      • Soll ich § 200a StPO Anonymisierung prüfen?
+      • Wie verifiziere ich die Hashes selbst, falls die Verteidigung fragt?
+    """
+    from datetime import timedelta
+
+    elems: list = []
+    if not is_de:
+        # English-language Strafanzeige is uncommon in DE jurisdiction —
+        # skip the German-law-specific Hinweise rather than translate badly.
+        return elems
+
+    # Collect facts from case
+    platforms_seen: list[str] = []
+    laws_seen: list[str] = []
+    categories_seen: set[str] = set()
+    severities: list[str] = []
+    earliest_evidence_dt = None
+    for ev in case.evidence_items:
+        p = (getattr(ev, "platform", "") or "").lower().strip()
+        if p and p not in platforms_seen and p != "unknown":
+            platforms_seen.append(p)
+        if ev.captured_at and (
+            earliest_evidence_dt is None or ev.captured_at < earliest_evidence_dt
+        ):
+            earliest_evidence_dt = ev.captured_at
+        if ev.classification:
+            severities.append(_severity_key(ev.classification.severity))
+            for cat in ev.classification.categories or []:
+                categories_seen.add(getattr(cat, "value", str(cat)).lower())
+            for law in ev.classification.applicable_laws or []:
+                ref = getattr(law, "paragraph", None)
+                if ref and ref not in laws_seen:
+                    laws_seen.append(ref)
+
+    # Section heading
+    elems.append(
+        Paragraph(
+            "Hinweise für die ermittelnde Behörde",
+            styles["SectionLabel"],
+        )
+    )
+    elems.append(Spacer(1, 1 * mm))
+    elems.append(
+        Paragraph(
+            "Diese Anregungen sollen Bearbeitungszeit sparen — keine "
+            "rechtliche Würdigung von außen.",
+            styles["AISubtitle"],
+        )
+    )
+    elems.append(Spacer(1, 5 * mm))
+
+    bullets: list[str] = []
+
+    # 1. Plattform-Auskunft per § 14 NetzDG
+    if platforms_seen:
+        contacts = []
+        for p in platforms_seen:
+            c = _NETZDG_AUSKUNFT_CONTACTS.get(p)
+            if c:
+                contacts.append(f"<b>{_escape(p.capitalize())}</b>: {_escape(c)}")
+        if contacts:
+            bullets.append(
+                "<b>Bestandsdaten-Auskunft (§ 14 Abs. 3 NetzDG / § 100j StPO).</b> "
+                "Zur Identifikation der Verfasser:innen kann ein "
+                "Auskunftsersuchen an die jeweilige Plattform gestellt werden:<br/>"
+                + "<br/>".join(contacts)
+            )
+
+    # 2. Antragsfristen (§ 77 StGB — relative Antragsdelikte)
+    # Match case-insensitively + tolerate "StGB"/"STGB" + "§ 185"/"185 StGB"
+    # variants. The classifier and law-mapper produce slightly different
+    # formats over time and a missed match here = missed Antragsfrist =
+    # incident lost. Better permissive than strict.
+    def _is_antragsdelikt(ref: str) -> bool:
+        r = ref.lower().replace(" ", "").replace("§", "")
+        return any(target in r for target in ("185stgb", "186stgb", "201astgb"))
+
+    triggered = [l for l in laws_seen if _is_antragsdelikt(l)]
+    if triggered and earliest_evidence_dt is not None:
+        frist_end = earliest_evidence_dt + timedelta(days=90)
+        bullets.append(
+            "<b>Strafantragsfristen (§ 77 StGB).</b> "
+            f"Für {', '.join(triggered)} läuft die 3-Monats-Frist ab Kenntnis "
+            f"der Anzeigeerstatterin (frühestes Beweismittel: "
+            f"{earliest_evidence_dt.strftime('%d.%m.%Y')}). Frist endet "
+            f"voraussichtlich am <b>{frist_end.strftime('%d.%m.%Y')}</b>."
+        )
+
+    # 3. § 200a StPO Anonymisierungs-Antrag
+    anon_triggers = categories_seen & {
+        "doxxing",
+        "stalking",
+        "death_threat",
+        "intimate_images",
+        "cyberstalking",
+    }
+    is_high_sev = any(s in {"high", "critical"} for s in severities)
+    if anon_triggers and is_high_sev:
+        bullets.append(
+            "<b>Anonymisierungs-Antrag (§ 200a StPO).</b> "
+            f"Wegen der festgestellten Kategorie(n) "
+            f"{', '.join(sorted(anon_triggers))} bei Severity "
+            f"{'hoch' if 'high' in severities and 'critical' not in severities else 'kritisch'} "
+            "besteht ein konkretes Schutzbedürfnis. Anregung: Anschrift der "
+            "Anzeigeerstatterin gegenüber der Beschuldigten anonymisieren."
+        )
+
+    # 4. Hash-Verifikation (always)
+    bullets.append(
+        "<b>Beweis-Verifikation.</b> Jeder SHA-256-Wert in den "
+        "Beweismittel-Abschnitten kann unabhängig nachgeprüft werden "
+        "(z. B. <font name='Courier'>shasum -a 256</font> auf macOS/Linux, "
+        "<font name='Courier'>Get-FileHash</font> in PowerShell). Die "
+        "archive.org-Links sichern die Existenz des Inhalts zum genannten "
+        "Zeitpunkt — auch nach späterer Löschung durch die Plattform."
+    )
+
+    # 5. Erreichbarkeit für Rückfragen
+    bullets.append(
+        "<b>Rückfragen.</b> Die Anzeigeerstatterin ist über die im Anschreiben "
+        "genannten Kontaktdaten erreichbar und bittet um Mitteilung des "
+        "Aktenzeichens sowie um Information zum Verfahrensstand."
+    )
+
+    for b in bullets:
+        elems.append(Paragraph(b, styles["Body"]))
+        elems.append(Spacer(1, 3 * mm))
+
+    return elems
 
 
 # ── Meta strip — replaces the heavy executive summary ────────────────────
