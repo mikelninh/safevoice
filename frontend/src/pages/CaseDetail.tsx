@@ -11,6 +11,7 @@ import { getLocalCase, updateCaseBackendId } from '../services/storage'
 import HateAidReferral from '../components/HateAidReferral'
 import OnlinewachePanel from '../components/OnlinewachePanel'
 import CaseEditor from '../components/CaseEditor'
+import CourtPrepPanel from '../components/CourtPrepPanel'
 
 interface Props { lang: Lang }
 
@@ -292,6 +293,9 @@ export default function CaseDetail({ lang }: Props) {
           caseContext={caseData.victim_context}
         />
       </div>
+
+      {/* Court-Prep Agent (Beta) — autonomous agent prepares the full package */}
+      <CourtPrepPanel caseId={caseData.id} caseData={caseData} lang={lang} />
 
       {/* Onlinewache */}
       <div className="mb-6">

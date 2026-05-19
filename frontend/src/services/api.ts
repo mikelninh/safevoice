@@ -406,6 +406,106 @@ export async function downloadEml(caseId: string, data: EmlVictimData): Promise<
   triggerDownload(blob, `safevoice-strafanzeige-${caseId.slice(0, 8)}.eml`)
 }
 
+// ── Court-Prep Agent ─────────────────────────────────────────────────
+
+export interface CourtPrepRequest {
+  victim_name?: string
+  victim_email?: string
+  victim_address?: string
+  victim_phone?: string
+  bundesland_code?: string
+}
+
+export interface CourtPrepTraceCall {
+  tool: string
+  input: unknown
+  output: unknown
+  latency_ms: number
+  cached: boolean
+  error: string | null
+}
+
+export interface CourtPrepArtefacts {
+  strafanzeige_pdf_base64: string | null
+  strafanzeige_filename: string | null
+  netzdg_emls: Array<{
+    platform: string
+    recipient: string
+    subject: string
+    eml_base64: string
+    filename: string
+  }>
+  archived_urls: Array<{
+    url: string
+    platform?: string
+    ok: boolean
+    archived_url?: string | null
+    error?: string
+  }>
+  frist: {
+    warning_level: string
+    applicable_antragsdelikte: Array<{
+      law: string
+      deadline_utc: string
+      days_left: number
+      expired: boolean
+      urgent: boolean
+    }>
+    summary: string
+  } | null
+  anonymisierung: {
+    needed: boolean
+    rechtsgrundlage: string | null
+    begruendung: string
+    triggering_categories: string[]
+  } | null
+  jurisdiction: {
+    bundesland_code: string
+    staatsanwaltschaft: { name: string; address: string; email: string }
+    rechtsgrundlage: string
+  } | null
+}
+
+export interface CourtPrepResponse {
+  agent_run_id: string
+  status: 'completed' | 'failed' | 'aborted_budget' | 'aborted_iterations'
+  iterations: number
+  total_cost_usd: number
+  prompt_version: string
+  final_message: string | null
+  error: string | null
+  tool_trace: CourtPrepTraceCall[]
+  artefacts: CourtPrepArtefacts
+}
+
+export async function runCourtPrepAgent(
+  caseId: string,
+  req: CourtPrepRequest,
+): Promise<CourtPrepResponse> {
+  const res = await fetch(`${BASE}/agent/court-prep/${caseId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  })
+  // 200 = completed, 422 = partial (aborted/failed), both contain a payload.
+  const data = await res.json().catch(() => null)
+  if (res.status === 422 && data?.detail) {
+    return data.detail as CourtPrepResponse
+  }
+  if (!res.ok) {
+    const msg = (data && (data.detail || data.error)) || `${res.status} ${res.statusText}`
+    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+  }
+  return data as CourtPrepResponse
+}
+
+export function downloadBase64(b64: string, filename: string, mime: string): void {
+  const bin = atob(b64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  triggerDownload(new Blob([bytes], { type: mime }), filename)
+}
+
 /**
  * Trigger a file download from a Blob in a way that works across browsers.
  *
