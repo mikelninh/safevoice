@@ -144,6 +144,48 @@ _ARCHIVE_PRIORITY = {
 }
 
 
+# Each Bundesland has its own Onlinewache (24/7 digital police front desk).
+# Court-Prep generates a paste-ready text + the right URL so the user can
+# file the Strafanzeige through this official digital channel directly,
+# instead of mailing a paper letter to the Staatsanwaltschaft.
+_ONLINEWACHE_URLS: dict[str, dict[str, str]] = {
+    "BW": {"name": "Baden-Württemberg", "url": "https://www.polizei-bw.de/onlinewache"},
+    "BY": {"name": "Bayern", "url": "https://www.polizei.bayern.de/onlinewache"},
+    "BE": {"name": "Berlin", "url": "https://www.internetwache-polizei-berlin.de"},
+    "BB": {
+        "name": "Brandenburg",
+        "url": "https://polizei.brandenburg.de/onlineanzeige",
+    },
+    "HB": {"name": "Bremen", "url": "https://www.polizei.bremen.de/onlinewache"},
+    "HH": {"name": "Hamburg", "url": "https://www.polizei.hamburg/onlinewache"},
+    "HE": {"name": "Hessen", "url": "https://onlinewache.polizei.hessen.de"},
+    "MV": {
+        "name": "Mecklenburg-Vorpommern",
+        "url": "https://www.polizei.mvnet.de/Onlineanzeige",
+    },
+    "NI": {
+        "name": "Niedersachsen",
+        "url": "https://www.onlinewache.polizei.niedersachsen.de",
+    },
+    "NW": {"name": "Nordrhein-Westfalen", "url": "https://polizei.nrw/internetwache"},
+    "RP": {"name": "Rheinland-Pfalz", "url": "https://www.polizei.rlp.de/onlinewache"},
+    "SL": {"name": "Saarland", "url": "https://www.polizei.saarland.de/onlinewache"},
+    "SN": {"name": "Sachsen", "url": "https://www.polizei.sachsen.de/onlinewache"},
+    "ST": {
+        "name": "Sachsen-Anhalt",
+        "url": "https://www.polizei.sachsen-anhalt.de/onlinewache",
+    },
+    "SH": {
+        "name": "Schleswig-Holstein",
+        "url": "https://www.schleswig-holstein.de/onlinewache",
+    },
+    "TH": {
+        "name": "Thüringen",
+        "url": "https://www.thueringen.de/th3/polizei/onlinewache",
+    },
+}
+
+
 # NetzDG-Meldekontakte je Plattform.
 # Real-world: die Plattformen haben Web-Formulare, nicht offene Email-
 # Adressen. Wir generieren ein .eml-File für Outlook/Mail, damit die
@@ -627,6 +669,83 @@ def make_generate_strafanzeige_pdf(db: Session):
     return handler
 
 
+# ── Tool 8: build_onlinewache_text ──────────────────────────────────────
+
+
+ONLINEWACHE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "case_id": {"type": "string"},
+        "bundesland_code": {
+            "type": "string",
+            "description": (
+                "ISO 3166-2 code of the victim's Bundesland — selects the right "
+                "Onlinewache URL."
+            ),
+        },
+        "victim_name": {"type": "string"},
+        "victim_address": {"type": "string"},
+        "victim_email": {"type": "string"},
+        "victim_phone": {"type": "string"},
+    },
+    "required": ["case_id", "bundesland_code"],
+    "additionalProperties": False,
+}
+
+
+def make_build_onlinewache_text(db: Session):
+    def handler(args: dict) -> Any:
+        from app.services.db_helpers import case_to_pydantic
+        from app.services.report_generator import generate_report
+
+        case_id = args["case_id"]
+        code = (args.get("bundesland_code") or "").upper()
+        onlinewache = _ONLINEWACHE_URLS.get(code)
+        if not onlinewache:
+            return {
+                "ok": False,
+                "error": f"unknown bundesland_code '{code}'",
+                "available": sorted(_ONLINEWACHE_URLS.keys()),
+            }
+
+        case = db.query(DBCase).filter_by(id=case_id).first()
+        if not case:
+            return {"ok": False, "error": f"case '{case_id}' not found"}
+
+        pydantic_case = case_to_pydantic(case)
+        report = generate_report(pydantic_case, report_type="police", lang="de")
+        body = report.get("body", "") or ""
+
+        victim_name = args.get("victim_name")
+        if victim_name:
+            sender_block_parts = [victim_name]
+            if args.get("victim_address"):
+                sender_block_parts.append(args["victim_address"])
+            if args.get("victim_phone"):
+                sender_block_parts.append(f"Tel: {args['victim_phone']}")
+            if args.get("victim_email"):
+                sender_block_parts.append(f"E-Mail: {args['victim_email']}")
+            sender_block = "\n".join(sender_block_parts)
+            body = body.replace("[NAME DES OPFERS]", sender_block)
+            body = body.replace("[UNTERSCHRIFT]", victim_name)
+
+        return {
+            "ok": True,
+            "bundesland_code": code,
+            "bundesland_name": onlinewache["name"],
+            "onlinewache_url": onlinewache["url"],
+            "text_for_paste": body,
+            "instructions_de": (
+                f"1. Klick auf 'Onlinewache {onlinewache['name']} öffnen' — Tab geht auf.\n"
+                "2. Im Formular zuerst deine Daten als Anzeigeerstatter:in eintragen.\n"
+                "3. Den oben kopierten Text in das 'Sachverhalt'-Feld einfügen (Cmd/Ctrl+V).\n"
+                "4. Absenden — du bekommst per Email eine Eingangsbestätigung."
+            ),
+        }
+
+    return handler
+
+
 # ── Tool registry ───────────────────────────────────────────────────────
 
 
@@ -707,5 +826,17 @@ def build_tools(db: Session):
             ),
             schema=GENERATE_PDF_SCHEMA,
             handler=make_generate_strafanzeige_pdf(db),
+        ),
+        ToolDef(
+            name="build_onlinewache_text",
+            description=(
+                "Prepare the paste-ready text + the Bundesland-specific "
+                "Onlinewache URL for filing the Strafanzeige through Germany's "
+                "official 24/7 digital police channel. Only call this when the "
+                "user provided a bundesland_code. Returns text + URL + step-by-"
+                "step instructions in German."
+            ),
+            schema=ONLINEWACHE_SCHEMA,
+            handler=make_build_onlinewache_text(db),
         ),
     ]

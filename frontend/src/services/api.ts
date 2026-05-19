@@ -464,6 +464,13 @@ export interface CourtPrepArtefacts {
     staatsanwaltschaft: { name: string; address: string; email: string }
     rechtsgrundlage: string
   } | null
+  onlinewache: {
+    bundesland_code: string
+    bundesland_name: string
+    onlinewache_url: string
+    text_for_paste: string
+    instructions_de: string
+  } | null
 }
 
 export interface CourtPrepResponse {

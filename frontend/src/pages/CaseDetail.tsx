@@ -9,7 +9,6 @@ import PatternFlagCard from '../components/PatternFlagCard'
 import ReportModal from '../components/ReportModal'
 import { getLocalCase, updateCaseBackendId } from '../services/storage'
 import HateAidReferral from '../components/HateAidReferral'
-import OnlinewachePanel from '../components/OnlinewachePanel'
 import CaseEditor from '../components/CaseEditor'
 import CourtPrepPanel from '../components/CourtPrepPanel'
 
@@ -294,23 +293,22 @@ export default function CaseDetail({ lang }: Props) {
         />
       </div>
 
-      {/* Court-Prep Agent (Beta) — autonomous agent prepares the full package */}
+      {/* Court-Prep Agent (Beta) — autonomous agent prepares everything:
+          Strafanzeige PDF, NetzDG emails, Frist warnings, jurisdiction info,
+          and the Onlinewache fast-path. Replaces the previous trio of
+          OnlinewachePanel + ReportModal trigger + separate Strafanzeige path. */}
       <CourtPrepPanel caseId={caseData.id} caseData={caseData} lang={lang} />
 
-      {/* Onlinewache */}
-      <div className="mb-6">
-        <OnlinewachePanel
-          lang={lang}
-          reportText={_buildPoliceText(caseData, isDE)}
-        />
-      </div>
-
-      {/* Export report */}
+      {/* Legacy report modal still available behind a quieter link — covers
+          the manual flow for users who don't want the agent (e.g. when the
+          LLM is unavailable, or for screenshot-only NetzDG flows). */}
       <button
         onClick={() => setShowReport(true)}
-        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-4 rounded-xl transition-colors text-base shadow-lg shadow-indigo-900/30"
+        className="w-full mt-4 text-sm text-slate-400 hover:text-slate-200 underline-offset-4 hover:underline py-2"
       >
-        {t(lang, 'cases.report')} →
+        {isDE
+          ? 'Lieber manuell erstellen (ohne KI-Agent)?'
+          : 'Prefer manual creation (without AI agent)?'}
       </button>
 
       {showReport && (

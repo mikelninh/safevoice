@@ -11,15 +11,16 @@ import {
 import { updateCaseBackendId } from '../services/storage'
 
 /**
- * CourtPrepPanel — Beta entry point for the SafeVoice Court-Prep Agent.
+ * CourtPrepPanel — single entry point for the SafeVoice Court-Prep Agent.
  *
- * Single button on the CaseDetail page. Triggers POST /agent/court-prep/{id},
- * shows a live-ish trace of the 6-7 tool calls, and renders download buttons
- * for the artefacts: Strafanzeige PDF, NetzDG eml per platform, the jurisdiction
- * info, the Frist warning, the § 200a StPO recommendation.
+ * Owns the full Strafanzeige journey: the agent prepares the package,
+ * we render an animated timeline of every tool call with grounded output
+ * chips, then offer downloads + the Onlinewache fast-path. There is no
+ * separate Onlinewache panel anymore — the agent's `build_onlinewache_text`
+ * tool merged that flow in, removing the previous redundant UI.
  *
- * No mail is sent. The user reviews + sends manually — human-in-loop is
- * non-negotiable for legal-tech.
+ * Nothing is auto-sent. Every artefact is a download or a paste-ready text;
+ * the user takes the final step.
  */
 
 interface Props {
@@ -28,29 +29,18 @@ interface Props {
   lang: Lang
 }
 
-// The agent calls tools in roughly this order. We surface this list as a
-// progress checklist while the request is in flight so the user has something
-// to watch. The endpoint is synchronous, so we can't truly stream — but a
-// time-based "current step" indicator is honest enough at MVP. Real streaming
-// (SSE, or polling /agent/runs/{id}) is a later improvement.
-const EXPECTED_STEPS_DE = [
-  'Fall + Beweise lesen',
-  'Strafantrags-Frist berechnen (§ 77 StGB)',
-  'Anonymisierungs-Bedarf prüfen (§ 200a StPO)',
-  'Beweise sichern (archive.org)',
-  'NetzDG-Meldungen pro Plattform draften',
-  'Zuständige Staatsanwaltschaft (§ 7 StPO)',
-  'Strafanzeige-PDF generieren',
-] as const
-const EXPECTED_STEPS_EN = [
-  'Read case + evidence',
-  'Compute Strafantrag deadline (§ 77 StGB)',
-  'Check anonymity need (§ 200a StPO)',
-  'Re-archive evidence (archive.org)',
-  'Draft NetzDG reports per platform',
-  'Competent prosecutor (§ 7 StPO)',
-  'Generate Strafanzeige PDF',
-] as const
+// Expected agent flow — shown as a step skeleton during the run, then
+// replaced by the actual tool_trace once the response arrives.
+const FLOW_STEPS: Array<{ key: string; icon: string; label_de: string; label_en: string }> = [
+  { key: 'read_case', icon: '📂', label_de: 'Fall + Beweise lesen', label_en: 'Read case + evidence' },
+  { key: 'check_strafantrag_frist', icon: '⏳', label_de: 'Strafantrags-Frist (§ 77 StGB)', label_en: 'Strafantrag deadline (§ 77 StGB)' },
+  { key: 'detect_anonymisierung_needed', icon: '🕶', label_de: 'Anonymisierung (§ 200a StPO)', label_en: 'Anonymity (§ 200a StPO)' },
+  { key: 're_archive_urls', icon: '📌', label_de: 'Beweise archivieren', label_en: 'Archive evidence' },
+  { key: 'draft_netzdg_email', icon: '📨', label_de: 'NetzDG-Meldungen', label_en: 'NetzDG reports' },
+  { key: 'determine_jurisdiction', icon: '⚖️', label_de: 'Zuständige Staatsanwaltschaft', label_en: 'Competent prosecutor' },
+  { key: 'generate_strafanzeige_pdf', icon: '📄', label_de: 'Strafanzeige-PDF', label_en: 'Strafanzeige PDF' },
+  { key: 'build_onlinewache_text', icon: '🚓', label_de: 'Onlinewache-Text', label_en: 'Onlinewache text' },
+]
 
 const BUNDESLAENDER: Array<{ code: string; name: string }> = [
   { code: 'BE', name: 'Berlin' },
@@ -71,77 +61,48 @@ const BUNDESLAENDER: Array<{ code: string; name: string }> = [
   { code: 'TH', name: 'Thüringen' },
 ]
 
-const TOOL_LABEL_DE: Record<string, string> = {
-  read_case: 'Fall + Beweise lesen',
-  check_strafantrag_frist: 'Strafantrags-Frist prüfen (§ 77 StGB)',
-  determine_jurisdiction: 'Zuständige Staatsanwaltschaft (§ 7 StPO)',
-  detect_anonymisierung_needed: 'Anonymisierungs-Antrag prüfen (§ 200a StPO)',
-  re_archive_urls: 'URLs archivieren (archive.org)',
-  draft_netzdg_email: 'NetzDG-Meldung pro Plattform draften',
-  generate_strafanzeige_pdf: 'Strafanzeige-PDF generieren',
-}
-const TOOL_LABEL_EN: Record<string, string> = {
-  read_case: 'Read case + evidence',
-  check_strafantrag_frist: 'Check Strafantrag deadline (§ 77 StGB)',
-  determine_jurisdiction: 'Competent prosecutor (§ 7 StPO)',
-  detect_anonymisierung_needed: 'Anonymity request needed (§ 200a StPO)',
-  re_archive_urls: 'Re-archive URLs (archive.org)',
-  draft_netzdg_email: 'Draft NetzDG email per platform',
-  generate_strafanzeige_pdf: 'Generate Strafanzeige PDF',
-}
-
 export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
   const isDE = lang === 'de'
-  const expectedSteps = isDE ? EXPECTED_STEPS_DE : EXPECTED_STEPS_EN
   const [name, setName] = useState('')
   const [bundesland, setBundesland] = useState('')
   const [running, setRunning] = useState(false)
-  const [progressStep, setProgressStep] = useState(0)
-  const [progressLabel, setProgressLabel] = useState<string>('')
+  const [progressIdx, setProgressIdx] = useState(0)
   const [elapsedSec, setElapsedSec] = useState(0)
   const [result, setResult] = useState<CourtPrepResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Tick a "expected step" cursor + elapsed counter while running, so the
-  // user has visible progress during the ~10-30s synchronous call.
   useEffect(() => {
     if (!running) return
     const start = Date.now()
     const elapsedTimer = setInterval(() => {
       setElapsedSec(Math.floor((Date.now() - start) / 1000))
     }, 200)
-    // Step pacing: most steps run 1-4s, generate_strafanzeige_pdf is ~11s.
-    // Front-load early steps quickly, slow at the end where PDF gen lives.
-    const stepDelaysMs = [400, 800, 1200, 1800, 2400, 3000, 4000]
+    // Pace each "visible" step. PDF gen is the slow one (~11s), front-load
+    // the cheap steps so the UI feels alive immediately.
+    const stepDelays = [400, 800, 1200, 1800, 2400, 2800, 3400, 4200]
     let cancelled = false
-    let step = 0
-    const advance = () => {
-      if (cancelled || step >= stepDelaysMs.length) return
-      setProgressStep(step)
-      setProgressLabel(expectedSteps[step] ?? '')
-      const delay = stepDelaysMs[step]
-      step += 1
-      setTimeout(advance, delay)
+    let i = 0
+    const tick = () => {
+      if (cancelled || i >= stepDelays.length) return
+      setProgressIdx(i)
+      const wait = stepDelays[i]
+      i += 1
+      setTimeout(tick, wait)
     }
-    advance()
+    tick()
     return () => {
       cancelled = true
       clearInterval(elapsedTimer)
     }
-  }, [running, expectedSteps])
+  }, [running])
 
   const run = async () => {
     setRunning(true)
     setError(null)
     setResult(null)
-    setProgressStep(0)
-    setProgressLabel('')
+    setProgressIdx(0)
     setElapsedSec(0)
     try {
-      // Local-only cases (id starts with "case-local-") have no backend row,
-      // so the agent's read_case tool would 404. Push the local case + all
-      // its evidence to the backend first, then run the agent against the
-      // resolved backend id. Same pattern as fetchLegalAnalysis.
       let resolvedCaseId = caseId
       if (caseId.startsWith('case-local-')) {
         resolvedCaseId = await ensureBackendCase(caseData)
@@ -161,30 +122,23 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
     }
   }
 
-  const toolLabel = (name: string): string => {
-    const map = isDE ? TOOL_LABEL_DE : TOOL_LABEL_EN
-    return map[name] ?? name
-  }
-
   return (
-    <section className="mb-6 rounded-2xl border border-indigo-800/50 bg-indigo-950/30 p-5">
-      <header className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <span>{isDE ? 'Strafanzeige vorbereiten' : 'Prepare Strafanzeige'}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded px-1.5 py-0.5">
-              Beta
-            </span>
-          </h2>
-          <p className="text-sm text-slate-300 mt-1">
-            {isDE
-              ? 'Ein KI-Agent prüft Fristen, findet die zuständige Staatsanwaltschaft, baut NetzDG-Meldungen und die fertige Strafanzeige — alles als Download. Es wird nichts automatisch versendet.'
-              : 'An AI agent checks deadlines, finds the competent prosecutor, builds NetzDG reports and the final Strafanzeige — all as downloads. Nothing is sent automatically.'}
-          </p>
-        </div>
+    <section className="mb-6 rounded-2xl border border-indigo-800/50 bg-gradient-to-br from-indigo-950/40 to-slate-950/60 p-5 shadow-lg shadow-indigo-950/20">
+      <header className="mb-4">
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-1">
+          <span>{isDE ? 'Strafanzeige vorbereiten' : 'Prepare Strafanzeige'}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded px-1.5 py-0.5">
+            Beta
+          </span>
+        </h2>
+        <p className="text-sm text-slate-300">
+          {isDE
+            ? 'Ein KI-Agent prüft Fristen, findet die zuständige Staatsanwaltschaft, sichert Beweise auf archive.org, baut NetzDG-Meldungen pro Plattform und liefert PDF + Onlinewache-Text. Du sendest nichts automatisch — alles als Download oder zum Reinkopieren.'
+            : 'An AI agent checks deadlines, finds the competent prosecutor, secures evidence on archive.org, builds per-platform NetzDG reports, and delivers PDF + Onlinewache text. Nothing is sent automatically — all downloads or paste-ready text.'}
+        </p>
       </header>
 
-      <div className="grid sm:grid-cols-2 gap-3 mb-4">
+      <div className="grid sm:grid-cols-2 gap-3 mb-3">
         <input
           type="text"
           placeholder={isDE ? 'Dein Name (optional)' : 'Your name (optional)'}
@@ -198,9 +152,7 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
           className="bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm"
         >
           <option value="">
-            {isDE
-              ? 'Bundesland für Staatsanwaltschaft (optional)'
-              : 'Federal state for prosecutor (optional)'}
+            {isDE ? 'Bundesland (optional, für StA + Onlinewache)' : 'Federal state (optional)'}
           </option>
           {BUNDESLAENDER.map((b) => (
             <option key={b.code} value={b.code}>
@@ -225,30 +177,25 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
           : '⚖️  Prepare the package'}
       </button>
 
-      {running && (
-        <ProgressList
-          steps={expectedSteps}
-          currentStep={progressStep}
-          currentLabel={progressLabel}
-          elapsedSec={elapsedSec}
-          isDE={isDE}
-        />
-      )}
-
       <p className="text-xs text-slate-400 mt-3 leading-relaxed">
         {isDE
-          ? 'Hinweis: dieser Agent ist in Beta. Du bekommst alle Dokumente als Downloads — bitte vor dem Versand durchlesen. Für verbindliche juristische Beratung kontaktiere eine Anwält:in oder '
-          : 'Note: this agent is in beta. You receive every document as a download — please review before sending. For legally binding advice, contact a lawyer or '}
-        <a
-          href="https://hateaid.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-indigo-300 hover:text-indigo-200 underline"
-        >
+          ? 'Hinweis: Agent in Beta. Alle Dokumente als Download — vor dem Versand prüfen. Für verbindliche Beratung Anwält:in oder '
+          : 'Note: agent in beta. All documents as downloads — review before sending. For binding advice, contact a lawyer or '}
+        <a href="https://hateaid.org" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">
           HateAid
         </a>
         .
       </p>
+
+      {(running || result) && (
+        <FlowTimeline
+          isDE={isDE}
+          running={running}
+          progressIdx={progressIdx}
+          elapsedSec={elapsedSec}
+          result={result}
+        />
+      )}
 
       {error && (
         <div className="mt-4 rounded-lg border border-red-800/50 bg-red-950/40 p-3 text-sm text-red-200">
@@ -257,89 +204,263 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
         </div>
       )}
 
-      {result && <ResultBlock result={result} isDE={isDE} toolLabel={toolLabel} />}
+      {result && <Artefacts result={result} isDE={isDE} />}
     </section>
   )
 }
 
-function ProgressList({
-  steps,
-  currentStep,
-  currentLabel,
-  elapsedSec,
+// ── Animated timeline of the agent flow ─────────────────────────────────
+
+function FlowTimeline({
   isDE,
+  running,
+  progressIdx,
+  elapsedSec,
+  result,
 }: {
-  steps: readonly string[]
-  currentStep: number
-  currentLabel: string
-  elapsedSec: number
   isDE: boolean
+  running: boolean
+  progressIdx: number
+  elapsedSec: number
+  result: CourtPrepResponse | null
 }) {
+  // While running, drive the timeline with the fake progress cursor.
+  // After completion, drive it from the real tool_trace.
+  const calls = result?.tool_trace ?? []
+  const callByTool = new Map<string, CourtPrepTraceCall>()
+  calls.forEach((c) => callByTool.set(c.tool, c))
+
   return (
-    <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/60 p-3">
-      <div className="flex items-center justify-between text-xs uppercase tracking-wider text-slate-500 mb-2">
-        <span>
-          {isDE ? 'Agent läuft' : 'Agent running'} —{' '}
-          <span className="font-mono normal-case text-slate-400">{currentLabel}</span>
-        </span>
-        <span className="font-mono normal-case text-slate-400">{elapsedSec}s</span>
+    <div className="mt-5 rounded-xl border border-slate-700/70 bg-slate-950/50 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+          {isDE ? 'Agent-Flow' : 'Agent flow'}
+        </h3>
+        <div className="text-xs text-slate-500 font-mono">
+          {running
+            ? `${elapsedSec}s`
+            : result
+            ? `${result.iterations} ${isDE ? 'Schritte' : 'iterations'} · $${result.total_cost_usd.toFixed(4)}`
+            : ''}
+        </div>
       </div>
-      <ol className="space-y-1 text-xs">
-        {steps.map((s, i) => {
-          const done = i < currentStep
-          const active = i === currentStep
+
+      <ol className="space-y-2">
+        {FLOW_STEPS.map((step, i) => {
+          const call = callByTool.get(step.key)
+          const status: 'done' | 'active' | 'idle' | 'skipped' = result
+            ? call
+              ? 'done'
+              : 'skipped'
+            : i < progressIdx
+            ? 'done'
+            : i === progressIdx
+            ? 'active'
+            : 'idle'
           return (
-            <li
-              key={s}
-              className={`flex items-center gap-2 ${
-                done
-                  ? 'text-emerald-300'
-                  : active
-                  ? 'text-indigo-200 font-medium'
-                  : 'text-slate-500'
-              }`}
-            >
-              <span className="w-4 inline-flex justify-center shrink-0">
-                {done ? '✓' : active ? <Spinner /> : '○'}
-              </span>
-              <span>{s}</span>
-            </li>
+            <FlowStep
+              key={step.key}
+              index={i}
+              icon={step.icon}
+              label={isDE ? step.label_de : step.label_en}
+              status={status}
+              call={call}
+              isDE={isDE}
+            />
           )
         })}
       </ol>
-      <p className="text-[10px] text-slate-500 mt-2 italic">
-        {isDE
-          ? 'Geschätzte Reihenfolge — der Agent entscheidet selbst und überspringt Schritte wenn nicht nötig.'
-          : 'Expected order — the agent picks its own and skips steps when not needed.'}
-      </p>
     </div>
+  )
+}
+
+function FlowStep({
+  index,
+  icon,
+  label,
+  status,
+  call,
+  isDE,
+}: {
+  index: number
+  icon: string
+  label: string
+  status: 'done' | 'active' | 'idle' | 'skipped'
+  call?: CourtPrepTraceCall
+  isDE: boolean
+}) {
+  const isLast = index === FLOW_STEPS.length - 1
+  const ringColor =
+    status === 'done'
+      ? 'border-emerald-500 bg-emerald-950/70 text-emerald-300'
+      : status === 'active'
+      ? 'border-indigo-400 bg-indigo-950/80 text-indigo-200'
+      : status === 'skipped'
+      ? 'border-slate-700 bg-slate-900 text-slate-600'
+      : 'border-slate-700 bg-slate-900 text-slate-500'
+  const labelColor =
+    status === 'done'
+      ? 'text-slate-200'
+      : status === 'active'
+      ? 'text-indigo-100 font-medium'
+      : status === 'skipped'
+      ? 'text-slate-600'
+      : 'text-slate-500'
+
+  return (
+    <li className="flex items-start gap-3">
+      <div className="relative flex flex-col items-center">
+        <div
+          className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm shrink-0 transition-colors ${ringColor}`}
+        >
+          {status === 'active' ? <Spinner /> : icon}
+        </div>
+        {!isLast && (
+          <div
+            className={`w-0.5 flex-1 mt-0.5 mb-0.5 ${
+              status === 'done' ? 'bg-emerald-700/40' : 'bg-slate-800'
+            }`}
+            style={{ minHeight: 18 }}
+          />
+        )}
+      </div>
+      <div className="flex-1 pb-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className={`text-sm ${labelColor}`}>{label}</span>
+          {call?.latency_ms !== undefined && (
+            <span className="text-[10px] text-slate-500 font-mono shrink-0">
+              {call.latency_ms}ms
+              {call.cached && (
+                <span className="ml-1 uppercase tracking-wider text-slate-600">cached</span>
+              )}
+            </span>
+          )}
+        </div>
+        {call && <OutputChip call={call} isDE={isDE} />}
+        {status === 'skipped' && !call && (
+          <span className="text-[10px] text-slate-600 italic">
+            {isDE ? 'übersprungen — nicht nötig' : 'skipped — not needed'}
+          </span>
+        )}
+      </div>
+    </li>
+  )
+}
+
+// Pulls a single-line, grounded summary from the tool output so the user
+// sees WHAT the agent actually found, not just that the step happened.
+function OutputChip({ call, isDE }: { call: CourtPrepTraceCall; isDE: boolean }) {
+  if (call.error) {
+    return (
+      <span className="inline-block mt-0.5 text-[11px] text-red-300 bg-red-950/50 border border-red-800/40 rounded px-1.5 py-0.5">
+        ✗ {call.error}
+      </span>
+    )
+  }
+  const out = call.output as Record<string, unknown> | null
+  if (!out || typeof out !== 'object') return null
+
+  let chip: { text: string; tone: 'good' | 'warn' | 'info' } | null = null
+
+  switch (call.tool) {
+    case 'read_case': {
+      const count = (out.evidence_count as number | undefined) ?? 0
+      chip = { text: `${count} ${isDE ? 'Beweise geladen' : 'evidence items'}`, tone: 'info' }
+      break
+    }
+    case 'check_strafantrag_frist': {
+      const lvl = out.warning_level as string | undefined
+      const summary = out.summary as string | undefined
+      const tone = lvl === 'expired' ? 'warn' : lvl === 'urgent' ? 'warn' : 'good'
+      chip = { text: summary || `${lvl ?? '–'}`, tone }
+      break
+    }
+    case 'detect_anonymisierung_needed': {
+      const needed = Boolean(out.needed)
+      chip = {
+        text: needed
+          ? isDE
+            ? '§ 200a StPO empfohlen'
+            : '§ 200a StPO recommended'
+          : isDE
+          ? 'kein § 200a nötig'
+          : '§ 200a not needed',
+        tone: needed ? 'info' : 'good',
+      }
+      break
+    }
+    case 're_archive_urls': {
+      const att = (out.attempted as number | undefined) ?? 0
+      const ok = (out.succeeded as number | undefined) ?? 0
+      chip = {
+        text: `${ok}/${att} ${isDE ? 'URLs archiviert' : 'URLs archived'}`,
+        tone: ok > 0 ? 'good' : 'info',
+      }
+      break
+    }
+    case 'draft_netzdg_email': {
+      const ok = Boolean(out.ok)
+      const platform = out.platform as string | undefined
+      chip = ok
+        ? { text: `eml: ${platform ?? '?'}`, tone: 'good' }
+        : { text: String(out.error ?? '–'), tone: 'info' }
+      break
+    }
+    case 'determine_jurisdiction': {
+      const sta = (out.staatsanwaltschaft as { name?: string } | undefined)?.name
+      if (sta) chip = { text: sta, tone: 'good' }
+      break
+    }
+    case 'generate_strafanzeige_pdf': {
+      const len = (out.pdf_bytes_len as number | undefined) ?? 0
+      if (len > 0) chip = { text: `PDF ${Math.round(len / 1024)} KB`, tone: 'good' }
+      break
+    }
+    case 'build_onlinewache_text': {
+      const ok = Boolean(out.ok)
+      const land = out.bundesland_name as string | undefined
+      chip = ok
+        ? { text: `Onlinewache ${land ?? ''}`, tone: 'good' }
+        : { text: String(out.error ?? '–'), tone: 'info' }
+      break
+    }
+  }
+
+  if (!chip) return null
+
+  const cls =
+    chip.tone === 'good'
+      ? 'text-emerald-300 bg-emerald-950/40 border-emerald-800/40'
+      : chip.tone === 'warn'
+      ? 'text-amber-200 bg-amber-950/40 border-amber-800/40'
+      : 'text-indigo-200 bg-indigo-950/40 border-indigo-800/40'
+
+  return (
+    <span
+      className={`inline-block mt-1 text-[11px] border rounded px-1.5 py-0.5 ${cls}`}
+    >
+      {chip.text}
+    </span>
   )
 }
 
 function Spinner() {
   return (
     <span
-      className="inline-block w-3 h-3 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin"
+      className="inline-block w-3.5 h-3.5 rounded-full border-2 border-indigo-300 border-t-transparent animate-spin"
       aria-hidden="true"
     />
   )
 }
 
-function ResultBlock({
-  result,
-  isDE,
-  toolLabel,
-}: {
-  result: CourtPrepResponse
-  isDE: boolean
-  toolLabel: (n: string) => string
-}) {
+// ── Artefact downloads + Onlinewache fast-path ──────────────────────────
+
+function Artefacts({ result, isDE }: { result: CourtPrepResponse; isDE: boolean }) {
   const a = result.artefacts
   const completed = result.status === 'completed'
 
   return (
     <div className="mt-5 space-y-4">
-      {/* Status banner */}
       <div
         className={`rounded-lg border p-3 text-sm ${
           completed
@@ -350,19 +471,17 @@ function ResultBlock({
         <div className="font-medium">
           {completed
             ? isDE
-              ? 'Paket bereit — bitte alle Dokumente vor dem Versand prüfen.'
-              : 'Package ready — please review all documents before sending.'
+              ? 'Paket bereit — bitte vor Versand prüfen.'
+              : 'Package ready — review before sending.'
             : isDE
-            ? `Status: ${result.status} (${result.error ?? '—'})`
-            : `Status: ${result.status} (${result.error ?? '—'})`}
+            ? `Status: ${result.status}`
+            : `Status: ${result.status}`}
         </div>
-        <div className="text-xs opacity-75 mt-1">
-          {result.iterations} {isDE ? 'Schritte' : 'iterations'} · $
-          {result.total_cost_usd.toFixed(4)} · run {result.agent_run_id.slice(0, 8)}
+        <div className="text-[11px] opacity-70 mt-1 font-mono">
+          run {result.agent_run_id.slice(0, 8)} · prompt {result.prompt_version}
         </div>
       </div>
 
-      {/* Final agent message */}
       {result.final_message && (
         <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
           <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
@@ -374,52 +493,19 @@ function ResultBlock({
         </div>
       )}
 
-      {/* Frist warning */}
-      {a.frist && a.frist.applicable_antragsdelikte.length > 0 && (
-        <div
-          className={`rounded-lg border p-3 text-sm ${
-            a.frist.warning_level === 'expired'
-              ? 'border-red-800/50 bg-red-950/40 text-red-200'
-              : a.frist.warning_level === 'urgent'
-              ? 'border-amber-800/50 bg-amber-950/40 text-amber-200'
-              : 'border-slate-700 bg-slate-900/60 text-slate-200'
-          }`}
-        >
-          <div className="font-medium mb-1">
-            {isDE ? 'Strafantrags-Frist' : 'Strafantrag deadline'} (§ 77 StGB)
-          </div>
-          <p className="text-xs opacity-90 mb-2">{a.frist.summary}</p>
-          <ul className="text-xs space-y-0.5">
-            {a.frist.applicable_antragsdelikte.map((f) => (
-              <li key={f.law}>
-                <span className="font-mono">{f.law}</span> — {f.days_left}{' '}
-                {isDE ? 'Tage verbleibend' : 'days left'} ·{' '}
-                {f.deadline_utc.slice(0, 10)}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Jurisdiction */}
       {a.jurisdiction && (
         <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3 text-sm">
           <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
             {isDE ? 'Zuständige Staatsanwaltschaft' : 'Competent prosecutor'} (§ 7 StPO)
           </div>
-          <p className="text-slate-200 font-medium">
-            {a.jurisdiction.staatsanwaltschaft.name}
-          </p>
-          <p className="text-slate-400 text-xs">
-            {a.jurisdiction.staatsanwaltschaft.address}
-          </p>
+          <p className="text-slate-200 font-medium">{a.jurisdiction.staatsanwaltschaft.name}</p>
+          <p className="text-slate-400 text-xs">{a.jurisdiction.staatsanwaltschaft.address}</p>
           <p className="text-slate-400 text-xs font-mono mt-1">
             {a.jurisdiction.staatsanwaltschaft.email}
           </p>
         </div>
       )}
 
-      {/* § 200a recommendation */}
       {a.anonymisierung && a.anonymisierung.needed && (
         <div className="rounded-lg border border-indigo-800/50 bg-indigo-950/40 p-3 text-sm">
           <div className="text-xs uppercase tracking-wider text-indigo-300 mb-1">
@@ -431,9 +517,7 @@ function ResultBlock({
 
       {/* Downloads */}
       <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
-        <div className="text-xs uppercase tracking-wider text-slate-500 mb-2">
-          {isDE ? 'Downloads' : 'Downloads'}
-        </div>
+        <div className="text-xs uppercase tracking-wider text-slate-500 mb-2">Downloads</div>
         <div className="flex flex-wrap gap-2">
           {a.strafanzeige_pdf_base64 && (
             <button
@@ -454,9 +538,7 @@ function ResultBlock({
             <button
               key={eml.platform}
               type="button"
-              onClick={() =>
-                downloadBase64(eml.eml_base64, eml.filename, 'message/rfc822')
-              }
+              onClick={() => downloadBase64(eml.eml_base64, eml.filename, 'message/rfc822')}
               className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-sm px-3 py-1.5 rounded-lg"
             >
               📨 NetzDG {eml.platform}
@@ -470,48 +552,102 @@ function ResultBlock({
         </div>
       </div>
 
-      {/* Tool trace */}
-      <details className="rounded-lg border border-slate-700 bg-slate-900/40 p-3">
-        <summary className="cursor-pointer text-xs uppercase tracking-wider text-slate-500">
-          {isDE ? 'Agent-Trace anzeigen' : 'Show agent trace'} (
-          {result.tool_trace.length})
-        </summary>
-        <ol className="mt-3 space-y-1.5 text-xs">
-          {result.tool_trace.map((c, i) => (
-            <ToolCallLine key={i} call={c} toolLabel={toolLabel} />
-          ))}
-        </ol>
-      </details>
+      {a.onlinewache && (
+        <OnlinewacheCard onlinewache={a.onlinewache} isDE={isDE} />
+      )}
     </div>
   )
 }
 
-function ToolCallLine({
-  call,
-  toolLabel,
+function OnlinewacheCard({
+  onlinewache,
+  isDE,
 }: {
-  call: CourtPrepTraceCall
-  toolLabel: (n: string) => string
+  onlinewache: NonNullable<CourtPrepResponse['artefacts']['onlinewache']>
+  isDE: boolean
 }) {
-  const ok = !call.error
+  const [copied, setCopied] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(onlinewache.text_for_paste)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // older browsers — silently skip
+    }
+  }
+
   return (
-    <li
-      className={`flex items-start gap-2 ${
-        ok ? 'text-slate-300' : 'text-red-300'
-      }`}
-    >
-      <span className="font-mono text-slate-500 w-12 text-right shrink-0">
-        {call.latency_ms}ms
-      </span>
-      <span>
-        {ok ? '✓' : '✗'} {toolLabel(call.tool)}
-        {call.cached && (
-          <span className="ml-2 text-[10px] uppercase tracking-wider text-slate-500">
-            cached
-          </span>
-        )}
-        {call.error && <span className="ml-2 opacity-80">— {call.error}</span>}
-      </span>
-    </li>
+    <div className="rounded-lg border border-blue-800/50 bg-blue-950/30 p-3">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-blue-300 mb-0.5">
+            {isDE ? 'Direkt online einreichen' : 'File online directly'}
+          </div>
+          <p className="text-sm text-slate-200">
+            {isDE
+              ? `Onlinewache ${onlinewache.bundesland_name} — offizieller 24/7-Polizei-Kanal. Schneller als Brief an die Staatsanwaltschaft.`
+              : `Onlinewache ${onlinewache.bundesland_name} — official 24/7 police channel.`}
+          </p>
+        </div>
+      </div>
+
+      <ol className="text-xs text-slate-300 space-y-1 mb-3 list-decimal list-inside">
+        <li>{isDE ? 'Text kopieren (Button rechts).' : 'Copy the text (button right).'}</li>
+        <li>{isDE ? 'Onlinewache öffnen.' : 'Open the Onlinewache.'}</li>
+        <li>
+          {isDE
+            ? 'Im Formular eigene Daten ausfüllen, dann den Text ins "Sachverhalt"-Feld einfügen.'
+            : 'Fill in your own data, then paste the text into the "Sachverhalt" field.'}
+        </li>
+      </ol>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={copy}
+          className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-sm px-3 py-1.5 rounded-lg"
+        >
+          {copied
+            ? isDE
+              ? '✓ Kopiert'
+              : '✓ Copied'
+            : isDE
+            ? '📋 Text kopieren'
+            : '📋 Copy text'}
+        </button>
+        <a
+          href={onlinewache.onlinewache_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-blue-600 hover:bg-blue-500 text-white text-sm px-3 py-1.5 rounded-lg font-medium"
+        >
+          {isDE
+            ? `Onlinewache ${onlinewache.bundesland_name} öffnen →`
+            : `Open Onlinewache ${onlinewache.bundesland_name} →`}
+        </a>
+        <button
+          type="button"
+          onClick={() => setShowPreview((v) => !v)}
+          className="text-xs text-slate-400 hover:text-slate-200 underline ml-auto"
+        >
+          {showPreview
+            ? isDE
+              ? 'Vorschau ausblenden'
+              : 'Hide preview'
+            : isDE
+            ? 'Vorschau anzeigen'
+            : 'Show preview'}
+        </button>
+      </div>
+
+      {showPreview && (
+        <pre className="mt-3 max-h-64 overflow-auto text-[11px] font-mono text-slate-300 bg-slate-950/70 border border-slate-800 rounded p-3 whitespace-pre-wrap">
+          {onlinewache.text_for_paste}
+        </pre>
+      )}
+    </div>
   )
 }

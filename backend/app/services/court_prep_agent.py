@@ -59,7 +59,12 @@ ARBEITSWEISE
    dann Platzhalter, die später ausgefüllt werden.
 7. Wenn der User einen Bundesland-Code mitgegeben hat → `determine_jurisdiction`.
    Wenn nicht → nicht aufrufen, der User wählt das später im UI.
-8. Am Ende `generate_strafanzeige_pdf` aufrufen mit den vorhandenen victim_*-Daten.
+8. `generate_strafanzeige_pdf` aufrufen mit den vorhandenen victim_*-Daten.
+9. **PFLICHT wenn `bundesland_code` im Input gesetzt ist:** `build_onlinewache_text`
+   aufrufen. Der User kann dann die Anzeige direkt über den offiziellen Polizei-
+   Online-Kanal einreichen statt per Brief — das ist der schnellere und
+   offiziellere Weg. Diesen Schritt NIE überspringen wenn ein Bundesland
+   übergeben wurde.
 
 WENN DU FERTIG BIST
 Antworte mit einer kurzen Zusammenfassung in 4-7 Sätzen auf Deutsch:
@@ -163,6 +168,7 @@ def summarise_artefacts(tool_trace: list[dict]) -> dict[str, Any]:
         "frist": None,
         "anonymisierung": None,
         "jurisdiction": None,
+        "onlinewache": None,
     }
     for call in tool_trace:
         out = call.get("output") or {}
@@ -190,5 +196,13 @@ def summarise_artefacts(tool_trace: list[dict]) -> dict[str, Any]:
             artefacts["anonymisierung"] = out
         elif name == "determine_jurisdiction" and "staatsanwaltschaft" in out:
             artefacts["jurisdiction"] = out
+        elif name == "build_onlinewache_text" and out.get("ok"):
+            artefacts["onlinewache"] = {
+                "bundesland_code": out.get("bundesland_code"),
+                "bundesland_name": out.get("bundesland_name"),
+                "onlinewache_url": out.get("onlinewache_url"),
+                "text_for_paste": out.get("text_for_paste"),
+                "instructions_de": out.get("instructions_de"),
+            }
 
     return artefacts
