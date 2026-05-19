@@ -56,6 +56,9 @@ class ChatResult:
     refusal: str | None = None
     parsed: Any = None
     error: str | None = field(default=None)
+    # Populated by `chat_with_tools()` when the model returned tool calls.
+    # Each entry: {"id": str, "name": str, "arguments": dict, "arguments_raw": str}
+    tool_calls: list[dict] = field(default_factory=list)
 
 
 def is_available() -> bool:
@@ -209,6 +212,85 @@ def parse(
         )
 
 
+def chat_with_tools(
+    messages: list[dict],
+    *,
+    tools: list[dict],
+    model: str = "gpt-4o-mini",
+    temperature: float = 0.2,
+    tool_choice: str | dict = "auto",
+) -> ChatResult:
+    """Chat completion with OpenAI function-calling.
+
+    Returns a `ChatResult` whose `tool_calls` field is populated when the
+    model requested one or more tools. `arguments` is parsed JSON;
+    `arguments_raw` is the original string (needed when echoing the
+    assistant message back to the API).
+    """
+    request_id = _new_request_id()
+    client = _client()
+    if client is None:
+        return ChatResult(
+            content=None,
+            model=model,
+            usage=Usage(),
+            estimated_cost_usd=0.0,
+            request_id=request_id,
+            error="openai_unavailable",
+        )
+
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            tools=tools,
+            tool_choice=tool_choice,
+        )
+        msg = completion.choices[0].message
+        usage = _extract_usage(completion)
+        cost = _estimate_cost(model, usage.prompt_tokens, usage.completion_tokens)
+
+        raw_tool_calls = getattr(msg, "tool_calls", None) or []
+        parsed_tool_calls: list[dict] = []
+        import json as _json
+
+        for tc in raw_tool_calls:
+            args_raw = getattr(tc.function, "arguments", "") or "{}"
+            try:
+                args = _json.loads(args_raw)
+            except Exception:
+                args = {"_unparseable": True, "raw": args_raw}
+            parsed_tool_calls.append(
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "arguments": args,
+                    "arguments_raw": args_raw,
+                }
+            )
+
+        return ChatResult(
+            content=msg.content,
+            model=model,
+            usage=usage,
+            estimated_cost_usd=cost,
+            request_id=request_id,
+            raw_message=msg,
+            tool_calls=parsed_tool_calls,
+        )
+    except Exception as e:
+        logger.warning("llm_gateway.chat_with_tools failed [%s]: %s", request_id, e)
+        return ChatResult(
+            content=None,
+            model=model,
+            usage=Usage(),
+            estimated_cost_usd=0.0,
+            request_id=request_id,
+            error=str(e),
+        )
+
+
 def record_usage(
     db,
     result: ChatResult,
@@ -216,6 +298,7 @@ def record_usage(
     route: str,
     case_id: str | None = None,
     user_id: str | None = None,
+    agent_run_id: str | None = None,
 ) -> None:
     """Append one row to `llm_usage`. Best-effort — never raises, since a
     telemetry failure must not break the actual request path."""
@@ -232,6 +315,7 @@ def record_usage(
             total_tokens=result.usage.total_tokens,
             estimated_cost_usd=result.estimated_cost_usd,
             request_id=result.request_id,
+            agent_run_id=agent_run_id,
         )
         db.add(row)
         db.commit()

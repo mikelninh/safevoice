@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "agent": "court_prep",
+  "prompt_version": "court_prep_v1",
+  "description": "Eval cases for the SafeVoice Court-Prep Agent. Each case lists the expected tool names the agent must call (order-insensitive) and predicates on the final artefacts. Used by scripts/run_court_prep_eval.py.",
+  "cases": [
+    {
+      "id": "cp-eval-001",
+      "name": "low-severity insult, single platform",
+      "input": {
+        "case_seed": {
+          "severity": "low",
+          "categories": ["harassment"],
+          "laws": ["stgb:185"],
+          "platforms": ["instagram"],
+          "evidence_days_ago": 5
+        },
+        "victim_name": "Anna Beispiel",
+        "bundesland_code": "BE"
+      },
+      "expectations": {
+        "tools_called_at_least": [
+          "read_case",
+          "check_strafantrag_frist",
+          "detect_anonymisierung_needed",
+          "generate_strafanzeige_pdf"
+        ],
+        "frist_warning_level_in": ["ok"],
+        "anonymisierung_needed": false,
+        "jurisdiction_name_contains": "Berlin",
+        "pdf_present": true,
+        "netzdg_eml_count_at_least": 0,
+        "max_iterations": 8,
+        "max_cost_usd": 0.20
+      }
+    },
+    {
+      "id": "cp-eval-002",
+      "name": "high-severity doxxing across IG + X, recent evidence",
+      "input": {
+        "case_seed": {
+          "severity": "high",
+          "categories": ["doxxing", "threat"],
+          "laws": ["stgb:126a", "stgb:241"],
+          "platforms": ["instagram", "x"],
+          "evidence_days_ago": 2
+        },
+        "victim_name": "B. Kläger:in",
+        "bundesland_code": "BY"
+      },
+      "expectations": {
+        "tools_called_at_least": [
+          "read_case",
+          "check_strafantrag_frist",
+          "detect_anonymisierung_needed",
+          "re_archive_urls",
+          "draft_netzdg_email",
+          "generate_strafanzeige_pdf"
+        ],
+        "frist_warning_level_in": ["ok"],
+        "anonymisierung_needed": true,
+        "jurisdiction_name_contains": "München",
+        "pdf_present": true,
+        "netzdg_eml_count_at_least": 2,
+        "archived_urls_count_at_least": 2,
+        "max_iterations": 10,
+        "max_cost_usd": 0.40
+      }
+    },
+    {
+      "id": "cp-eval-003",
+      "name": "almost-expired Beleidigungs-Frist, urgent banner expected",
+      "input": {
+        "case_seed": {
+          "severity": "medium",
+          "categories": ["harassment"],
+          "laws": ["stgb:185"],
+          "platforms": ["tiktok"],
+          "evidence_days_ago": 86
+        },
+        "victim_name": "Test Opfer",
+        "bundesland_code": "NW"
+      },
+      "expectations": {
+        "tools_called_at_least": [
+          "read_case",
+          "check_strafantrag_frist",
+          "detect_anonymisierung_needed",
+          "generate_strafanzeige_pdf"
+        ],
+        "frist_warning_level_in": ["urgent", "expired"],
+        "anonymisierung_needed": false,
+        "jurisdiction_name_contains": "Köln",
+        "pdf_present": true,
+        "netzdg_eml_count_at_least": 1,
+        "max_iterations": 10,
+        "max_cost_usd": 0.30
+      }
+    }
+  ]
+}

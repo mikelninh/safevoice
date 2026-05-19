@@ -40,6 +40,11 @@ _CATEGORY_MAP = {
     "verleumdung": "slander",
     "stalking": "cyberstalking",
     "intimate_images": "intimate_images",
+    # 2026-05-19: previously dropped silently. The classifier outputs
+    # `doxxing` as its own category — we need it preserved end-to-end so
+    # the Court-Prep agent can detect § 200a StPO Anonymisierungs-Bedarf
+    # from the DB-side categories list.
+    "doxxing": "doxxing",
 }
 
 # Maps classifier GermanLaw paragraph to DB law IDs
@@ -59,7 +64,9 @@ _LAW_MAP = {
 }
 
 
-def create_case(db: Session, title: str | None = None, user_id: str | None = None) -> DBCase:
+def create_case(
+    db: Session, title: str | None = None, user_id: str | None = None
+) -> DBCase:
     """Create a new case in the database."""
     case = DBCase(
         id=gen_uuid(),
@@ -131,7 +138,9 @@ def add_evidence_with_classification(
     # Source the prompt version from the classifier module so it stays in
     # lockstep with whatever SYSTEM_PROMPT actually produced this output.
     try:
-        from app.services.classifier_llm_v2 import PROMPT_VERSION as _classifier_prompt_version
+        from app.services.classifier_llm_v2 import (
+            PROMPT_VERSION as _classifier_prompt_version,
+        )
     except Exception:
         _classifier_prompt_version = "v1"
 
@@ -209,7 +218,9 @@ def _build_recommended_actions(result: ClassificationResult, lang: str) -> str:
 
     if lang == "de":
         if is_critical:
-            actions.append("Sofort Strafanzeige erstatten (online: www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html)")
+            actions.append(
+                "Sofort Strafanzeige erstatten (online: www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html)"
+            )
             actions.append("NetzDG-Beschwerde bei der Plattform einreichen (24h Frist)")
             actions.append("Beweise sichern (Screenshots, Hash-Prüfung)")
         elif is_high:
@@ -220,8 +231,13 @@ def _build_recommended_actions(result: ClassificationResult, lang: str) -> str:
             actions.append("Inhalt bei der Plattform melden")
             actions.append("Beweise sichern für mögliche spätere Anzeige")
 
-        if any(c.value in ("scam", "investment_fraud", "phishing") for c in result.categories):
-            actions.append("BaFin informieren (Bundesanstalt für Finanzdienstleistungsaufsicht)")
+        if any(
+            c.value in ("scam", "investment_fraud", "phishing")
+            for c in result.categories
+        ):
+            actions.append(
+                "BaFin informieren (Bundesanstalt für Finanzdienstleistungsaufsicht)"
+            )
             actions.append("Bank kontaktieren falls Geld überwiesen wurde")
 
         actions.append("Beratung bei HateAid e.V.: https://hateaid.org")
@@ -238,7 +254,10 @@ def _build_recommended_actions(result: ClassificationResult, lang: str) -> str:
             actions.append("Report the content to the platform")
             actions.append("Preserve evidence for potential future report")
 
-        if any(c.value in ("scam", "investment_fraud", "phishing") for c in result.categories):
+        if any(
+            c.value in ("scam", "investment_fraud", "phishing")
+            for c in result.categories
+        ):
             actions.append("Report to BaFin (Federal Financial Supervisory Authority)")
             actions.append("Contact your bank if money was transferred")
 
@@ -263,8 +282,13 @@ def case_to_pydantic(db_case: DBCase):
     Used by report generators that expect the old model format.
     """
     from app.models.evidence import (
-        Case, EvidenceItem, ClassificationResult, PatternFlag,
-        Severity, Category as PydanticCategory, GermanLaw,
+        Case,
+        EvidenceItem,
+        ClassificationResult,
+        PatternFlag,
+        Severity,
+        Category as PydanticCategory,
+        GermanLaw,
     )
 
     evidence_items = []
@@ -277,23 +301,29 @@ def case_to_pydantic(db_case: DBCase):
             for cat in cl.categories:
                 # Try to find matching enum value
                 for pc in PydanticCategory:
-                    if pc.value == cat.id or pc.value == cat.name.lower().replace(" ", "_"):
+                    if pc.value == cat.id or pc.value == cat.name.lower().replace(
+                        " ", "_"
+                    ):
                         categories.append(pc)
                         break
 
             # Map DB laws to GermanLaw Pydantic models
             laws = []
             for law in cl.laws:
-                laws.append(GermanLaw(
-                    paragraph=f"§ {law.section} {law.code.upper()}" if law.code != "netzdg" else f"NetzDG § {law.section}",
-                    title=law.name or "",
-                    title_de=law.name_de or "",
-                    description="",
-                    description_de="",
-                    max_penalty=law.max_penalty or "",
-                    applies_because="",
-                    applies_because_de="",
-                ))
+                laws.append(
+                    GermanLaw(
+                        paragraph=f"§ {law.section} {law.code.upper()}"
+                        if law.code != "netzdg"
+                        else f"NetzDG § {law.section}",
+                        title=law.name or "",
+                        title_de=law.name_de or "",
+                        description="",
+                        description_de="",
+                        max_penalty=law.max_penalty or "",
+                        applies_because="",
+                        applies_because_de="",
+                    )
+                )
 
             classification = ClassificationResult(
                 severity=Severity(cl.severity) if cl.severity else Severity.LOW,
@@ -307,17 +337,19 @@ def case_to_pydantic(db_case: DBCase):
                 potential_consequences_de=cl.potential_consequences_de or "",
             )
 
-        evidence_items.append(EvidenceItem(
-            id=ev.id,
-            url=ev.source_url or "",
-            platform=ev.platform or "unknown",
-            captured_at=ev.timestamp_utc or datetime.now(timezone.utc),
-            author_username="unknown",
-            content_text=ev.raw_content,
-            content_hash=ev.content_hash or "",
-            archived_url=ev.archived_url,
-            classification=classification,
-        ))
+        evidence_items.append(
+            EvidenceItem(
+                id=ev.id,
+                url=ev.source_url or "",
+                platform=ev.platform or "unknown",
+                captured_at=ev.timestamp_utc or datetime.now(timezone.utc),
+                author_username="unknown",
+                content_text=ev.raw_content,
+                content_hash=ev.content_hash or "",
+                archived_url=ev.archived_url,
+                classification=classification,
+            )
+        )
 
     return Case(
         id=db_case.id,
@@ -325,6 +357,8 @@ def case_to_pydantic(db_case: DBCase):
         updated_at=db_case.updated_at or datetime.now(timezone.utc),
         title=db_case.title or "Untitled Case",
         status=db_case.status or "open",
-        overall_severity=Severity(db_case.overall_severity) if db_case.overall_severity and db_case.overall_severity != "none" else Severity.LOW,
+        overall_severity=Severity(db_case.overall_severity)
+        if db_case.overall_severity and db_case.overall_severity != "none"
+        else Severity.LOW,
         evidence_items=evidence_items,
     )

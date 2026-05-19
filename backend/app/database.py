@@ -358,6 +358,71 @@ class LLMUsage(Base):
     total_tokens = Column(Integer, nullable=False, default=0)
     estimated_cost_usd = Column(Float, nullable=False, default=0.0)
     request_id = Column(String, nullable=False, index=True)
+    # Set when this LLM call was made inside an agent run. Lets the cost
+    # dashboard aggregate one agent run (e.g. 6 tool calls + 1 final LLM
+    # synthesis) as a single line item.
+    agent_run_id = Column(
+        String, ForeignKey("agent_runs.id"), nullable=True, index=True
+    )
+
+
+class AgentRun(Base):
+    """One execution of an agent (multi-step LLM + tool-use loop).
+
+    Every agent invocation gets a row. Status transitions:
+      running → completed | failed | aborted_budget | aborted_iterations
+    The aggregated total_cost_usd and total_iterations are updated
+    incrementally so a polling client sees progress live.
+    """
+
+    __tablename__ = "agent_runs"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    agent_name = Column(String, nullable=False, index=True)  # e.g. "court_prep"
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    case_id = Column(String, ForeignKey("cases.id"), nullable=True, index=True)
+    status = Column(String, nullable=False, default="running", index=True)
+    input_json = Column(Text, nullable=False)  # serialized request payload
+    output_json = Column(Text, nullable=True)  # serialized final result
+    total_iterations = Column(Integer, default=0, nullable=False)
+    total_cost_usd = Column(Float, default=0.0, nullable=False)
+    error = Column(Text, nullable=True)
+    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+
+    tool_calls = relationship(
+        "ToolCallLog",
+        back_populates="agent_run",
+        order_by="ToolCallLog.called_at.asc()",
+    )
+
+
+class ToolCallLog(Base):
+    """Audit log for every tool invocation inside an agent run.
+
+    `input_hash` enables in-run idempotency: a tool called twice with
+    identical input in the same run replays the cached output instead of
+    re-executing. Critical for tools with side effects (URL archiving,
+    PDF generation) and to keep cost in check when the LLM re-plans.
+    """
+
+    __tablename__ = "tool_calls"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    agent_run_id = Column(
+        String, ForeignKey("agent_runs.id"), nullable=False, index=True
+    )
+    tool_name = Column(String, nullable=False, index=True)
+    input_json = Column(Text, nullable=False)
+    output_json = Column(Text, nullable=True)
+    input_hash = Column(String, nullable=False, index=True)
+    latency_ms = Column(Integer, default=0)
+    cost_usd = Column(Float, default=0.0)
+    cached = Column(Boolean, default=False, nullable=False)
+    error = Column(Text, nullable=True)
+    called_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    agent_run = relationship("AgentRun", back_populates="tool_calls")
 
 
 # ── Create all tables ──
@@ -408,6 +473,13 @@ def _lightweight_migrations():
         # exists for the explicit log message only.
         statements.append(None)  # sentinel — handled by create_all
 
+    # llm_usage.agent_run_id — added 2026-05-19, stitches multi-call agent
+    # runs into one cost-dashboard line item.
+    if "llm_usage" in inspector.get_table_names():
+        llm_cols = {c["name"] for c in inspector.get_columns("llm_usage")}
+        if "agent_run_id" not in llm_cols:
+            statements.append("ALTER TABLE llm_usage ADD COLUMN agent_run_id VARCHAR")
+
     if not [s for s in statements if s]:
         return
 
@@ -454,6 +526,11 @@ def seed_categories_and_laws():
         ("misogyny", "Misogyny", "Misogynie"),
         ("scam", "Scam / Fraud", "Betrug / Scam"),
         ("phishing", "Phishing", "Phishing"),
+        (
+            "doxxing",
+            "Doxxing (publication of private data)",
+            "Doxxing (Veröffentlichung privater Daten)",
+        ),
     ]
 
     for id_name, name, name_de in categories:

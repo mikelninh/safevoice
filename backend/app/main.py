@@ -29,6 +29,7 @@ from app.routers import (
     policy,
     orgs,
     bulk_import,
+    agent,
 )
 
 
@@ -122,6 +123,7 @@ for r in [
     policy.router,
     orgs.router,
     bulk_import.router,
+    agent.router,
 ]:
     app.include_router(r)
     app.include_router(r, prefix="/api")
