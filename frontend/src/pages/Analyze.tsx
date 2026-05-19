@@ -39,6 +39,12 @@ export default function Analyze({ lang }: Props) {
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false)
+  // Three input methods previously stacked with "oder" dividers forced
+  // the user to scan all three before starting. Now: text is the default;
+  // the other two are quiet tabs above.
+  const [inputMethod, setInputMethod] = useState<'text' | 'url' | 'screenshot'>(
+    params.get('url') ? 'url' : 'text'
+  )
   const isDE = lang === 'de'
 
   // Auto-analyze if coming from share target
@@ -83,7 +89,7 @@ export default function Analyze({ lang }: Props) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       setError(
-        msg || (isDE ? 'Classifier nicht erreichbar. Bitte erneut versuchen.' : 'Classifier unreachable. Please try again.')
+        msg || (isDE ? 'Die Analyse antwortet gerade nicht. Bitte nochmal versuchen.' : "The analysis isn't responding right now. Please try again.")
       )
     } finally {
       setLoading(false)
@@ -113,7 +119,7 @@ export default function Analyze({ lang }: Props) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       setError(
-        msg || (isDE ? 'Screenshot konnte nicht hochgeladen werden. Datei zu groß oder OCR-Dienst offline.' : 'Screenshot could not be uploaded. File too large or OCR service offline.')
+        msg || (isDE ? 'Das Bild konnte nicht hochgeladen werden — vielleicht zu groß, oder die OCR antwortet gerade nicht.' : "Couldn't upload the screenshot — file may be too large or OCR is offline.")
       )
     } finally {
       setLoading(false)
@@ -130,155 +136,188 @@ export default function Analyze({ lang }: Props) {
 
   const c = result?.classification
 
+  // Tab labels for the three input methods.
+  const tabs: Array<{ key: 'text' | 'url' | 'screenshot'; label: string }> = [
+    { key: 'text', label: isDE ? 'Text' : 'Text' },
+    { key: 'url', label: isDE ? 'Link' : 'Link' },
+    { key: 'screenshot', label: 'Screenshot' },
+  ]
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2 tracking-tight">
+      {/* Title — privacy line removed: it duplicated the mood-bar above. */}
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-8 tracking-tight">
         {t(lang, 'analyze.title')}
       </h1>
-      <div className="flex items-center gap-2 mb-8">
-        <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-        <span className="text-green-300/90 text-sm">{t(lang, 'analyze.privacy')}</span>
-      </div>
 
-      {/* Form — text first (most common path: paste a message you received) */}
+      {/* Form — tabbed input methods. Default is text (the most common
+          path: paste something you received). Link + Screenshot are
+          quiet alternative tabs above the input. */}
       <div className="bg-slate-800/60 rounded-xl p-5 sm:p-6 mb-6 space-y-5">
-        <div>
-          <label className="block text-slate-300 text-sm font-medium mb-0.5">
-            {t(lang, 'analyze.text.label')}
-          </label>
-          <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.text.hint')}</p>
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder={t(lang, 'analyze.text.placeholder')}
-            rows={4}
-            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 resize-none"
-          />
+        <div className="flex gap-1 bg-slate-900/60 rounded-lg p-1">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setInputMethod(tab.key)}
+              className={`flex-1 py-1.5 px-2 rounded-md text-sm font-medium transition-colors ${
+                inputMethod === tab.key
+                  ? 'bg-slate-700 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-700/60"></div>
-          <span className="text-slate-500 text-xs uppercase tracking-wider">{isDE ? 'oder' : 'or'}</span>
-          <div className="flex-1 h-px bg-slate-700/60"></div>
-        </div>
-
-        <div>
-          <label className="block text-slate-300 text-sm font-medium mb-0.5">
-            {t(lang, 'analyze.url.label')}
-          </label>
-          <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.url.hint')}</p>
-          <div className="relative">
-            <input
-              type="url"
-              value={url}
-              onChange={e => setUrl(e.target.value)}
-              placeholder={t(lang, 'analyze.url.placeholder')}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 pr-24"
+        {inputMethod === 'text' && (
+          <div>
+            <label className="block text-slate-300 text-sm font-medium mb-0.5">
+              {t(lang, 'analyze.text.label')}
+            </label>
+            <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.text.hint')}</p>
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder={t(lang, 'analyze.text.placeholder')}
+              rows={5}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 resize-none"
             />
-            {url.trim() && isSocialUrl(url) && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-900 border border-indigo-700 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
-                {isDE ? 'Auto-Abruf' : 'Auto-fetch'}
-              </span>
+          </div>
+        )}
+
+        {inputMethod === 'url' && (
+          <div>
+            <label className="block text-slate-300 text-sm font-medium mb-0.5">
+              {t(lang, 'analyze.url.label')}
+            </label>
+            <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.url.hint')}</p>
+            <div className="relative">
+              <input
+                type="url"
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder={t(lang, 'analyze.url.placeholder')}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 pr-24"
+              />
+              {url.trim() && isSocialUrl(url) && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-900 border border-indigo-700 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
+                  {isDE ? 'Auto-Abruf' : 'Auto-fetch'}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {inputMethod === 'screenshot' && (
+          <div>
+            <label className="block text-slate-300 text-sm font-medium mb-1.5">
+              {isDE ? 'Bild hochladen' : 'Upload image'}
+            </label>
+            <p className="text-slate-500 text-xs mb-1.5">
+              {isDE
+                ? 'Funktioniert mit WhatsApp-Verläufen, DM-Screenshots und einzelnen Posts.'
+                : 'Works with WhatsApp chats, DM screenshots and single posts.'}
+            </p>
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={e => {
+                  const f = e.target.files?.[0] ?? null
+                  setScreenshotFile(f)
+                }}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800"
+              />
+            </div>
+            {screenshotFile && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-slate-400 text-xs truncate max-w-[200px]">
+                  {screenshotFile.name}
+                </span>
+                <span className="text-slate-500 text-xs">
+                  ({(screenshotFile.size / 1024).toFixed(0)} KB)
+                </span>
+                <button
+                  onClick={handleScreenshotUpload}
+                  disabled={uploadingScreenshot}
+                  className="ml-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  {uploadingScreenshot
+                    ? (isDE ? `Wird hochgeladen${uploadProgress !== null ? ` · ${uploadProgress}%` : '…'}` : `Uploading${uploadProgress !== null ? ` · ${uploadProgress}%` : '…'}`)
+                    : (isDE ? 'Analysieren' : 'Analyze')}
+                </button>
+              </div>
+            )}
+            {uploadProgress !== null && (
+              <div className="mt-2">
+                <div className="w-full bg-slate-700 rounded-full h-1.5">
+                  <div
+                    className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+                <span className="text-slate-500 text-xs mt-1 block">
+                  {uploadProgress}%
+                </span>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-slate-700/60"></div>
-          <span className="text-slate-500 text-xs uppercase tracking-wider">{isDE ? 'oder' : 'or'}</span>
-          <div className="flex-1 h-px bg-slate-700/60"></div>
-        </div>
-
-        {/* Screenshot upload */}
-        <div>
-          <label className="block text-slate-300 text-sm font-medium mb-1.5">
-            {isDE ? 'Screenshot hochladen (WhatsApp, DM, ...)' : 'Upload screenshot (WhatsApp, DM, ...)'}
-          </label>
-          <div className="relative">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={e => {
-                const f = e.target.files?.[0] ?? null
-                setScreenshotFile(f)
-              }}
-              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800"
-            />
+        {/* Optional fields — hidden behind a disclosure so the form
+            doesn't ask 4 questions before the first analysis. Only
+            shows up when someone wants to add context. */}
+        <details className="group">
+          <summary className="cursor-pointer inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-200 text-sm">
+            <span className="inline-block transition-transform group-open:rotate-90">›</span>
+            {isDE ? 'Kontext hinzufügen (optional)' : 'Add context (optional)'}
+          </summary>
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-0.5">
+                {isDE ? 'Was ist passiert?' : 'What happened?'}
+              </label>
+              <p className="text-slate-500 text-xs mb-1.5">
+                {isDE
+                  ? 'Was lief vorher? Hilft uns, den Fall besser einzuordnen.'
+                  : 'What was happening before? Helps us place the case.'}
+              </p>
+              <textarea
+                value={victimContext}
+                onChange={e => setVictimContext(e.target.value)}
+                placeholder={isDE
+                  ? 'z.B. „Der Account belästigt mich seit 3 Wochen, nachdem ich einen Post über XY geteilt habe …"'
+                  : 'e.g. "This account has been harassing me for 3 weeks after I posted about XY..."'}
+                rows={3}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 resize-none"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-1.5">
+                {t(lang, 'analyze.author.label')}
+              </label>
+              <input
+                type="text"
+                value={author}
+                onChange={e => setAuthor(e.target.value)}
+                placeholder={t(lang, 'analyze.author.placeholder')}
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500"
+              />
+            </div>
           </div>
-          {screenshotFile && (
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-slate-400 text-xs truncate max-w-[200px]">
-                {screenshotFile.name}
-              </span>
-              <span className="text-slate-500 text-xs">
-                ({(screenshotFile.size / 1024).toFixed(0)} KB)
-              </span>
-              <button
-                onClick={handleScreenshotUpload}
-                disabled={uploadingScreenshot}
-                className="ml-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {uploadingScreenshot
-                  ? (isDE ? `Screenshot wird hochgeladen${uploadProgress !== null ? ` · ${uploadProgress}%` : '…'}` : `Uploading screenshot${uploadProgress !== null ? ` · ${uploadProgress}%` : '…'}`)
-                  : (isDE ? 'Analysieren' : 'Analyze')}
-              </button>
-            </div>
-          )}
-          {uploadProgress !== null && (
-            <div className="mt-2">
-              <div className="w-full bg-slate-700 rounded-full h-1.5">
-                <div
-                  className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
-              <span className="text-slate-500 text-xs mt-1 block">
-                {uploadProgress}%
-              </span>
-            </div>
-          )}
-        </div>
+        </details>
 
-        <div>
-          <label className="block text-slate-300 text-sm font-medium mb-0.5">
-            {isDE ? 'Was ist passiert? (optional)' : 'What happened? (optional)'}
-          </label>
-          <p className="text-slate-500 text-xs mb-1.5">
-            {isDE
-              ? 'Kurzer Kontext: Was lief vorher, was war der Auslöser, gab es weitere Vorfälle? Hilft AI und Polizei, den Fall richtig einzuordnen.'
-              : 'Short context: what was the build-up, what triggered this, were there earlier incidents? Helps the AI and police place the case correctly.'}
-          </p>
-          <textarea
-            value={victimContext}
-            onChange={e => setVictimContext(e.target.value)}
-            placeholder={isDE
-              ? 'z.B. „Der Account belästigt mich seit 3 Wochen, nachdem ich einen Post über XY geteilt habe …"'
-              : 'e.g. "This account has been harassing me for 3 weeks after I posted about XY..."'}
-            rows={3}
-            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 resize-none"
-          />
-        </div>
-
-        <div>
-          <label className="block text-slate-300 text-sm font-medium mb-1.5">
-            {t(lang, 'analyze.author.label')}
-          </label>
-          <input
-            type="text"
-            value={author}
-            onChange={e => setAuthor(e.target.value)}
-            placeholder={t(lang, 'analyze.author.placeholder')}
-            className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <button
-          onClick={() => handleSubmit()}
-          disabled={loading || (!text.trim() && !url.trim())}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
-        >
-          {loading ? t(lang, 'analyze.analyzing') : t(lang, 'analyze.submit')}
-        </button>
+        {inputMethod !== 'screenshot' && (
+          <button
+            onClick={() => handleSubmit()}
+            disabled={loading || (!text.trim() && !url.trim())}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
+          >
+            {loading ? t(lang, 'analyze.analyzing') : t(lang, 'analyze.submit')}
+          </button>
+        )}
       </div>
 
       {/* Loading progress */}
