@@ -215,6 +215,21 @@ def _police_body(case, items, is_de: bool) -> str:
         if ev.classification and ev.classification.requires_immediate_action
     )
 
+    def _author(ev) -> str:
+        # "@unknown" reads as a bug in the body of a Strafanzeige. Switch
+        # absent handles to a labelled placeholder that survives copy-paste
+        # into the Onlinewache form.
+        h = (ev.author_username or "").strip()
+        if not h or h.lower() in {"unknown", "anonymous", "—", "-", "anonym"}:
+            return "Verfasser:in unbekannt"
+        return f"@{h}"
+
+    def _author_en(ev) -> str:
+        h = (ev.author_username or "").strip()
+        if not h or h.lower() in {"unknown", "anonymous", "—", "-", "anonym"}:
+            return "Author unknown"
+        return f"@{h}"
+
     def _fmt_de(ev) -> str:
         crit = (
             " [KRITISCH]"
@@ -223,7 +238,7 @@ def _police_body(case, items, is_de: bool) -> str:
         )
         return (
             f"- {ev.captured_at.strftime('%d.%m.%Y %H:%M')} Uhr | "
-            f"@{ev.author_username}{crit}: {ev.content_text[:140]}"
+            f"{_author(ev)}{crit}: {ev.content_text[:140]}"
             + ("…" if len(ev.content_text) > 140 else "")
         )
 
@@ -235,7 +250,7 @@ def _police_body(case, items, is_de: bool) -> str:
         )
         return (
             f"- {ev.captured_at.strftime('%Y-%m-%d %H:%M')} | "
-            f"@{ev.author_username}{crit}: {ev.content_text[:140]}"
+            f"{_author_en(ev)}{crit}: {ev.content_text[:140]}"
             + ("…" if len(ev.content_text) > 140 else "")
         )
 

@@ -114,6 +114,20 @@ def generate_pdf(
     }
     label_de, label_en = type_labels.get(report_type, type_labels["general"])
 
+    # Subtitle differs by report_type. For a Strafanzeige we drop the
+    # product-tagline ("Dokumentationsplattform für digitale Gewalt"
+    # reads like marketing copy on a legal document) and surface a
+    # restrained, defensibility-focused line instead.
+    if report_type == "police":
+        subtitle_de = "Beweissicherung mit Hash-Kette · Archive.org-Sicherung"
+        subtitle_en = "Evidence chain with SHA-256 hashes · Archive.org snapshots"
+    elif report_type == "netzdg":
+        subtitle_de = "Plattform-Meldung nach Netzwerkdurchsetzungsgesetz"
+        subtitle_en = "Platform takedown notice under NetzDG"
+    else:
+        subtitle_de = "Dokumentationsplattform für digitale Gewalt"
+        subtitle_en = "Digital Violence Documentation Platform"
+
     # Two-column masthead: title left, case-id mono top-right
     masthead = Table(
         [
@@ -122,9 +136,7 @@ def generate_pdf(
                     Paragraph("SafeVoice", styles["Title"]),
                     Paragraph(label_de if is_de else label_en, styles["ReportType"]),
                     Paragraph(
-                        "Dokumentationsplattform für digitale Gewalt"
-                        if is_de
-                        else "Digital Violence Documentation Platform",
+                        subtitle_de if is_de else subtitle_en,
                         styles["Subtitle"],
                     ),
                 ],
@@ -165,7 +177,12 @@ def generate_pdf(
     elements.append(Spacer(1, 10 * mm))
 
     # ── 3. Strafanzeige body (formal complaint) ────────────────────────────
-    if report_type == "police" and victim_name:
+    # Render for every police report — even without victim_name (placeholders
+    # remain so the document still reads as a Strafanzeige, not as an
+    # internal report). This is what police/StA expect; a Strafanzeige
+    # without the formal "Hiermit erstatte ich…" wording is not recognisable
+    # as one.
+    if report_type == "police":
         from app.services.report_generator import _police_body  # local: avoid cycle
 
         elements.append(
@@ -175,10 +192,19 @@ def generate_pdf(
         )
         elements.append(Spacer(1, 5 * mm))
 
-        # Sender block right-aligned at top of letter
-        sender_lines = [f"<b>{_escape(victim_name)}</b>"]
+        # Sender block right-aligned at top of letter — render even without
+        # a name; the placeholders make it obvious where to write by hand.
+        sender_lines = [
+            f"<b>{_escape(victim_name) if victim_name else _l('[Name der Anzeigeerstatterin]', '[Complainant name]', is_de)}</b>"
+        ]
         if victim_address:
             sender_lines.append(_escape(victim_address))
+        else:
+            sender_lines.append(
+                f"<font color='{GREY_400}'>"
+                + _l("[Straße, PLZ, Ort]", "[Street, ZIP, City]", is_de)
+                + "</font>"
+            )
         if victim_phone:
             sender_lines.append(f"Tel.: {_escape(victim_phone)}")
         if victim_email:
@@ -210,8 +236,16 @@ def generate_pdf(
         elements.append(Spacer(1, 6 * mm))
 
         body = _police_body(case, list(case.evidence_items), is_de=is_de)
-        body = body.replace("[NAME DES OPFERS]", victim_name)
-        body = body.replace("[UNTERSCHRIFT]", victim_name)
+        # Personalise where we have data, leave placeholders visible where we
+        # don't. A blank "[NAME DES OPFERS]" in the printed PDF is the right
+        # signal: it tells the user / officer where to handwrite.
+        if victim_name:
+            body = body.replace("[NAME DES OPFERS]", victim_name)
+            body = body.replace("[VICTIM NAME]", victim_name)
+        # The [UNTERSCHRIFT] / [SIGNATURE] tokens we render as a proper
+        # signature line below — strip them out of the body so they don't
+        # appear as literal text.
+        body = body.replace("[UNTERSCHRIFT]", "").replace("[SIGNATURE]", "")
 
         # Strip the redundant "STRAFANZEIGE" header + sender line + date line
         # from the inline body since we render them properly above.
@@ -237,7 +271,42 @@ def generate_pdf(
             elements.append(Paragraph(html, styles["Body"]))
             elements.append(Spacer(1, 2 * mm))
 
-        elements.append(Spacer(1, 5 * mm))
+        # Signature line. A printed underscore-rule + name underneath is the
+        # convention on a formal German Strafanzeige; reads as "sign here".
+        elements.append(Spacer(1, 12 * mm))
+        sig_name = victim_name or _l(
+            "[Name der Anzeigeerstatterin]", "[Complainant name]", is_de
+        )
+        sig_table = Table(
+            [
+                [
+                    HRFlowable(
+                        width=60 * mm, thickness=0.6, color=colors.HexColor(INK_SOFT)
+                    ),
+                ],
+                [
+                    Paragraph(
+                        f"<font color='{GREY_500}'>{_escape(sig_name)}"
+                        f"&nbsp;&nbsp;·&nbsp;&nbsp;{_l('Datum', 'Date', is_de)}: "
+                        f"{_fmt_dt(datetime.now(), is_de, with_time=False)}</font>",
+                        styles["MetaLine"],
+                    )
+                ],
+            ],
+            colWidths=[60 * mm],
+        )
+        sig_table.setStyle(
+            TableStyle(
+                [
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
+        elements.append(sig_table)
+        elements.append(Spacer(1, 10 * mm))
         elements.append(
             HRFlowable(width="35%", thickness=0.4, color=colors.HexColor(RULE))
         )
@@ -484,10 +553,13 @@ def _evidence_card(ev: EvidenceItem, idx: int, is_de: bool, styles: dict):
                 Paragraph(f"{idx:02d}", num_style),
                 [
                     Paragraph(
-                        f"@{_escape(ev.author_username)}"
-                        f"  ·  {_escape(ev.platform or '—')}"
-                        f"  ·  {_fmt_dt(ev.captured_at, is_de)}"
-                        f"  &nbsp;&nbsp;{sev_dot}",
+                        # Tolerant rendering for missing fields — "@unknown ·
+                        # unknown" looks like a bug; a labelled placeholder
+                        # ("Verfasser:in unbekannt") reads as honest absence.
+                        _format_author(ev.author_username, is_de)
+                        + f"  ·  {_format_platform(ev.platform, is_de)}"
+                        + f"  ·  {_fmt_dt(ev.captured_at, is_de)}"
+                        + f"  &nbsp;&nbsp;{sev_dot}",
                         meta_style,
                     ),
                 ],
@@ -599,7 +671,9 @@ def _evidence_card(ev: EvidenceItem, idx: int, is_de: bool, styles: dict):
             f"&nbsp;&nbsp;{_escape(ev.archived_url)}"
         )
     foot_lines.append(
-        f"<font color='{GREY_500}'>SHA-256</font>&nbsp;&nbsp;{_escape(ev.content_hash)}"
+        # Strip a redundant "sha256:" prefix on the stored hash so the label
+        # reads cleanly ("SHA-256  abc123…") instead of "SHA-256  sha256:abc…".
+        f"<font color='{GREY_500}'>SHA-256</font>&nbsp;&nbsp;{_escape(_clean_hash(ev.content_hash))}"
     )
     body_inner.append(Paragraph("<br/>".join(foot_lines), styles["MonoMeta"]))
 
@@ -1057,3 +1131,43 @@ def _hex(c) -> str:
         )
     except Exception:
         return "#000000"
+
+
+def _format_author(handle: str | None, is_de: bool) -> str:
+    """Render evidence's author handle for the exhibit card.
+
+    "@unknown" reads as a bug. A labelled placeholder ("Verfasser:in
+    unbekannt") reads as an honest absence — important when this PDF goes
+    to a Staatsanwaltschaft and every visual ambiguity costs trust.
+    """
+    handle = (handle or "").strip()
+    if not handle or handle.lower() in {"unknown", "anonymous", "—", "-", "anonym"}:
+        return (
+            f"<font color='{GREY_500}'><i>"
+            + _l("Verfasser:in unbekannt", "Author unknown", is_de)
+            + "</i></font>"
+        )
+    return f"@{_escape(handle)}"
+
+
+def _format_platform(platform: str | None, is_de: bool) -> str:
+    p = (platform or "").strip()
+    if not p or p.lower() in {"unknown", "—", "-"}:
+        return (
+            f"<font color='{GREY_500}'><i>"
+            + _l("Plattform unbekannt", "Platform unknown", is_de)
+            + "</i></font>"
+        )
+    return _escape(p)
+
+
+def _clean_hash(h: str | None) -> str:
+    """Strip a redundant 'sha256:' prefix so the PDF reads
+    'SHA-256  abc123…' instead of 'SHA-256  sha256:abc123…'."""
+    if not h:
+        return ""
+    s = str(h)
+    for prefix in ("sha256:", "SHA-256:", "sha-256:"):
+        if s.lower().startswith(prefix.lower()):
+            return s[len(prefix) :]
+    return s
