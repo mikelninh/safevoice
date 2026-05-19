@@ -123,44 +123,55 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
   }
 
   return (
-    <section className="mb-6 rounded-2xl border border-indigo-800/50 bg-gradient-to-br from-indigo-950/40 to-slate-950/60 p-5 shadow-lg shadow-indigo-950/20">
+    <section className="rounded-2xl border border-indigo-800/50 bg-gradient-to-br from-indigo-950/40 to-slate-950/60 p-5 sm:p-6 shadow-lg shadow-indigo-950/20">
       <header className="mb-4">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-1">
-          <span>{isDE ? 'Strafanzeige vorbereiten' : 'Prepare Strafanzeige'}</span>
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-lg font-semibold text-white">
+            {isDE ? 'Anzeige-Paket vorbereiten' : 'Prepare report package'}
+          </h3>
           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 bg-amber-900/40 border border-amber-700/40 rounded px-1.5 py-0.5">
             Beta
           </span>
-        </h2>
-        <p className="text-sm text-slate-300">
+        </div>
+        <p className="text-sm text-slate-300 leading-relaxed">
           {isDE
-            ? 'Ein KI-Agent prüft Fristen, findet die zuständige Staatsanwaltschaft, sichert Beweise auf archive.org, baut NetzDG-Meldungen pro Plattform und liefert PDF + Onlinewache-Text. Du sendest nichts automatisch — alles als Download oder zum Reinkopieren.'
-            : 'An AI agent checks deadlines, finds the competent prosecutor, secures evidence on archive.org, builds per-platform NetzDG reports, and delivers PDF + Onlinewache text. Nothing is sent automatically — all downloads or paste-ready text.'}
+            ? 'Wir prüfen Fristen, finden die zuständige Staatsanwaltschaft, sichern deine Beweise und bauen die Strafanzeige als PDF. Du sendest am Ende selbst — nichts geht automatisch raus.'
+            : "We check deadlines, find the competent prosecutor, secure your evidence, and build the Strafanzeige as a PDF. You send it yourself at the end — nothing leaves automatically."}
         </p>
       </header>
 
-      <div className="grid sm:grid-cols-2 gap-3 mb-3">
-        <input
-          type="text"
-          placeholder={isDE ? 'Dein Name (optional)' : 'Your name (optional)'}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm placeholder-slate-500"
-        />
-        <select
-          value={bundesland}
-          onChange={(e) => setBundesland(e.target.value)}
-          className="bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm"
-        >
-          <option value="">
-            {isDE ? 'Bundesland (optional, für StA + Onlinewache)' : 'Federal state (optional)'}
-          </option>
-          {BUNDESLAENDER.map((b) => (
-            <option key={b.code} value={b.code}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {!result && !running && (
+        <div className="mb-4 space-y-2">
+          <p className="text-xs text-slate-400">
+            {isDE
+              ? 'Deine Daten machen das Anzeige-Paket konkret. Du kannst alles leer lassen — dann bleiben Platzhalter im PDF, die du später im PDF-Reader ergänzt.'
+              : "Your details make the package concrete. Leave blank to keep placeholders that you can fill in your PDF reader later."}
+          </p>
+          <div className="grid sm:grid-cols-2 gap-2">
+            <input
+              type="text"
+              placeholder={isDE ? 'Dein Name' : 'Your name'}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm placeholder-slate-500"
+            />
+            <select
+              value={bundesland}
+              onChange={(e) => setBundesland(e.target.value)}
+              className="bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="">
+                {isDE ? 'Bundesland — für Onlinewache + StA' : 'Federal state'}
+              </option>
+              {BUNDESLAENDER.map((b) => (
+                <option key={b.code} value={b.code}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       <button
         type="button"
@@ -170,22 +181,28 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
       >
         {running
           ? isDE
-            ? `Agent läuft … ${elapsedSec}s`
-            : `Agent running … ${elapsedSec}s`
+            ? `Wird vorbereitet … ${elapsedSec}s`
+            : `Preparing … ${elapsedSec}s`
+          : result
+          ? isDE
+            ? 'Neu vorbereiten'
+            : 'Prepare again'
           : isDE
-          ? '⚖️  Paket vorbereiten lassen'
-          : '⚖️  Prepare the package'}
+          ? 'Paket vorbereiten'
+          : 'Prepare the package'}
       </button>
 
-      <p className="text-xs text-slate-400 mt-3 leading-relaxed">
-        {isDE
-          ? 'Hinweis: Agent in Beta. Alle Dokumente als Download — vor dem Versand prüfen. Für verbindliche Beratung Anwält:in oder '
-          : 'Note: agent in beta. All documents as downloads — review before sending. For binding advice, contact a lawyer or '}
-        <a href="https://hateaid.org" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">
-          HateAid
-        </a>
-        .
-      </p>
+      {!result && (
+        <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+          {isDE
+            ? 'Alle Dokumente kommen als Download — bitte vor dem Versand kurz durchschauen. Für verbindliche Beratung: Anwält:in oder '
+            : 'All documents come as downloads — please skim before sending. For binding advice: a lawyer or '}
+          <a href="https://hateaid.org" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">
+            HateAid
+          </a>
+          .
+        </p>
+      )}
 
       {(running || result) && (
         <FlowTimeline
@@ -199,12 +216,58 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
 
       {error && (
         <div className="mt-4 rounded-lg border border-red-800/50 bg-red-950/40 p-3 text-sm text-red-200">
-          {isDE ? 'Fehler: ' : 'Error: '}
+          {isDE ? 'Etwas ist schiefgelaufen: ' : 'Something went wrong: '}
           {error}
         </div>
       )}
 
       {result && <Artefacts result={result} isDE={isDE} />}
+
+      {/* Re-run option — lets the user add or change name/Bundesland
+          after the first generation without having to redo the case. */}
+      {result && (
+        <details className="mt-4 group">
+          <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-200 inline-flex items-center gap-1.5">
+            <span className="inline-block transition-transform group-open:rotate-90">›</span>
+            {isDE
+              ? 'Daten anpassen und Paket neu erstellen'
+              : 'Change details and regenerate'}
+          </summary>
+          <div className="mt-3 space-y-2">
+            <div className="grid sm:grid-cols-2 gap-2">
+              <input
+                type="text"
+                placeholder={isDE ? 'Dein Name' : 'Your name'}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm placeholder-slate-500"
+              />
+              <select
+                value={bundesland}
+                onChange={(e) => setBundesland(e.target.value)}
+                className="bg-slate-900 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">
+                  {isDE ? 'Bundesland wählen' : 'Select state'}
+                </option>
+                {BUNDESLAENDER.map((b) => (
+                  <option key={b.code} value={b.code}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={run}
+              disabled={running}
+              className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-sm py-2 rounded-lg transition-colors"
+            >
+              {isDE ? 'Paket neu erstellen' : 'Regenerate package'}
+            </button>
+          </div>
+        </details>
+      )}
     </section>
   )
 }
@@ -230,47 +293,65 @@ function FlowTimeline({
   const callByTool = new Map<string, CourtPrepTraceCall>()
   calls.forEach((c) => callByTool.set(c.tool, c))
 
-  return (
-    <div className="mt-5 rounded-xl border border-slate-700/70 bg-slate-950/50 p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs uppercase tracking-wider text-slate-400 font-medium">
-          {isDE ? 'Agent-Flow' : 'Agent flow'}
-        </h3>
-        <div className="text-xs text-slate-500 font-mono">
-          {running
-            ? `${elapsedSec}s`
-            : result
-            ? `${result.iterations} ${isDE ? 'Schritte' : 'iterations'} · $${result.total_cost_usd.toFixed(4)}`
-            : ''}
-        </div>
-      </div>
-
-      <ol className="space-y-2">
-        {FLOW_STEPS.map((step, i) => {
-          const call = callByTool.get(step.key)
-          const status: 'done' | 'active' | 'idle' | 'skipped' = result
-            ? call
-              ? 'done'
-              : 'skipped'
-            : i < progressIdx
+  const steps = (
+    <ol className="space-y-2">
+      {FLOW_STEPS.map((step, i) => {
+        const call = callByTool.get(step.key)
+        const status: 'done' | 'active' | 'idle' | 'skipped' = result
+          ? call
             ? 'done'
-            : i === progressIdx
-            ? 'active'
-            : 'idle'
-          return (
-            <FlowStep
-              key={step.key}
-              index={i}
-              icon={step.icon}
-              label={isDE ? step.label_de : step.label_en}
-              status={status}
-              call={call}
-              isDE={isDE}
-            />
-          )
-        })}
-      </ol>
-    </div>
+            : 'skipped'
+          : i < progressIdx
+          ? 'done'
+          : i === progressIdx
+          ? 'active'
+          : 'idle'
+        return (
+          <FlowStep
+            key={step.key}
+            index={i}
+            icon={step.icon}
+            label={isDE ? step.label_de : step.label_en}
+            status={status}
+            call={call}
+            isDE={isDE}
+          />
+        )
+      })}
+    </ol>
+  )
+
+  // While running, show the timeline expanded so the user sees progress.
+  // Once done, collapse it into a "Was wurde geprüft" disclosure.
+  if (running) {
+    return (
+      <div className="mt-5 rounded-xl border border-slate-700/70 bg-slate-950/50 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xs uppercase tracking-wider text-slate-400 font-medium">
+            {isDE ? 'Wird vorbereitet …' : 'Preparing …'}
+          </h4>
+          <div className="text-xs text-slate-500 font-mono">{elapsedSec}s</div>
+        </div>
+        {steps}
+      </div>
+    )
+  }
+
+  if (!result) return null
+
+  return (
+    <details className="mt-5 rounded-xl border border-slate-700/70 bg-slate-950/50 group">
+      <summary className="cursor-pointer list-none p-3 flex items-center justify-between text-xs text-slate-400 hover:text-slate-200">
+        <span className="flex items-center gap-1.5">
+          <span className="transition-transform group-open:rotate-90">›</span>
+          {isDE ? 'Was geprüft wurde' : 'What was checked'}
+        </span>
+        <span className="font-mono text-slate-600">
+          {result.iterations} {isDE ? 'Schritte' : 'steps'}
+        </span>
+      </summary>
+      <div className="px-4 pb-4">{steps}</div>
+    </details>
   )
 }
 
@@ -461,100 +542,99 @@ function Artefacts({ result, isDE }: { result: CourtPrepResponse; isDE: boolean 
 
   return (
     <div className="mt-5 space-y-4">
+      {/* Status — calm confirmation, no celebration */}
       <div
-        className={`rounded-lg border p-3 text-sm ${
+        className={`rounded-lg border p-3 ${
           completed
-            ? 'border-emerald-800/50 bg-emerald-950/30 text-emerald-200'
-            : 'border-amber-800/50 bg-amber-950/30 text-amber-200'
+            ? 'border-emerald-800/50 bg-emerald-950/30'
+            : 'border-amber-800/50 bg-amber-950/30'
         }`}
       >
-        <div className="font-medium">
+        <div className={`text-sm font-medium ${completed ? 'text-emerald-100' : 'text-amber-100'}`}>
           {completed
             ? isDE
-              ? 'Paket bereit — bitte vor Versand prüfen.'
-              : 'Package ready — review before sending.'
+              ? 'Dein Paket ist fertig. Bitte schau es kurz durch, bevor du es einreichst.'
+              : 'Your package is ready. Please skim it before you submit it.'
             : isDE
-            ? `Status: ${result.status}`
-            : `Status: ${result.status}`}
-        </div>
-        <div className="text-[11px] opacity-70 mt-1 font-mono">
-          run {result.agent_run_id.slice(0, 8)} · prompt {result.prompt_version}
+            ? `Lief nicht ganz durch (Status: ${result.status}). Du kannst es nochmal versuchen.`
+            : `Didn't complete fully (status: ${result.status}). You can try again.`}
         </div>
       </div>
 
-      {result.final_message && (
-        <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
-          <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
-            {isDE ? 'Agent-Zusammenfassung' : 'Agent summary'}
-          </div>
-          <p className="text-sm text-slate-200 whitespace-pre-line">
-            {result.final_message}
-          </p>
-        </div>
-      )}
-
-      {a.jurisdiction && (
-        <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3 text-sm">
-          <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">
-            {isDE ? 'Zuständige Staatsanwaltschaft' : 'Competent prosecutor'} (§ 7 StPO)
-          </div>
-          <p className="text-slate-200 font-medium">{a.jurisdiction.staatsanwaltschaft.name}</p>
-          <p className="text-slate-400 text-xs">{a.jurisdiction.staatsanwaltschaft.address}</p>
-          <p className="text-slate-400 text-xs font-mono mt-1">
-            {a.jurisdiction.staatsanwaltschaft.email}
-          </p>
-        </div>
-      )}
-
-      {a.anonymisierung && a.anonymisierung.needed && (
-        <div className="rounded-lg border border-indigo-800/50 bg-indigo-950/40 p-3 text-sm">
-          <div className="text-xs uppercase tracking-wider text-indigo-300 mb-1">
-            {isDE ? 'Anonymisierung empfohlen' : 'Anonymity recommended'} (§ 200a StPO)
-          </div>
-          <p className="text-slate-200">{a.anonymisierung.begruendung}</p>
-        </div>
-      )}
-
-      {/* Downloads */}
-      <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
-        <div className="text-xs uppercase tracking-wider text-slate-500 mb-2">Downloads</div>
-        <div className="flex flex-wrap gap-2">
-          {a.strafanzeige_pdf_base64 && (
-            <button
-              type="button"
-              onClick={() =>
-                downloadBase64(
-                  a.strafanzeige_pdf_base64!,
-                  a.strafanzeige_filename ?? 'strafanzeige.pdf',
-                  'application/pdf',
-                )
-              }
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-sm px-3 py-1.5 rounded-lg"
-            >
-              📄 Strafanzeige.pdf
-            </button>
-          )}
-          {a.netzdg_emls.map((eml) => (
-            <button
-              key={eml.platform}
-              type="button"
-              onClick={() => downloadBase64(eml.eml_base64, eml.filename, 'message/rfc822')}
-              className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-sm px-3 py-1.5 rounded-lg"
-            >
-              📨 NetzDG {eml.platform}
-            </button>
-          ))}
-          {!a.strafanzeige_pdf_base64 && a.netzdg_emls.length === 0 && (
-            <p className="text-xs text-slate-500">
-              {isDE ? 'Keine Artefakte verfügbar.' : 'No artefacts available.'}
+      {/* Combined summary: agent message + jurisdiction + anonymisierung */}
+      {(result.final_message || a.jurisdiction || (a.anonymisierung && a.anonymisierung.needed)) && (
+        <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-4 space-y-3 text-sm">
+          {result.final_message && (
+            <p className="text-slate-200 whitespace-pre-line leading-relaxed">
+              {result.final_message}
             </p>
           )}
+
+          {a.jurisdiction && (
+            <div className="pt-2 border-t border-slate-800">
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-1">
+                {isDE ? 'Zuständige Staatsanwaltschaft' : 'Competent prosecutor'}
+              </div>
+              <p className="text-slate-200">{a.jurisdiction.staatsanwaltschaft.name}</p>
+              <p className="text-slate-500 text-xs">{a.jurisdiction.staatsanwaltschaft.address}</p>
+              <p className="text-slate-500 text-xs font-mono">{a.jurisdiction.staatsanwaltschaft.email}</p>
+            </div>
+          )}
+
+          {a.anonymisierung && a.anonymisierung.needed && (
+            <div className="pt-2 border-t border-slate-800">
+              <div className="text-[11px] uppercase tracking-wider text-indigo-300 mb-1">
+                {isDE ? 'Anonymisierung empfohlen (§ 200a StPO)' : 'Anonymity recommended (§ 200a StPO)'}
+              </div>
+              <p className="text-slate-300 text-xs leading-relaxed">{a.anonymisierung.begruendung}</p>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Downloads — primary outcome */}
+      {(a.strafanzeige_pdf_base64 || a.netzdg_emls.length > 0) && (
+        <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-4">
+          <div className="text-xs uppercase tracking-wider text-slate-400 mb-3 font-medium">
+            {isDE ? 'Zum Herunterladen' : 'To download'}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {a.strafanzeige_pdf_base64 && (
+              <button
+                type="button"
+                onClick={() =>
+                  downloadBase64(
+                    a.strafanzeige_pdf_base64!,
+                    a.strafanzeige_filename ?? 'strafanzeige.pdf',
+                    'application/pdf',
+                  )
+                }
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-3 py-2 rounded-lg font-medium"
+              >
+                📄 Strafanzeige.pdf
+              </button>
+            )}
+            {a.netzdg_emls.map((eml) => (
+              <button
+                key={eml.platform}
+                type="button"
+                onClick={() => downloadBase64(eml.eml_base64, eml.filename, 'message/rfc822')}
+                className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-sm px-3 py-2 rounded-lg"
+              >
+                📨 NetzDG {eml.platform}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {a.onlinewache && (
         <OnlinewacheCard onlinewache={a.onlinewache} isDE={isDE} />
       )}
+
+      <div className="text-[10px] text-slate-600 font-mono pt-1">
+        run {result.agent_run_id.slice(0, 8)} · prompt {result.prompt_version}
+      </div>
     </div>
   )
 }
@@ -584,12 +664,12 @@ function OnlinewacheCard({
       <div className="flex items-start justify-between gap-2 mb-2">
         <div>
           <div className="text-xs uppercase tracking-wider text-blue-300 mb-0.5">
-            {isDE ? 'Direkt online einreichen' : 'File online directly'}
+            {isDE ? 'Oder: direkt online einreichen' : 'Or: file online directly'}
           </div>
-          <p className="text-sm text-slate-200">
+          <p className="text-sm text-slate-200 leading-relaxed">
             {isDE
-              ? `Onlinewache ${onlinewache.bundesland_name} — offizieller 24/7-Polizei-Kanal. Schneller als Brief an die Staatsanwaltschaft.`
-              : `Onlinewache ${onlinewache.bundesland_name} — official 24/7 police channel.`}
+              ? `Die Onlinewache ${onlinewache.bundesland_name} ist der offizielle Polizei-Kanal, rund um die Uhr erreichbar. Oft schneller als der Brief an die Staatsanwaltschaft.`
+              : `The Onlinewache ${onlinewache.bundesland_name} is the official police channel, available 24/7. Often faster than mailing the prosecutor.`}
           </p>
         </div>
       </div>

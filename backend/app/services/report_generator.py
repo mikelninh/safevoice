@@ -260,6 +260,7 @@ def _police_body(case, items, is_de: bool) -> str:
     # credibility when an Anwält:in reads the PDF.
     tatort_de, tatort_en = _build_tatort_lines(items)
     laws_de, laws_en = _build_laws_paragraph(items)
+    beschuldigte_de, beschuldigte_en = _build_beschuldigte_lines(items)
 
     if is_de:
         header = (
@@ -276,8 +277,9 @@ Anzeigeerstatterin/Anzeigeerstatter: [NAME DES OPFERS]
 Datum: {datetime.now().strftime("%d.%m.%Y")}
 
 Sachverhalt:
-Ich erstatte Strafanzeige gegen unbekannte bzw. bekannte Täter wegen digitaler Belästigung, Bedrohung und/oder übler Nachrede über {tatort_de["sachverhalt"]}.
+Ich erstatte Strafanzeige wegen digitaler Belästigung, Bedrohung und/oder übler Nachrede über {tatort_de["sachverhalt"]}.
 
+Beschuldigte: {beschuldigte_de}
 Tatzeit: {case.created_at.strftime("%d.%m.%Y")} bis {case.updated_at.strftime("%d.%m.%Y")}
 Tatort: {tatort_de["tatort"]}
 
@@ -308,8 +310,9 @@ Complainant: [VICTIM NAME]
 Date: {datetime.now().strftime("%Y-%m-%d")}
 
 Facts:
-I hereby file a criminal complaint against unknown and/or identified perpetrators for digital harassment, threats, and/or defamation via {tatort_en["sachverhalt"]}.
+I hereby file a criminal complaint for digital harassment, threats, and/or defamation via {tatort_en["sachverhalt"]}.
 
+Accused: {beschuldigte_en}
 Time of offense: {case.created_at.strftime("%Y-%m-%d")} to {case.updated_at.strftime("%Y-%m-%d")}
 Location: {tatort_en["tatort"]}
 
@@ -427,6 +430,51 @@ def _build_tatort_lines(items) -> tuple[dict[str, str], dict[str, str]]:
             ),
             "tatort": tatort_en,
         },
+    )
+
+
+def _build_beschuldigte_lines(items) -> tuple[str, str]:
+    """Render the Beschuldigte block from evidence.
+
+    Previously the Sachverhalt said "unbekannte bzw. bekannte Täter" —
+    a generic catch-all that gives the StA no handle. Now we derive
+    the actual state from the evidence: collect non-placeholder author
+    handles. If all are unknown → "unbekannt". If some known → list
+    them as platform pseudonyms (StA can use them for Auskunftsersuchen).
+    """
+    real_handles: list[str] = []
+    for ev in items:
+        h = (getattr(ev, "author_username", "") or "").strip().lstrip("@")
+        if not h:
+            continue
+        if h.lower() in {"unknown", "anonymous", "anonym", "—", "-"}:
+            continue
+        if h not in real_handles:
+            real_handles.append(h)
+
+    if not real_handles:
+        return (
+            "unbekannt (Täter:innen treten unter Pseudonym auf — siehe "
+            "Hinweise an die Behörde zur Bestandsdaten-Auskunft).",
+            "unknown (perpetrators acting under pseudonyms — see notes to "
+            "investigating authority for subscriber-data request).",
+        )
+
+    handles_str = ", ".join(f"@{h}" for h in real_handles)
+    if len(real_handles) == 1:
+        return (
+            f"bekannt unter Plattform-Pseudonym {handles_str} "
+            f"(Identität dahinter unbekannt; Bestandsdaten-Auskunft "
+            f"siehe Hinweise an die ermittelnde Behörde).",
+            f"known as platform handle {handles_str} (identity unknown; "
+            f"subscriber-data request — see notes to authority).",
+        )
+    return (
+        f"{len(real_handles)} Plattform-Pseudonyme: {handles_str} "
+        f"(Identitäten dahinter unbekannt; Bestandsdaten-Auskunft "
+        f"siehe Hinweise an die ermittelnde Behörde).",
+        f"{len(real_handles)} platform handles: {handles_str} (identities "
+        f"unknown; subscriber-data request — see notes to authority).",
     )
 
 

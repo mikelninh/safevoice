@@ -98,7 +98,7 @@ def generate_pdf(
         rightMargin=24 * mm,
         topMargin=24 * mm,
         bottomMargin=24 * mm,
-        title=f"SafeVoice · {case.id[:8]}",
+        title=f"SafeVoice · {_friendly_case_id(case)}",
         author="SafeVoice",
     )
 
@@ -150,7 +150,7 @@ def generate_pdf(
                     Paragraph(
                         _tracked(_l("Fall", "Case", is_de)), styles["MetaCapsRight"]
                     ),
-                    Paragraph(case.id[:8], styles["CaseIdMono"]),
+                    Paragraph(_friendly_case_id(case), styles["CaseIdMono"]),
                     Paragraph(
                         _fmt_dt(now, is_de, with_time=False),
                         styles["MetaRightSmall"],
@@ -411,7 +411,7 @@ def generate_pdf(
     # Footer / page numbers
     footer_ctx = {
         "is_de": is_de,
-        "case_short": case.id[:8] if case.id else "—",
+        "case_short": _friendly_case_id(case),
         "generated": now.strftime("%d.%m.%Y") if is_de else now.strftime("%Y-%m-%d"),
     }
 
@@ -662,6 +662,66 @@ def _behoerden_hinweise(case: Case, is_de: bool, styles: dict) -> list:
             f"voraussichtlich am <b>{frist_end.strftime('%d.%m.%Y')}</b>."
         )
 
+    # 2b. Verfolgungsverjährung (§ 78 StGB)
+    # StA-Sachbearbeiter:innen prüfen das immer selbst, aber die Vor-
+    # berechnung spart Kalender-Arithmetik. Verjährungsdauer richtet
+    # sich nach der gesetzlichen Höchststrafe (§ 78 Abs. 3 StGB).
+    # Anker für den Lauf: § 78a StGB → Beendigung der Tat. Wir nehmen
+    # für die Schätzung das früheste Beweismittel als untere Grenze
+    # und das letzte Beweismittel als realistische Tatbeendigung.
+    _verjährung_years = {
+        # 3 Jahre — Vergehen mit Höchststrafe < 1 Jahr (§ 78 III Nr. 5)
+        "185stgb": 3,  # Beleidigung, bis 1 Jahr
+        "186stgb": 3,  # Üble Nachrede
+        # 5 Jahre — Höchststrafe 1-5 Jahre (§ 78 III Nr. 4)
+        "187stgb": 5,  # Verleumdung
+        "201astgb": 5,  # Verletzung höchstpersönlicher Lebensbereich
+        "238stgb": 5,  # Nachstellung
+        "241stgb": 5,  # Bedrohung
+        "126astgb": 5,  # Gefährdende Verbreitung
+        "263stgb": 5,
+        "263astgb": 5,
+        "269stgb": 5,
+        # 10 Jahre — Höchststrafe 5-10 Jahre
+        "130stgb": 5,  # Volksverhetzung Abs. 1 bis 5 Jahre
+    }
+
+    def _verjährung_lookup(ref: str) -> int | None:
+        key = ref.lower().replace(" ", "").replace("§", "")
+        for target, years in _verjährung_years.items():
+            if target in key:
+                return years
+        return None
+
+    last_evidence_dt = max(
+        (ev.captured_at for ev in case.evidence_items if ev.captured_at),
+        default=None,
+    )
+    verj_anker = last_evidence_dt or earliest_evidence_dt
+    if verj_anker and laws_seen:
+        per_law = []
+        soonest_end = None
+        for ref in laws_seen:
+            years = _verjährung_lookup(ref)
+            if years is None:
+                continue
+            end_date = verj_anker.replace(year=verj_anker.year + years)
+            per_law.append(f"{ref} → {end_date.strftime('%d.%m.%Y')} ({years} J.)")
+            if soonest_end is None or end_date < soonest_end:
+                soonest_end = end_date
+        if per_law:
+            bullets.append(
+                "<b>Verfolgungsverjährung (§ 78 StGB).</b> "
+                f"Ankerdatum: letzte Tathandlung am "
+                f"{verj_anker.strftime('%d.%m.%Y')} (§ 78a StGB). "
+                f"Früheste Verjährung: <b>{soonest_end.strftime('%d.%m.%Y')}</b>. "
+                f"<font color='"
+                + GREY_500
+                + "'>Pro § laut Höchststrafe: "
+                + " · ".join(per_law)
+                + "</font>"
+            )
+
     # 3. § 200a StPO Anonymisierungs-Antrag
     anon_triggers = categories_seen & {
         "doxxing",
@@ -726,7 +786,7 @@ def _meta_strip(case: Case, is_de: bool, styles: dict, now) -> Paragraph:
     if crit_count:
         incidents_label += f", {crit_count} {_l('kritisch', 'critical', is_de)}"
 
-    case_id = (case.id or "—")[:8]
+    case_id = _friendly_case_id(case)
     date_str = _fmt_dt(now, is_de, with_time=False)
 
     # Inline severity pill as styled span (Paragraph supports <font> + bg via
@@ -1389,6 +1449,26 @@ def _format_platform(platform: str | None, is_de: bool) -> str:
             + "</i></font>"
         )
     return _escape(p)
+
+
+def _friendly_case_id(case) -> str:
+    """Format an external-facing Fall-ID.
+
+    Internal IDs look like "case-001" or a raw UUID; neither survives
+    being mentioned in a Strafanzeige sent to police ("case-001" reads
+    as a tool-internal label, the UUID reads as noise). Format:
+
+        SV-YYMMDD-XXXX   (14 chars, fits the masthead column)
+
+    YYMMDD = 2-digit year + month + day of case creation. XXXX is the
+    first 4 alphanumeric chars of the internal id, uppercase. Falls
+    back to "—" if the case has no id."""
+    if not getattr(case, "id", None):
+        return "—"
+    raw = str(case.id)
+    suffix = "".join(ch for ch in raw if ch.isalnum())[:4].upper() or "0000"
+    created = getattr(case, "created_at", None) or datetime.now()
+    return f"SV-{created.strftime('%y%m%d')}-{suffix}"
 
 
 def _clean_hash(h: str | None) -> str:

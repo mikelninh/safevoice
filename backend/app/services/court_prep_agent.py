@@ -60,11 +60,14 @@ ARBEITSWEISE
 7. Wenn der User einen Bundesland-Code mitgegeben hat → `determine_jurisdiction`.
    Wenn nicht → nicht aufrufen, der User wählt das später im UI.
 8. `generate_strafanzeige_pdf` aufrufen mit den vorhandenen victim_*-Daten.
-9. **PFLICHT wenn `bundesland_code` im Input gesetzt ist:** `build_onlinewache_text`
-   aufrufen. Der User kann dann die Anzeige direkt über den offiziellen Polizei-
-   Online-Kanal einreichen statt per Brief — das ist der schnellere und
-   offiziellere Weg. Diesen Schritt NIE überspringen wenn ein Bundesland
-   übergeben wurde.
+9. NUR wenn `bundesland_code` im User-Input als 2-Buchstaben-Code (BE, BY,
+   NW, HE, …) tatsächlich vorhanden ist → `build_onlinewache_text` aufrufen.
+   Wenn kein Bundesland gegeben ist (null, leerer String, "UNKNOWN", "—"):
+   diesen Schritt **überspringen** und in der Zusammenfassung erwähnen:
+   "Bundesland nicht gewählt — Onlinewache-Link wurde nicht generiert.
+   Der User kann das später im UI nachholen." NIE mit Platzhaltern oder
+   geratenen Codes aufrufen — der Tool-Output mit "UNKNOWN" ist nutzlos
+   und verwirrt den User.
 
 WENN DU FERTIG BIST
 Antworte mit einer kurzen Zusammenfassung in 4-7 Sätzen auf Deutsch:

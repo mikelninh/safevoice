@@ -346,36 +346,38 @@ export default function Analyze({ lang }: Props) {
             </div>
           )}
 
-          {/* Immediate action alert */}
+          {/* Schwerwiegender Inhalt — amber, nicht rot. Kein Alarm-
+              Mode, sondern ein ernster Hinweis. Der vorige rote Block
+              führte mit "Strafanzeige erstatten →" direkt auf eine
+              tote polizei.de-Hubseite, was die Person blockierte.
+              Stattdessen: konkreter nächster Schritt im eigenen Flow
+              ("Fall speichern → dort wird die Anzeige vorbereitet")
+              plus Hilfsangebote als Sekundär-Links. */}
           {c.requires_immediate_action && (
-            <div className="bg-red-950/60 border border-red-800 rounded-xl p-5">
+            <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-red-400 text-lg leading-none">⚠</span>
-                <span className="text-red-100 font-semibold">
-                  {t(lang, 'result.immediate_action')}
+                <span className="text-amber-300 text-lg leading-none">!</span>
+                <span className="text-amber-100 font-semibold">
+                  {isDE ? 'Schwerwiegender Inhalt' : 'Severe content'}
                 </span>
               </div>
-              <p className="text-red-200/90 text-sm leading-relaxed">
-                {t(lang, 'result.immediate_action.desc')}
+              <p className="text-amber-100/80 text-sm leading-relaxed">
+                {isDE
+                  ? 'Dieser Beleg sollte zeitnah dokumentiert werden. Speichere ihn zuerst — auf der Fall-Seite hilft dir dann der Agent durch die Strafanzeige und NetzDG-Meldung.'
+                  : "This piece of evidence should be documented soon. Save it first — on the case page the agent will guide you through the Strafanzeige and NetzDG report."}
               </p>
-              <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                <a
-                  href="https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 text-center bg-red-700 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
-                >
-                  {t(lang, 'action.polizei')} →
-                </a>
+              <p className="text-amber-100/60 text-xs leading-relaxed mt-3">
+                {isDE ? 'Lieber zuerst mit einer Person sprechen? ' : 'Rather talk to a person first? '}
                 <a
                   href="https://hateaid.org"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-semibold py-2.5 rounded-lg transition-colors"
+                  className="underline hover:text-amber-50"
                 >
-                  {t(lang, 'action.hateaid')} →
+                  HateAid
                 </a>
-              </div>
+                {isDE ? ' berät kostenlos.' : ' offers free counseling.'}
+              </p>
             </div>
           )}
 
@@ -425,14 +427,22 @@ export default function Analyze({ lang }: Props) {
           {/* Legal follow-up chat */}
           <LegalChat lang={lang} originalText={result.content_text} classification={c} />
 
-          {/* Save to case */}
-          <button
-            onClick={handleSave}
-            disabled={saved}
-            className="w-full bg-slate-700/80 hover:bg-slate-700 disabled:opacity-60 text-slate-100 font-semibold py-3 rounded-xl transition-colors"
-          >
-            {saved ? `✓ ${t(lang, 'result.saved')}` : t(lang, 'result.save')}
-          </button>
+          {/* Save to case — local-only storage, made explicit below the
+              button so users don't worry "wohin geht das?" */}
+          <div>
+            <button
+              onClick={handleSave}
+              disabled={saved}
+              className="w-full bg-slate-700/80 hover:bg-slate-700 disabled:opacity-60 text-slate-100 font-semibold py-3 rounded-xl transition-colors"
+            >
+              {saved ? `✓ ${t(lang, 'result.saved')}` : t(lang, 'result.save')}
+            </button>
+            <p className="text-slate-500 text-xs text-center mt-1.5">
+              {isDE
+                ? 'Speichert nur in diesem Browser. Kein Konto, kein Server.'
+                : 'Stores in this browser only. No account, no server.'}
+            </p>
+          </div>
 
           {/* Scraped comments */}
           {commentResults.length > 0 && (

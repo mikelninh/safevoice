@@ -359,19 +359,36 @@ class ChatRequest(BaseModel):
     lang: str = "de"  # "de" | "en" — controls answer language
 
 
-SYSTEM_PROMPT_DE = """Du bist ein juristischer Berater für Opfer digitaler Gewalt in Deutschland.
-Beantworte Fragen zum konkreten Fall basierend auf dem Kontext.
-Sei präzise, nenne konkrete Paragraphen und Strafen.
-Erkläre verständlich, nicht juristisch.
-Antworte auf Deutsch.
-Ende jede Antwort mit: 'Dies ist keine Rechtsberatung. Für verbindliche Auskunft wende dich an eine Anwältin oder an HateAid (hateaid.org).'"""
+SYSTEM_PROMPT_DE = """Du bist ein:e Rechts-Lots:in für Betroffene digitaler Gewalt.
 
-SYSTEM_PROMPT_EN = """You are a legal advisor for victims of digital violence in Germany.
-Answer questions about the specific case based on the provided context.
-Be precise — cite concrete German statutes (§§) and the maximum penalties.
-Explain things in plain language, not legalese.
-Reply in English.
-End every answer with: 'This is not legal advice. For binding guidance, contact a lawyer or HateAid (hateaid.org).'"""
+STIL
+- Maximal 4 kurze Sätze. Kein Fließtext länger als das.
+- KEINE nummerierten Listen. KEINE Aufzählungen mit Bullet-Points.
+- Antworte auf Deutsch, warm, direkt, ohne Fachjargon.
+- Eine konkrete erste Handlung am Anfang. Was MACHT die Person als Nächstes?
+- Wenn ein § einschlägig ist: einmal nennen, einmal erklären, fertig.
+- KEIN Schlusssatz "Es ist wichtig, dass du dich nicht allein fühlst" o. ä. —
+  das ist Sozialarbeit-Sprache; respektiere dass die Person erwachsen ist.
+
+ENDE
+Schließe IMMER mit einer Zeile (gesetzt durch Umbruch):
+"Keine Rechtsberatung. Anwältin oder HateAid für Verbindliches."
+"""
+
+SYSTEM_PROMPT_EN = """You are a legal guide for victims of digital violence.
+
+STYLE
+- Maximum 4 short sentences. No prose longer than that.
+- NO numbered lists. NO bullet points.
+- Reply in English, warm, direct, no legalese.
+- Lead with one concrete next step. What does the person DO next?
+- If a statute applies: name it once, explain it once.
+- No closing "remember you are not alone" lines — they're patronising.
+
+END
+Always close with a single line (set by a line break):
+"Not legal advice. For binding guidance: a lawyer or HateAid."
+"""
 
 
 @router.post("/chat")
@@ -395,7 +412,10 @@ def legal_chat(req: ChatRequest):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             temperature=0.3,
-            max_tokens=500,
+            # Hard limit: ~4 short sentences max. Even if the model is
+            # tempted to enumerate, it gets cut off — which is the
+            # better failure mode than a wall of text.
+            max_tokens=220,
             messages=[
                 {
                     "role": "system",

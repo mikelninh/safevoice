@@ -107,209 +107,216 @@ export default function CaseDetail({ lang }: Props) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
       {/* Back nav */}
-      <Link to="/cases" className="text-slate-400 hover:text-slate-200 text-sm inline-flex items-center gap-1 mb-8 transition-colors">
+      <Link to="/cases" className="text-slate-500 hover:text-slate-300 text-sm inline-flex items-center gap-1 mb-6 transition-colors">
         ← {isDE ? 'Alle Fälle' : 'All cases'}
       </Link>
 
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between gap-3 mb-4">
+      <header className="mb-10">
+        <div className="flex items-start justify-between gap-3 mb-3">
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight">{caseData.title}</h1>
           <SeverityBadge severity={caseData.overall_severity} lang={lang} />
         </div>
 
         {caseData.victim_context && (
-          <div className="bg-slate-800/60 rounded-lg p-4">
-            <span className="text-slate-500 text-xs uppercase tracking-wider block mb-1.5">
-              {isDE ? 'Kontext' : 'Context'}
-            </span>
-            <p className="text-slate-300 text-sm leading-relaxed">{caseData.victim_context}</p>
-          </div>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            {caseData.victim_context}
+          </p>
         )}
-      </div>
+      </header>
 
-      {/* Immediate action banner */}
+      {/* Schwerwiegender-Inhalt Banner — amber statt rot. Der vorige
+          rote Block + "Polizei-Onlinewache →"-Button führte direkt
+          auf eine tote polizei.de-Hubseite, die der Person nicht
+          weiterhilft. Stattdessen: kein externer Link, sondern ein
+          Hinweis nach unten zur Court-Prep-Karte (die jetzt der
+          einzig richtige nächste Schritt ist) plus HateAid für
+          menschliche Hilfe. */}
       {hasCritical && (
-        <div className="bg-red-950/60 border border-red-800 rounded-xl p-5 mb-6">
-          <div className="font-semibold text-red-100 mb-3 flex items-center gap-2">
-            <span className="text-red-400 text-lg leading-none">⚠</span>
-            {isDE ? 'Sofortiger Handlungsbedarf in diesem Fall' : 'Immediate action required in this case'}
+        <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-5 mb-10">
+          <div className="font-semibold text-amber-100 mb-2 flex items-center gap-2">
+            <span className="text-amber-300 text-lg leading-none">!</span>
+            {isDE ? 'Bitte zügig handeln' : 'Please act soon'}
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <a
-              href="https://www.polizei.de/Polizei/DE/Einrichtungen/onlinewache_node.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 text-center bg-red-700 hover:bg-red-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors"
-            >
-              {t(lang, 'action.polizei')} →
-            </a>
+          <p className="text-amber-100/80 text-sm leading-relaxed">
+            {isDE
+              ? 'Ein Beleg in diesem Fall enthält eine konkrete Bedrohung. Unten findest du den Knopf "Anzeige-Paket vorbereiten" — das ist der schnellste Weg jetzt.'
+              : 'One piece of evidence in this case contains a concrete threat. The "Prepare report package" button below is your fastest path now.'}
+          </p>
+          <p className="text-amber-100/60 text-xs leading-relaxed mt-3">
+            {isDE ? 'Lieber zuerst mit jemandem sprechen? ' : 'Rather talk to someone first? '}
             <a
               href="https://hateaid.org"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-semibold py-2.5 rounded-lg transition-colors"
+              className="underline hover:text-amber-50"
             >
-              {t(lang, 'action.hateaid')} →
+              HateAid
             </a>
-          </div>
+            {isDE ? ' berät kostenlos.' : ' offers free counseling.'}
+          </p>
         </div>
       )}
 
-      {/* Pattern flags */}
-      {caseData.pattern_flags.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-slate-400 text-xs uppercase tracking-wider mb-3">
-            ⚑ {t(lang, 'cases.patterns')}
-          </h2>
-          <div className="space-y-2">
+      {/* ── Act 1: Understanding ─────────────────────────────────────── */}
+      <section className="mb-10">
+        <h2 className="text-slate-300 text-sm font-medium mb-1">
+          {isDE ? 'Was wir bisher sehen' : 'What we see so far'}
+        </h2>
+        <p className="text-slate-500 text-xs mb-4">
+          {isDE
+            ? 'Aktualisiert sich automatisch, wenn du Beweise hinzufügst.'
+            : 'Updates automatically when you add evidence.'}
+        </p>
+
+        {/* Pattern flags as inline chips above the legal text */}
+        {caseData.pattern_flags.length > 0 && (
+          <div className="mb-4 space-y-2">
             {caseData.pattern_flags.map((flag, i) => (
               <PatternFlagCard key={i} flag={flag} lang={lang} />
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Legal AI summary */}
-      <div className="mb-6 bg-slate-800/60 rounded-xl p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-slate-400 text-xs uppercase tracking-wider mb-1.5">
-              {isDE ? 'Juristische Gesamteinschätzung' : 'Legal case assessment'}
-            </h2>
-            <p className="text-slate-500 text-sm leading-relaxed">
-              {isDE
-                ? 'Alle Belege + Kontext werden zu einer Fallanalyse mit Risiken und nächsten Schritten zusammengeführt. Aktualisiert sich automatisch, wenn du Beweise hinzufügst oder den Kontext änderst.'
-                : 'All evidence + context is consolidated into one case-level assessment with risks and next steps. Auto-refreshes when you add evidence or edit the context.'}
+        <div className="bg-slate-800/50 rounded-xl p-5 sm:p-6">
+          {legalLoading && (
+            <p className="text-slate-400 text-sm">
+              {legalAnalysis
+                ? (isDE ? 'Wird mit neuen Belegen aktualisiert…' : 'Refreshing with new evidence…')
+                : (isDE ? 'Analyse wird geladen…' : 'Loading legal analysis…')}
             </p>
-            {legalUpdatedAt && !legalLoading && (
-              <p className="text-slate-600 text-xs mt-2">
-                {isDE ? 'Stand: ' : 'Last updated: '}
-                {legalUpdatedAt.toLocaleTimeString(isDE ? 'de-DE' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}
-                {' · '}
-                <button
-                  type="button"
-                  onClick={() => caseData && refetchLegal(caseData)}
-                  className="text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline"
-                >
-                  {isDE ? '↻ Jetzt aktualisieren' : '↻ Refresh now'}
-                </button>
+          )}
+
+          {!legalLoading && legalError && (
+            <p className="text-amber-300 text-sm">{legalError}</p>
+          )}
+
+          {!legalLoading && legalAnalysis && (
+            <div className="space-y-4">
+              <p className="text-slate-100 leading-relaxed">
+                {isDE ? legalAnalysis.legal_assessment_de : legalAnalysis.legal_assessment_en}
               </p>
-            )}
-          </div>
-        </div>
 
-        {legalLoading && (
-          <p className="text-slate-400 text-sm">
-            {legalAnalysis
-              ? (isDE ? 'Wird mit neuen Belegen aktualisiert…' : 'Refreshing with new evidence…')
-              : (isDE ? 'Analyse wird geladen…' : 'Loading legal analysis…')}
-          </p>
-        )}
-
-        {!legalLoading && legalError && (
-          <p className="text-amber-300 text-sm">{legalError}</p>
-        )}
-
-        {!legalLoading && legalAnalysis && (
-          <div className="space-y-4">
-            <div className="text-slate-100 leading-relaxed">
-              {isDE ? legalAnalysis.legal_assessment_de : legalAnalysis.legal_assessment_en}
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div className="bg-slate-900/70 rounded-lg p-4">
-                <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
-                  {isDE ? 'Eskalationsrisiko' : 'Escalation risk'}
+              <div className="grid sm:grid-cols-2 gap-3 pt-1">
+                <div className="bg-slate-900/60 rounded-lg p-3">
+                  <div className="text-slate-500 text-[11px] uppercase tracking-wider mb-1.5">
+                    {isDE ? 'Eskalationsrisiko' : 'Escalation risk'}
+                  </div>
+                  <div className="text-slate-100 font-semibold text-sm mb-1">
+                    {String(legalAnalysis.risk_assessment.escalation_risk).toUpperCase()}
+                  </div>
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    {isDE ? legalAnalysis.risk_assessment.reason_de : legalAnalysis.risk_assessment.reason_en}
+                  </p>
                 </div>
-                <div className="text-white font-semibold mb-1">
-                  {String(legalAnalysis.risk_assessment.escalation_risk).toUpperCase()}
-                </div>
-                <div className="text-slate-300 text-sm">
-                  {isDE ? legalAnalysis.risk_assessment.reason_de : legalAnalysis.risk_assessment.reason_en}
+
+                <div className="bg-slate-900/60 rounded-lg p-3">
+                  <div className="text-slate-500 text-[11px] uppercase tracking-wider mb-1.5">
+                    {isDE ? 'Stärkste Vorwürfe' : 'Strongest charges'}
+                  </div>
+                  <ul className="space-y-1">
+                    {legalAnalysis.strongest_charges.slice(0, 3).map((charge, i) => (
+                      <li key={i} className="text-xs text-slate-200">
+                        <span className="font-semibold">{charge.paragraph}</span>{' '}
+                        <span className="text-slate-500">({charge.strength})</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
 
-              <div className="bg-slate-900/70 rounded-lg p-4">
-                <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
-                  {isDE ? 'Stärkste Vorwürfe' : 'Strongest charges'}
-                </div>
-                <ul className="space-y-2">
-                  {legalAnalysis.strongest_charges.slice(0, 3).map((charge, i) => (
+              <details className="group">
+                <summary className="cursor-pointer text-slate-400 text-xs hover:text-slate-200 list-none flex items-center gap-1.5">
+                  <span className="transition-transform group-open:rotate-90">›</span>
+                  {isDE ? 'Empfohlene Schritte anzeigen' : 'Show recommended steps'}
+                </summary>
+                <ul className="space-y-2 mt-3 pl-4 border-l border-slate-700">
+                  {legalAnalysis.recommended_actions.slice(0, 4).map((action, i) => (
                     <li key={i} className="text-sm text-slate-200">
-                      <span className="font-semibold">{charge.paragraph}</span>{' '}
-                      <span className="text-slate-400">({charge.strength})</span>
+                      <span className="font-semibold text-slate-300">
+                        {action.priority}
+                        {action.deadline !== 'none' ? ` · ${action.deadline}` : ''}
+                      </span>
+                      <div className="text-slate-400 mt-0.5">
+                        {isDE ? action.action_de : action.action_en}
+                      </div>
                     </li>
                   ))}
                 </ul>
-              </div>
-            </div>
+              </details>
 
-            <div className="bg-slate-800 rounded-lg p-3 border border-slate-700">
-              <div className="text-slate-400 text-xs uppercase tracking-wider mb-2">
-                {isDE ? 'Empfohlene nächste Schritte' : 'Recommended next steps'}
-              </div>
-              <ul className="space-y-2">
-                {legalAnalysis.recommended_actions.slice(0, 4).map((action, i) => (
-                  <li key={i} className="text-sm text-slate-200">
-                    <span className="font-semibold">
-                      {action.priority}
-                      {action.deadline !== 'none' ? ` · ${action.deadline}` : ''}
-                    </span>
-                    <div className="text-slate-300 mt-0.5">
-                      {isDE ? action.action_de : action.action_en}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {legalUpdatedAt && !legalLoading && (
+                <p className="text-slate-600 text-[11px] pt-1">
+                  {isDE ? 'Stand ' : 'As of '}
+                  {legalUpdatedAt.toLocaleTimeString(isDE ? 'de-DE' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}
+                  {' · '}
+                  <button
+                    type="button"
+                    onClick={() => caseData && refetchLegal(caseData)}
+                    className="text-indigo-400 hover:text-indigo-300 underline-offset-2 hover:underline"
+                  >
+                    {isDE ? 'aktualisieren' : 'refresh'}
+                  </button>
+                </p>
+              )}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </section>
 
-      {/* Evidence */}
-      <div className="mb-6">
-        <h2 className="text-slate-400 text-xs uppercase tracking-wider mb-3">
-          {caseData.evidence_items.length} {t(lang, 'cases.evidence')}
+      {/* ── Act 2: Evidence ──────────────────────────────────────────── */}
+      <section className="mb-10">
+        <h2 className="text-slate-300 text-sm font-medium mb-1">
+          {isDE
+            ? `Deine Beweise (${caseData.evidence_items.length})`
+            : `Your evidence (${caseData.evidence_items.length})`}
         </h2>
-        <div className="space-y-3">
+        <p className="text-slate-500 text-xs mb-4">
+          {isDE
+            ? 'Je mehr Belege du speicherst, desto stärker die Anzeige.'
+            : 'The more evidence you save, the stronger the case.'}
+        </p>
+
+        <div className="space-y-3 mb-4">
           {caseData.evidence_items.map(ev => (
             <EvidenceCard key={ev.id} evidence={ev} caseId={caseData.id} lang={lang} />
           ))}
         </div>
-      </div>
 
-      {/* Edit / add evidence */}
-      <div className="mb-6">
         <CaseEditor caseData={caseData} lang={lang} onChange={setCaseData} />
-      </div>
+      </section>
 
-      {/* HateAid referral */}
-      <div className="mb-6">
-        <HateAidReferral
-          lang={lang}
-          severity={caseData.overall_severity}
-          caseContext={caseData.victim_context}
-        />
-      </div>
+      {/* ── Act 3: Next step ─────────────────────────────────────────── */}
+      <section className="mb-10">
+        <h2 className="text-slate-300 text-sm font-medium mb-1">
+          {isDE ? 'Dein nächster Schritt' : 'Your next step'}
+        </h2>
+        <p className="text-slate-500 text-xs mb-4">
+          {isDE
+            ? 'Wenn du bereit bist, bereiten wir alles für die Anzeige vor.'
+            : "When you're ready, we'll prepare everything for the report."}
+        </p>
 
-      {/* Court-Prep Agent (Beta) — autonomous agent prepares everything:
-          Strafanzeige PDF, NetzDG emails, Frist warnings, jurisdiction info,
-          and the Onlinewache fast-path. Replaces the previous trio of
-          OnlinewachePanel + ReportModal trigger + separate Strafanzeige path. */}
-      <CourtPrepPanel caseId={caseData.id} caseData={caseData} lang={lang} />
+        <CourtPrepPanel caseId={caseData.id} caseData={caseData} lang={lang} />
 
-      {/* Legacy report modal still available behind a quieter link — covers
-          the manual flow for users who don't want the agent (e.g. when the
-          LLM is unavailable, or for screenshot-only NetzDG flows). */}
-      <button
-        onClick={() => setShowReport(true)}
-        className="w-full mt-4 text-sm text-slate-400 hover:text-slate-200 underline-offset-4 hover:underline py-2"
-      >
-        {isDE
-          ? 'Lieber manuell erstellen (ohne KI-Agent)?'
-          : 'Prefer manual creation (without AI agent)?'}
-      </button>
+        {/* Quieter alternatives */}
+        <div className="mt-4 space-y-3">
+          <HateAidReferral
+            lang={lang}
+            severity={caseData.overall_severity}
+            caseContext={caseData.victim_context}
+          />
+
+          <button
+            onClick={() => setShowReport(true)}
+            className="w-full text-xs text-slate-500 hover:text-slate-300 underline-offset-4 hover:underline py-2"
+          >
+            {isDE
+              ? 'Lieber selbst zusammenstellen (ohne Agent)'
+              : 'Prefer to assemble it yourself (without the agent)'}
+          </button>
+        </div>
+      </section>
 
       {showReport && (
         <ReportModal
