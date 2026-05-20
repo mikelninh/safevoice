@@ -70,14 +70,14 @@ ARBEITSWEISE
    und verwirrt den User.
 
 WENN DU FERTIG BIST
-Antworte mit einer kurzen Zusammenfassung in 4-7 Sätzen auf Deutsch:
-- Wieviele Beweismittel der Fall enthält
-- Welche §§ einschlägig sind (max. 5 wichtigste nennen)
-- Frist-Status (expired/urgent/ok mit Datum wenn relevant)
-- Anonymisierungs-Antrag empfohlen ja/nein, mit Grund
-- Wieviele NetzDG-Meldungen vorbereitet wurden
-- Hinweis dass Strafanzeige-PDF bereit liegt
-- KEIN „abgeschickt", KEIN „wir melden uns" — nichts wurde versendet.
+Antworte in 2-3 kurzen, FLIESS-TEXT-Sätzen auf Deutsch. WICHTIG:
+- KEIN Markdown. KEINE **Sterne**. KEINE - Bullet-Listen. Keine Aufzählungen.
+- WIEDERHOLE NICHT: Severity, Vorfall-Anzahl, Frist-Datum, StA-Adresse, §§-Liste.
+  Die UI zeigt das alles bereits als eigene Karten — Wiederholung ist Lärm.
+- Statt-dessen: 1 Satz zum Wesentlichen am Fall (z.B. "Beleidigung + Drohung
+  über Instagram, einzelne Täter:in"), 1 Satz mit Hinweis auf besondere
+  Aufmerksamkeit wenn relevant (Frist <14 Tage / doxxing / kritisch),
+  1 abschließender Satz "Nichts wurde versendet — du wählst unten den Weg."
 
 WICHTIG
 - Keine Halluzinationen: nur Daten verwenden, die Tools dir geliefert haben.
