@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type React from 'react'
 import type { Lang } from '../i18n'
 import type { Case } from '../types'
 import {
@@ -624,9 +625,31 @@ function Artefacts({ result, isDE }: { result: CourtPrepResponse; isDE: boolean 
                 📨 NetzDG {eml.platform}
               </button>
             ))}
+            {a.hash_chain_csv_base64 && (
+              <button
+                type="button"
+                onClick={() =>
+                  downloadBase64(
+                    a.hash_chain_csv_base64!,
+                    a.hash_chain_csv_filename ?? 'hashes.csv',
+                    'text/csv',
+                  )
+                }
+                className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-sm px-3 py-2 rounded-lg"
+                title={isDE
+                  ? 'Beweis-Hashes als Tabelle für unabhängige Verifikation'
+                  : 'Evidence hashes as a table for independent verification'}
+              >
+                📋 {isDE ? 'Hashes.csv' : 'hashes.csv'}
+              </button>
+            )}
           </div>
         </div>
       )}
+
+      {/* Submission decision helper — answers the questions the persona
+          test surfaced: "Muss ich unterschreiben? Ausdrucken? Wohin?" */}
+      <SubmissionGuide artefacts={a} isDE={isDE} />
 
       {a.onlinewache && (
         <OnlinewacheCard onlinewache={a.onlinewache} isDE={isDE} />
@@ -634,6 +657,131 @@ function Artefacts({ result, isDE }: { result: CourtPrepResponse; isDE: boolean 
 
       <div className="text-[10px] text-slate-600 font-mono pt-1">
         run {result.agent_run_id.slice(0, 8)} · prompt {result.prompt_version}
+      </div>
+    </div>
+  )
+}
+
+function SubmissionGuide({
+  artefacts,
+  isDE,
+}: {
+  artefacts: CourtPrepResponse['artefacts']
+  isDE: boolean
+}) {
+  const hasOnlinewache = Boolean(artefacts.onlinewache)
+  const staEmail = artefacts.jurisdiction?.staatsanwaltschaft?.email
+  const staName = artefacts.jurisdiction?.staatsanwaltschaft?.name
+  const staAddress = artefacts.jurisdiction?.staatsanwaltschaft?.address
+
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4">
+      <div className="text-xs uppercase tracking-wider text-slate-400 mb-3 font-medium">
+        {isDE ? 'Wie sende ich das?' : 'How do I send this?'}
+      </div>
+      <div className="space-y-3 text-sm">
+        {/* Path 1: Onlinewache — only if a Bundesland was picked */}
+        {hasOnlinewache && (
+          <Path
+            badge={isDE ? 'schnellster Weg' : 'fastest'}
+            badgeTone="emerald"
+            title={isDE ? 'Direkt online bei der Polizei' : 'File directly online with the police'}
+            time={isDE ? '5 Min' : '5 min'}
+            sign={isDE ? 'Keine Unterschrift nötig' : 'No signature needed'}
+            body={isDE
+              ? `Über die Onlinewache ${artefacts.onlinewache?.bundesland_name ?? ''} — du wirst beim Absenden identifiziert. Den vorbereiteten Text einfügen, Strafanzeige-PDF anhängen, fertig.`
+              : `Through Onlinewache ${artefacts.onlinewache?.bundesland_name ?? ''} — you're identified at submit time. Paste the prepared text, attach the Strafanzeige PDF, done.`}
+          />
+        )}
+
+        {/* Path 2: Email an StA */}
+        {staEmail && (
+          <Path
+            badge={isDE ? 'formell' : 'formal'}
+            badgeTone="indigo"
+            title={isDE ? 'Email an die Staatsanwaltschaft' : 'Email the Staatsanwaltschaft'}
+            time={isDE ? '10 Min' : '10 min'}
+            sign={isDE
+              ? 'Unterschrift optional (digitale Email zählt, wenn Absender klar)'
+              : 'Signature optional (email is valid if sender is identifiable)'}
+            body={
+              <>
+                {isDE ? 'Adresse: ' : 'Address: '}
+                <span className="font-mono text-slate-200">{staEmail}</span>
+                {isDE
+                  ? '. Strafanzeige-PDF anhängen, kurze Zeile im Body („Anbei meine Strafanzeige zu Fall …"). HateAid-Beratung vorher ist okay.'
+                  : '. Attach the Strafanzeige PDF, short body ("Attached: my Strafanzeige for case …"). HateAid counseling beforehand is fine.'}
+              </>
+            }
+          />
+        )}
+
+        {/* Path 3: Brief */}
+        <Path
+          badge={isDE ? 'altmodisch sicher' : 'old-school reliable'}
+          badgeTone="slate"
+          title={isDE ? 'Per Brief mit Unterschrift' : 'By post, signed'}
+          time={isDE ? '20 Min + Postweg' : '20 min + postal time'}
+          sign={isDE
+            ? 'Auf der Linie unten im PDF handschriftlich unterschreiben'
+            : 'Sign by hand on the line at the bottom of the PDF'}
+          body={
+            <>
+              {isDE ? 'Strafanzeige-PDF ausdrucken, unterschreiben, einkuvertieren. Adresse: ' : 'Print the Strafanzeige PDF, sign, put in an envelope. Address: '}
+              {staName ? (
+                <span className="text-slate-200">{staName}{staAddress ? `, ${staAddress}` : ''}</span>
+              ) : (
+                <em className="text-slate-500">{isDE ? '— Bundesland im Feld oben wählen, dann erscheint hier die Adresse.' : '— pick a Bundesland above to see the address.'}</em>
+              )}
+              {isDE ? '. Eingeschrieben empfohlen.' : '. Registered mail recommended.'}
+            </>
+          }
+        />
+
+        {artefacts.netzdg_emls.length > 0 && (
+          <p className="text-xs text-slate-400 leading-relaxed pt-1 border-t border-slate-700/50 mt-3">
+            {isDE
+              ? 'Zusätzlich: die NetzDG-Meldungen oben sind separate Mails an die Plattformen — doppelklicken öffnet sie in deinem Mail-Programm. Die Plattform muss innerhalb 24 Stunden bis 7 Tagen den Inhalt prüfen.'
+              : "Also: the NetzDG reports above are separate emails to the platforms — double-click opens them in your mail client. Platforms must review the content within 24h to 7 days."}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Path({
+  badge,
+  badgeTone,
+  title,
+  time,
+  sign,
+  body,
+}: {
+  badge: string
+  badgeTone: 'emerald' | 'indigo' | 'slate'
+  title: string
+  time: string
+  sign: string
+  body: React.ReactNode
+}) {
+  const badgeCls = {
+    emerald: 'bg-emerald-900/40 text-emerald-300 border-emerald-800/40',
+    indigo: 'bg-indigo-900/40 text-indigo-300 border-indigo-800/40',
+    slate: 'bg-slate-800 text-slate-400 border-slate-700',
+  }[badgeTone]
+  return (
+    <div className="rounded-lg bg-slate-950/40 border border-slate-700/60 p-3">
+      <div className="flex items-baseline justify-between gap-3 mb-1">
+        <h4 className="text-slate-100 font-medium">{title}</h4>
+        <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${badgeCls}`}>
+          {badge}
+        </span>
+      </div>
+      <p className="text-slate-300 leading-relaxed">{body}</p>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+        <span>⏱ {time}</span>
+        <span>✎ {sign}</span>
       </div>
     </div>
   )

@@ -136,11 +136,18 @@ export default function Analyze({ lang }: Props) {
 
   const c = result?.classification
 
-  // Tab labels for the three input methods.
-  const tabs: Array<{ key: 'text' | 'url' | 'screenshot'; label: string }> = [
-    { key: 'text', label: isDE ? 'Text' : 'Text' },
-    { key: 'url', label: isDE ? 'Link' : 'Link' },
-    { key: 'screenshot', label: 'Screenshot' },
+  // Tab labels for the three input methods. Persona test showed the
+  // previous flat tabs were too subtle — less tech-affine users didn't
+  // realise they were clickable. Icons + visible border on the active
+  // tab fix the affordance.
+  const tabs: Array<{
+    key: 'text' | 'url' | 'screenshot'
+    label: string
+    icon: string
+  }> = [
+    { key: 'text', label: isDE ? 'Text einfügen' : 'Paste text', icon: '✎' },
+    { key: 'url', label: isDE ? 'Link einfügen' : 'Paste link', icon: '↗' },
+    { key: 'screenshot', label: isDE ? 'Bild hochladen' : 'Upload image', icon: '⊕' },
   ]
 
   return (
@@ -154,19 +161,20 @@ export default function Analyze({ lang }: Props) {
           path: paste something you received). Link + Screenshot are
           quiet alternative tabs above the input. */}
       <div className="bg-slate-800/60 rounded-xl p-5 sm:p-6 mb-6 space-y-5">
-        <div className="flex gap-1 bg-slate-900/60 rounded-lg p-1">
+        <div className="grid grid-cols-3 gap-2">
           {tabs.map(tab => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setInputMethod(tab.key)}
-              className={`flex-1 py-1.5 px-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex flex-col items-center justify-center gap-1 py-3 px-2 rounded-lg border text-sm font-medium transition-colors ${
                 inputMethod === tab.key
-                  ? 'bg-slate-700 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-indigo-950/40 border-indigo-700 text-indigo-100'
+                  : 'bg-slate-900/40 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
               }`}
             >
-              {tab.label}
+              <span className="text-lg leading-none" aria-hidden="true">{tab.icon}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>

@@ -183,7 +183,17 @@ def generate_pdf(
     # everything the formal body says again. A Strafanzeige is a letter,
     # not a dashboard — keep the metadata as a single restrained line.
     elements.append(_meta_strip(case, is_de, styles, now))
-    elements.append(Spacer(1, 10 * mm))
+    elements.append(Spacer(1, 4 * mm))
+
+    # 2b. Eilbedürftigkeits-Banner — only when severity=critical OR
+    # the earliest Antragsfrist is < 14 days away. Visible at the top
+    # of page 1 so the Postvorzimmer / Refa kann sofort sehen "muss
+    # heute auf den Tisch von Sachbearbeiter X".
+    urgency = _urgency_banner(case, is_de, styles)
+    if urgency is not None:
+        elements.append(urgency)
+        elements.append(Spacer(1, 4 * mm))
+    elements.append(Spacer(1, 6 * mm))
 
     # ── 3. Strafanzeige body (formal complaint) ────────────────────────────
     # Render for every police report — even without victim_name (placeholders
@@ -763,6 +773,112 @@ def _behoerden_hinweise(case: Case, is_de: bool, styles: dict) -> list:
         elems.append(Spacer(1, 3 * mm))
 
     return elems
+
+
+# ── Urgency banner — page-1 callout when something needs to move fast ───
+
+
+def _urgency_banner(case: Case, is_de: bool, styles: dict):
+    """Banner shown right under the masthead when one of the following
+    is true:
+      - any evidence is severity=critical
+      - any Antragsfrist-Delikt (§§ 185, 186, 201a StGB) is < 14 days
+        from expiring, given the earliest evidence's Tatzeit
+    Returns None when nothing is urgent — the document then renders
+    without a banner at all (which is the correct restraint)."""
+    from datetime import timedelta
+
+    is_critical = any(
+        ev.classification and _severity_key(ev.classification.severity) == "critical"
+        for ev in case.evidence_items
+    )
+
+    # Antragsfrist
+    earliest_evidence_dt = None
+    laws_seen: list[str] = []
+    for ev in case.evidence_items:
+        if ev.captured_at and (
+            earliest_evidence_dt is None or ev.captured_at < earliest_evidence_dt
+        ):
+            earliest_evidence_dt = ev.captured_at
+        if ev.classification:
+            for law in ev.classification.applicable_laws or []:
+                ref = getattr(law, "paragraph", None)
+                if ref and ref not in laws_seen:
+                    laws_seen.append(ref)
+
+    def _is_antrag(ref: str) -> bool:
+        r = ref.lower().replace(" ", "").replace("§", "")
+        return any(t in r for t in ("185stgb", "186stgb", "201astgb"))
+
+    triggered = [l for l in laws_seen if _is_antrag(l)]
+    antrag_warning = None
+    if triggered and earliest_evidence_dt is not None:
+        # Normalise to tz-aware UTC — case.created_at can be naive from
+        # SQLite (no tz info), the agent's now() is aware. Subtracting
+        # mixed-tz datetimes raises TypeError, so we coerce both sides.
+        anchor = earliest_evidence_dt
+        if anchor.tzinfo is None:
+            anchor = anchor.replace(tzinfo=timezone.utc)
+        deadline = anchor + timedelta(days=90)
+        days_left = (deadline - datetime.now(timezone.utc)).days
+        if days_left < 14 and days_left >= 0:
+            antrag_warning = (
+                f"Strafantragsfrist {', '.join(triggered)} endet am "
+                f"{deadline.strftime('%d.%m.%Y')} — nur noch {days_left} Tage."
+            )
+        elif days_left < 0:
+            antrag_warning = (
+                f"Strafantragsfrist {', '.join(triggered)} ist seit "
+                f"{abs(days_left)} Tagen abgelaufen (war {deadline.strftime('%d.%m.%Y')}). "
+                f"Bitte prüfen, ob das Verfahren noch eingeleitet werden kann."
+            )
+
+    if not is_critical and antrag_warning is None:
+        return None
+
+    parts: list[str] = []
+    if is_critical:
+        parts.append(
+            _l(
+                "Kritische Beweismittel enthalten (Drohung / Doxxing / Stalking).",
+                "Critical evidence present (threats / doxxing / stalking).",
+                is_de,
+            )
+        )
+    if antrag_warning:
+        parts.append(antrag_warning if is_de else antrag_warning)
+
+    label = _l("Eilbedürftig", "Time-critical", is_de)
+    msg = " ".join(parts)
+
+    banner = Table(
+        [
+            [
+                [
+                    Paragraph(
+                        f"<font color='#b91c1c'><b>{_escape(label)}</b></font>"
+                        f"  <font color='{INK}'>{_escape(msg)}</font>",
+                        styles["MetaStrip"],
+                    )
+                ]
+            ]
+        ],
+        colWidths=[158 * mm],
+    )
+    banner.setStyle(
+        TableStyle(
+            [
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fef2f2")),
+                ("LINEBEFORE", (0, 0), (-1, -1), 2, colors.HexColor("#b91c1c")),
+            ]
+        )
+    )
+    return banner
 
 
 # ── Meta strip — replaces the heavy executive summary ────────────────────

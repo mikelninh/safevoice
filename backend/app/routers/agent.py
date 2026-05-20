@@ -73,6 +73,35 @@ def court_prep(
         )
 
     artefacts = summarise_artefacts(result.tool_trace)
+
+    # Hash-chain CSV: officer-facing verification artefact. Generated
+    # directly from the DB case (not via the agent loop) because it's
+    # deterministic data extraction, not LLM-work — making it a tool
+    # would only waste an iteration. Attached as a base64-encoded
+    # CSV alongside the strafanzeige PDF and netzdg emls.
+    try:
+        import base64
+        from app.database import Case as DBCase, EvidenceItem as DBEvidence
+        from sqlalchemy.orm import joinedload
+        from app.services.eml_builder import build_hash_chain_csv
+
+        db_case = (
+            db.query(DBCase)
+            .options(joinedload(DBCase.evidence_items))
+            .filter(DBCase.id == case_id)
+            .first()
+        )
+        if db_case is not None:
+            csv_bytes = build_hash_chain_csv(db_case)
+            artefacts["hash_chain_csv_base64"] = base64.b64encode(csv_bytes).decode(
+                "ascii"
+            )
+            artefacts["hash_chain_csv_filename"] = f"hashes-{case_id[:8]}.csv"
+    except Exception:
+        # Hash-CSV is a nice-to-have, not blocking; if the build fails
+        # we still ship the rest of the package.
+        logger.exception("hash_chain_csv generation failed")
+
     # Strip the base64 payloads out of the trace so the trace stays UI-light.
     # Artefacts retain everything; the trace is for the live tool-call view.
     light_trace = []

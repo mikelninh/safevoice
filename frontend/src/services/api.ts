@@ -471,6 +471,8 @@ export interface CourtPrepArtefacts {
     text_for_paste: string
     instructions_de: string
   } | null
+  hash_chain_csv_base64?: string | null
+  hash_chain_csv_filename?: string | null
 }
 
 export interface CourtPrepResponse {
