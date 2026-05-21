@@ -96,6 +96,8 @@ def run_court_prep(
     victim_address: str | None = None,
     victim_phone: str | None = None,
     bundesland_code: str | None = None,
+    relationship: str = "self",
+    represented_name: str | None = None,
     user_id: str | None = None,
     max_iterations: int = 10,
     max_cost_usd: float = 0.50,
@@ -142,6 +144,8 @@ Beginne mit read_case und folge der Arbeitsweise aus den Anweisungen."""
         "victim_address": victim_address,
         "victim_phone": victim_phone,
         "bundesland_code": bundesland_code,
+        "relationship": relationship,
+        "represented_name": represented_name,
         "prompt_version": PROMPT_VERSION,
     }
 

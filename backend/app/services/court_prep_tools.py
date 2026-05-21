@@ -630,6 +630,20 @@ GENERATE_PDF_SCHEMA = {
         "victim_address": {"type": "string"},
         "victim_email": {"type": "string"},
         "victim_phone": {"type": "string"},
+        "relationship": {
+            "type": "string",
+            "enum": ["self", "guardian", "caretaker"],
+            "description": (
+                "Relationship of the person filing to the victim. "
+                "'self' = victim files themselves (default). "
+                "'guardian' = legal guardian for a minor (Eltern für Kind, § 77 III StGB). "
+                "'caretaker' = filing on behalf of another adult with their authorisation."
+            ),
+        },
+        "represented_name": {
+            "type": "string",
+            "description": "Name of the represented person — only used when relationship != 'self'.",
+        },
     },
     "required": ["case_id"],
     "additionalProperties": False,
@@ -657,6 +671,8 @@ def make_generate_strafanzeige_pdf(db: Session):
             victim_address=args.get("victim_address"),
             victim_phone=args.get("victim_phone"),
             victim_email=args.get("victim_email"),
+            relationship=args.get("relationship") or "self",
+            represented_name=args.get("represented_name"),
         )
         return {
             "ok": True,

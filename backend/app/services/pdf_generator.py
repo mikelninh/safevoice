@@ -88,6 +88,8 @@ def generate_pdf(
     victim_address: str | None = None,
     victim_phone: str | None = None,
     victim_email: str | None = None,
+    relationship: str = "self",
+    represented_name: str | None = None,
 ) -> bytes:
     """Generate a court-ready PDF report for a case."""
     buf = io.BytesIO()
@@ -238,6 +240,45 @@ def generate_pdf(
             )
         )
         elements.append(Spacer(1, 6 * mm))
+
+        # Vertretungs-Block — only when the filer is not the victim. Surfaces
+        # the legal basis (§ 77 III StGB for guardians of minors; Vollmacht
+        # für andere Erwachsene) so the StA sees immediately who has standing.
+        if relationship and relationship != "self":
+            shown_name = represented_name or _l(
+                "[Name der vertretenen Person]", "[Represented person]", is_de
+            )
+            if relationship == "guardian":
+                rep_line = (
+                    f"<b>Vertretung gem. § 77 Abs. 3 StGB</b> · "
+                    f"Anzeigeerstattung als Erziehungsberechtigte:r "
+                    f"für {_escape(shown_name)} (minderjährig)."
+                )
+            elif relationship == "caretaker":
+                rep_line = (
+                    f"<b>Vertretung mit Vollmacht</b> · "
+                    f"Anzeigeerstattung im Auftrag der/des Geschädigten "
+                    f"{_escape(shown_name)}. Vollmacht im Original auf Anforderung."
+                )
+            else:
+                rep_line = f"<b>Vertretung</b> · für {_escape(shown_name)}"
+            elements.append(
+                Paragraph(
+                    rep_line,
+                    ParagraphStyle(
+                        "VertretungBox",
+                        parent=styles["Body"],
+                        fontSize=9.5,
+                        leading=13,
+                        textColor=colors.HexColor(INK),
+                        backColor=colors.HexColor("#f1f5f9"),
+                        borderPadding=(6, 8, 6, 8),
+                        leftIndent=0,
+                        rightIndent=0,
+                    ),
+                )
+            )
+            elements.append(Spacer(1, 5 * mm))
 
         # Subject line
         subject = _l(

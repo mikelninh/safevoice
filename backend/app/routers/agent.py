@@ -34,13 +34,23 @@ router = APIRouter(prefix="/agent", tags=["agent"])
 
 
 class CourtPrepRequest(BaseModel):
-    """Optional victim block — anything omitted leaves placeholders in the PDF."""
+    """Optional victim block — anything omitted leaves placeholders in the PDF.
+
+    `relationship` distinguishes the three real-world cases:
+      - 'self' (default): the victim files their own complaint
+      - 'guardian': a legal guardian for a minor (Eltern für Kind),
+        relevant for § 77 III StGB Strafantragsrecht der Erziehungsberechtigten
+      - 'caretaker': a person filing on behalf of a relative (e.g. pflegende
+        Angehörige), needs a Vollmacht — surfaced in the PDF as a note.
+    """
 
     victim_name: str | None = None
     victim_email: str | None = None
     victim_address: str | None = None
     victim_phone: str | None = None
     bundesland_code: str | None = None
+    relationship: str | None = "self"
+    represented_name: str | None = None  # only used when relationship != 'self'
 
 
 @router.post("/court-prep/{case_id}")
@@ -64,6 +74,8 @@ def court_prep(
         victim_address=req.victim_address,
         victim_phone=req.victim_phone,
         bundesland_code=req.bundesland_code,
+        relationship=req.relationship or "self",
+        represented_name=req.represented_name,
     )
 
     if result.status == "failed" and result.error == "openai_unavailable":
