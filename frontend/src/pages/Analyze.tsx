@@ -201,6 +201,15 @@ export default function Analyze({ lang }: Props) {
               {t(lang, 'analyze.url.label')}
             </label>
             <p className="text-slate-500 text-xs mb-1.5">{t(lang, 'analyze.url.hint')}</p>
+            {/* Honest hint about which URLs actually work. Social media
+                blocks server-side scraping; users repeatedly try IG/X
+                links and hit a confusing 422. Screenshot is the
+                reliable path for those. */}
+            <p className="text-amber-300/80 text-xs mb-2 leading-relaxed">
+              {isDE
+                ? '⚠ Instagram, X/Twitter, TikTok und Facebook blocken den automatischen Abruf fast immer. Für diese bitte Screenshot hochladen. Öffentliche Blogs, News-Artikel und Reddit funktionieren meistens.'
+                : '⚠ Instagram, X/Twitter, TikTok and Facebook almost always block automatic fetching. For those, please upload a screenshot. Public blogs, news articles and Reddit usually work.'}
+            </p>
             <div className="relative">
               <input
                 type="url"
