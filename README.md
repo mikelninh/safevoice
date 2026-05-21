@@ -12,6 +12,24 @@
 
 **Document digital harassment. Classify under German law. Generate court-ready Strafanzeige in 30 seconds.**
 
+---
+
+## Agents (Mai 2026)
+
+SafeVoice ships an autonomous **Court-Prep Agent** as of May 2026. It is the first of [8 agents](docs/AGENT_MASTERPLAN.md) planned across the SafeVoice / GitLaw / PMM ecosystem and runs on a native agent-loop (no LangChain — see [AGENT_MASTERPLAN.md](docs/AGENT_MASTERPLAN.md#decision-native-kein-langchain) for the reasoning).
+
+| | |
+|---|---|
+| **Court-Prep Agent** | `POST /agent/court-prep/{case_id}` — produces Strafanzeige PDF + NetzDG `.eml` per platform + Staatsanwaltschaft routing + § 77 StGB Strafantrags-Frist-Check + auto re-archived evidence URLs + § 200a StPO Anonymisierungs-Antrag when needed. 8 tools, ~30 seconds, replaces ~3 hours of manual work. |
+| **Agent runtime** | `backend/app/services/agent_loop.py` · `court_prep_agent.py` · `court_prep_tools.py` |
+| **Safety guards (built in from day 1)** | `max_iterations=10` · `max_cost_usd=0.50` · idempotency key `(run_id, tool, sha256(input))` · tool-call audit table (`agent_runs` + `tool_calls`) · human-in-loop checkpoint before every external send |
+| **Eval set** | `evals/agent_court_prep.json` — runs on every prompt change |
+| **Cross-project plan** | [`docs/AGENT_MASTERPLAN.md`](docs/AGENT_MASTERPLAN.md) — 8 agents across SafeVoice, GitLaw Citizen, GitLaw Pro, PMM. #1 in production, #2-3 next. |
+
+The same `agent_loop` contract is being ported to TypeScript for the GitLaw repo so both projects share one Agent-Runtime pattern.
+
+---
+
 Anonymous-first (no account needed). UI in **DE + EN**; the OpenAI `gpt-4o-mini` classifier handles Turkish and Arabic input text out of the box — UI translations for TR/AR are on the roadmap. DSGVO-by-design: no personal data leaves your browser unless you explicitly submit it.
 
 ---
