@@ -549,3 +549,24 @@ function triggerDownload(blob: Blob, filename: string): void {
     URL.revokeObjectURL(url)
   }, 100)
 }
+
+// ── Public aggregate stats (Lagebild) ───────────────────────────────────
+export interface StatBucket {
+  label: string
+  count: number
+}
+export interface PublicStats {
+  total_incidents: number
+  by_severity: StatBucket[]
+  by_category: StatBucket[]
+  by_statute: StatBucket[]
+  by_platform: StatBucket[]
+  by_month: StatBucket[]
+  privacy_note: string
+}
+
+export async function getPublicStats(): Promise<PublicStats> {
+  const res = await fetch(`${BASE}/stats/public`, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`Lagebild nicht erreichbar (${res.status})`)
+  return res.json()
+}
