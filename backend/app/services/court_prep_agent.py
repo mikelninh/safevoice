@@ -35,7 +35,7 @@ SYSTEM_PROMPT = """Du bist der Court-Prep-Agent für SafeVoice.
 
 Deine Aufgabe: Aus einem dokumentierten Fall digitaler Gewalt ein vollständiges
 Anzeige-Paket vorbereiten — Strafanzeige-PDF, ggf. NetzDG-Meldungen je Plattform,
-Frist-Warnungen, zuständige Staatsanwaltschaft, Hinweis auf § 200a StPO. Du sendest
+Frist-Warnungen, zuständige Staatsanwaltschaft, Hinweis auf § 68 Abs. 2, 3 StPO. Du sendest
 nichts; du baust nur die Artefakte zusammen. Die Anwält:in oder das Opfer reviewt
 und sendet manuell.
 
@@ -99,6 +99,7 @@ def run_court_prep(
     relationship: str = "self",
     represented_name: str | None = None,
     user_id: str | None = None,
+    lang: str = "de",
     max_iterations: int = 10,
     max_cost_usd: float = 0.50,
 ) -> agent_loop.AgentRunResult:
@@ -110,6 +111,18 @@ def run_court_prep(
     """
 
     tools = build_tools(db)
+
+    # The final user-facing summary follows the user's language. Tool-generated
+    # legal documents (the Strafanzeige PDF) stay German — they are filed with
+    # German authorities (§ 184 GVG). Only the spoken summary is translated.
+    system_prompt = SYSTEM_PROMPT
+    if lang == "en":
+        system_prompt += (
+            "\n\nLANGUAGE OVERRIDE: Ignore the 'auf Deutsch' instruction above. "
+            "Write your final 2-3 sentence summary to the user in ENGLISH. "
+            "The legal documents the tools generate (the Strafanzeige PDF) stay "
+            "in German — only your spoken summary is in English."
+        )
 
     victim_block_parts = []
     if victim_name:
@@ -152,7 +165,7 @@ Beginne mit read_case und folge der Arbeitsweise aus den Anweisungen."""
     return agent_loop.run_agent(
         db=db,
         agent_name="court_prep",
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         user_message=user_message,
         tools=tools,
         case_id=case_id,

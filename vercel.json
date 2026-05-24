@@ -4,7 +4,7 @@
   "framework": "vite",
   "functions": {
     "api/proxy.py": {
-      "maxDuration": 60,
+      "maxDuration": 300,
       "memory": 1024
     }
   },

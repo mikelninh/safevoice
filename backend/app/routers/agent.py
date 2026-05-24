@@ -51,6 +51,7 @@ class CourtPrepRequest(BaseModel):
     bundesland_code: str | None = None
     relationship: str | None = "self"
     represented_name: str | None = None  # only used when relationship != 'self'
+    lang: str | None = "de"  # 'de' | 'en' — language of the user-facing summary
 
 
 @router.post("/court-prep/{case_id}")
@@ -76,6 +77,7 @@ def court_prep(
         bundesland_code=req.bundesland_code,
         relationship=req.relationship or "self",
         represented_name=req.represented_name,
+        lang=req.lang or "de",
     )
 
     if result.status == "failed" and result.error == "openai_unavailable":
@@ -86,33 +88,11 @@ def court_prep(
 
     artefacts = summarise_artefacts(result.tool_trace)
 
-    # Hash-chain CSV: officer-facing verification artefact. Generated
-    # directly from the DB case (not via the agent loop) because it's
-    # deterministic data extraction, not LLM-work — making it a tool
-    # would only waste an iteration. Attached as a base64-encoded
-    # CSV alongside the strafanzeige PDF and netzdg emls.
-    try:
-        import base64
-        from app.database import Case as DBCase, EvidenceItem as DBEvidence
-        from sqlalchemy.orm import joinedload
-        from app.services.eml_builder import build_hash_chain_csv
-
-        db_case = (
-            db.query(DBCase)
-            .options(joinedload(DBCase.evidence_items))
-            .filter(DBCase.id == case_id)
-            .first()
-        )
-        if db_case is not None:
-            csv_bytes = build_hash_chain_csv(db_case)
-            artefacts["hash_chain_csv_base64"] = base64.b64encode(csv_bytes).decode(
-                "ascii"
-            )
-            artefacts["hash_chain_csv_filename"] = f"hashes-{case_id[:8]}.csv"
-    except Exception:
-        # Hash-CSV is a nice-to-have, not blocking; if the build fails
-        # we still ship the rest of the package.
-        logger.exception("hash_chain_csv generation failed")
+    # Hash-chain CSV intentionally NOT generated as a user-facing download:
+    # it's a technical verification artefact a victim doesn't need cluttering
+    # their package. The SHA-256 chain still backs every piece of evidence and
+    # is available officer-side via the .eml export when a case is actually
+    # filed — it just doesn't belong in the one-click victim flow.
 
     # Strip the base64 payloads out of the trace so the trace stays UI-light.
     # Artefacts retain everything; the trace is for the live tool-call view.

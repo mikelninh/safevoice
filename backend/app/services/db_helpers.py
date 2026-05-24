@@ -42,7 +42,7 @@ _CATEGORY_MAP = {
     "intimate_images": "intimate_images",
     # 2026-05-19: previously dropped silently. The classifier outputs
     # `doxxing` as its own category — we need it preserved end-to-end so
-    # the Court-Prep agent can detect § 200a StPO Anonymisierungs-Bedarf
+    # the Court-Prep agent can detect § 68 Abs. 2, 3 StPO Anonymisierungs-Bedarf
     # from the DB-side categories list.
     "doxxing": "doxxing",
 }
@@ -107,6 +107,21 @@ def add_evidence_with_classification(
 
     content_hash = hash_content(text)
     now = capture_timestamp()
+
+    # Dedup guard: a double-submit (identical text in the same case) must not
+    # create a second evidence row. Identical text → identical content_hash, so
+    # if this case already holds that hash, return the existing row instead of
+    # inserting a duplicate. Fixes the same incident appearing twice in the PDF.
+    existing = (
+        db.query(DBEvidence)
+        .filter(
+            DBEvidence.case_id == case_id,
+            DBEvidence.content_hash == content_hash,
+        )
+        .first()
+    )
+    if existing is not None:
+        return existing
 
     # Build metadata blob. Screenshots live here (not a dedicated column) to
     # avoid a DB migration for the MVP. Future: move to object storage.

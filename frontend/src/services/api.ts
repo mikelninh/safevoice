@@ -414,6 +414,7 @@ export interface CourtPrepRequest {
   victim_address?: string
   victim_phone?: string
   bundesland_code?: string
+  lang?: string
 }
 
 export interface CourtPrepTraceCall {

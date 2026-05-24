@@ -375,7 +375,7 @@ def generate_pdf(
         # ── 3b. Hinweise für die ermittelnde Behörde ──────────────────────
         # Saves the officer 10-15 minutes of their own research per case:
         # antrag deadlines (so they don't risk missing them), suggested
-        # § 14 NetzDG Auskunfts­procedure, § 200a StPO recommendation when
+        # § 14 NetzDG Auskunfts­procedure, § 68 Abs. 2, 3 StPO recommendation when
         # doxxing/stalking, and how to verify the hashes themselves.
         for el in _behoerden_hinweise(case, is_de, styles):
             elements.append(el)
@@ -625,7 +625,7 @@ def _behoerden_hinweise(case: Case, is_de: bool, styles: dict) -> list:
     Sachbearbeiter:in actually has:
       • Welche Plattform-Auskunft brauche ich für welchen Account?
       • Welche Antragsfrist tickt für welchen § noch?
-      • Soll ich § 200a StPO Anonymisierung prüfen?
+      • Soll ich § 68 Abs. 2, 3 StPO Anonymisierung prüfen?
       • Wie verifiziere ich die Hashes selbst, falls die Verteidigung fragt?
     """
     from datetime import timedelta
@@ -693,7 +693,7 @@ def _behoerden_hinweise(case: Case, is_de: bool, styles: dict) -> list:
                 + "<br/>".join(contacts)
             )
 
-    # 2. Antragsfristen (§ 77 StGB — relative Antragsdelikte)
+    # 2. Antragsfristen (§ 77b StGB — relative Antragsdelikte)
     # Match case-insensitively + tolerate "StGB"/"STGB" + "§ 185"/"185 StGB"
     # variants. The classifier and law-mapper produce slightly different
     # formats over time and a missed match here = missed Antragsfrist =
@@ -706,7 +706,7 @@ def _behoerden_hinweise(case: Case, is_de: bool, styles: dict) -> list:
     if triggered and earliest_evidence_dt is not None:
         frist_end = earliest_evidence_dt + timedelta(days=90)
         bullets.append(
-            "<b>Strafantragsfristen (§ 77 StGB).</b> "
+            "<b>Strafantragsfristen (§ 77b StGB).</b> "
             f"Für {', '.join(triggered)} läuft die 3-Monats-Frist ab Kenntnis "
             f"der Anzeigeerstatterin (frühestes Beweismittel: "
             f"{earliest_evidence_dt.strftime('%d.%m.%Y')}). Frist endet "
@@ -773,7 +773,7 @@ def _behoerden_hinweise(case: Case, is_de: bool, styles: dict) -> list:
                 + "</font>"
             )
 
-    # 3. § 200a StPO Anonymisierungs-Antrag
+    # 3. § 68 Abs. 2, 3 StPO Anonymisierungs-Antrag
     anon_triggers = categories_seen & {
         "doxxing",
         "stalking",
@@ -784,7 +784,7 @@ def _behoerden_hinweise(case: Case, is_de: bool, styles: dict) -> list:
     is_high_sev = any(s in {"high", "critical"} for s in severities)
     if anon_triggers and is_high_sev:
         bullets.append(
-            "<b>Anonymisierungs-Antrag (§ 200a StPO).</b> "
+            "<b>Anonymisierungs-Antrag (§ 68 Abs. 2, 3 StPO).</b> "
             f"Wegen der festgestellten Kategorie(n) "
             f"{', '.join(sorted(anon_triggers))} bei Severity "
             f"{'hoch' if 'high' in severities and 'critical' not in severities else 'kritisch'} "

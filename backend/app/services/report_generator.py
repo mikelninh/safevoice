@@ -154,7 +154,16 @@ def _police_report(case: Case, lang: str) -> dict:
     # Every documented incident goes into a Strafanzeige — Beleidigung (§ 185)
     # is reportable even at medium severity. We mark critical ones inline in
     # the body but never drop non-critical evidence.
-    all_items = list(case.evidence_items)
+    # Defensive dedup: never list the same incident twice in the report, even
+    # if an exact-duplicate evidence row was persisted (double-submit upstream).
+    _seen: set[tuple] = set()
+    all_items = []
+    for ev in case.evidence_items:
+        _key = ((ev.raw_content or "").strip(), ev.content_type, ev.source_url)
+        if _key in _seen:
+            continue
+        _seen.add(_key)
+        all_items.append(ev)
     critical_count = sum(
         1
         for ev in all_items

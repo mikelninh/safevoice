@@ -34,8 +34,8 @@ interface Props {
 // replaced by the actual tool_trace once the response arrives.
 const FLOW_STEPS: Array<{ key: string; icon: string; label_de: string; label_en: string }> = [
   { key: 'read_case', icon: '📂', label_de: 'Fall + Beweise lesen', label_en: 'Read case + evidence' },
-  { key: 'check_strafantrag_frist', icon: '⏳', label_de: 'Strafantrags-Frist (§ 77 StGB)', label_en: 'Strafantrag deadline (§ 77 StGB)' },
-  { key: 'detect_anonymisierung_needed', icon: '🕶', label_de: 'Anonymisierung (§ 200a StPO)', label_en: 'Anonymity (§ 200a StPO)' },
+  { key: 'check_strafantrag_frist', icon: '⏳', label_de: 'Strafantrags-Frist (§ 77b StGB)', label_en: 'Strafantrag deadline (§ 77b StGB)' },
+  { key: 'detect_anonymisierung_needed', icon: '🕶', label_de: 'Anonymisierung (§ 68 Abs. 2, 3 StPO)', label_en: 'Anonymity (§ 68 Abs. 2, 3 StPO)' },
   { key: 're_archive_urls', icon: '📌', label_de: 'Beweise archivieren', label_en: 'Archive evidence' },
   { key: 'draft_netzdg_email', icon: '📨', label_de: 'NetzDG-Meldungen', label_en: 'NetzDG reports' },
   { key: 'determine_jurisdiction', icon: '⚖️', label_de: 'Zuständige Staatsanwaltschaft', label_en: 'Competent prosecutor' },
@@ -114,6 +114,7 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
       const res = await runCourtPrepAgent(resolvedCaseId, {
         victim_name: name || undefined,
         bundesland_code: bundesland || undefined,
+        lang,
       })
       setResult(res)
     } catch (e) {
@@ -462,11 +463,11 @@ function OutputChip({ call, isDE }: { call: CourtPrepTraceCall; isDE: boolean })
       chip = {
         text: needed
           ? isDE
-            ? '§ 200a StPO empfohlen'
-            : '§ 200a StPO recommended'
+            ? '§ 68 Abs. 2, 3 StPO empfohlen'
+            : '§ 68 Abs. 2, 3 StPO recommended'
           : isDE
-          ? 'kein § 200a nötig'
-          : '§ 200a not needed',
+          ? 'kein § 68 StPO nötig'
+          : '§ 68 StPO not needed',
         tone: needed ? 'info' : 'good',
       }
       break
@@ -585,7 +586,7 @@ function Artefacts({ result, isDE }: { result: CourtPrepResponse; isDE: boolean 
           {a.anonymisierung && a.anonymisierung.needed && (
             <div className="pt-2 border-t border-slate-800">
               <div className="text-[11px] uppercase tracking-wider text-indigo-300 mb-1">
-                {isDE ? 'Anonymisierung empfohlen (§ 200a StPO)' : 'Anonymity recommended (§ 200a StPO)'}
+                {isDE ? 'Anonymisierung empfohlen (§ 68 Abs. 2, 3 StPO)' : 'Anonymity recommended (§ 68 Abs. 2, 3 StPO)'}
               </div>
               <p className="text-slate-300 text-xs leading-relaxed">{a.anonymisierung.begruendung}</p>
             </div>

@@ -117,7 +117,7 @@ _STA_BY_BUNDESLAND: dict[str, dict[str, str]] = {
 }
 
 
-# § 77 StGB — Antragsdelikte. Maps `code:section` → frist_months.
+# § 77b StGB — Antragsdelikte. Maps `code:section` → frist_months.
 # Only "relative Antragsdelikte" (3-Monats-Frist ab Kenntnis) listed.
 # Absolute Antragsdelikte (z. B. § 247) sind hier irrelevant für SafeVoice.
 _ANTRAGSDELIKTE_MONTHS: dict[str, int] = {
@@ -221,7 +221,15 @@ def make_read_case(db: Session):
             return {"error": f"case '{case_id}' not found"}
 
         evidence = []
+        _seen_ev: set[tuple] = set()
         for ev in case.evidence_items:
+            # Defensive dedup: collapse exact-duplicate evidence rows (same text,
+            # type, source) so the agent + PDF never list the same incident twice.
+            # The upstream double-insert is a separate TODO.
+            _key = ((ev.raw_content or "").strip(), ev.content_type, ev.source_url)
+            if _key in _seen_ev:
+                continue
+            _seen_ev.add(_key)
             cls = ev.classification
             evidence.append(
                 {
@@ -412,7 +420,7 @@ def detect_anonymisierung_needed(args: dict) -> Any:
     # Accept both the classifier's own enum names (doxxing/stalking/death_threat)
     # and the DB-mapped equivalents (cyberstalking, threat-in-doxxing-context),
     # because `read_case` returns DB-side names while a directly-passed list
-    # may use classifier names. Single source of legal truth: a § 200a StPO
+    # may use classifier names. Single source of legal truth: a § 68 Abs. 2, 3 StPO
     # Antrag is justified when the Beschuldigte would gain dangerous knowledge
     # of the complainant's whereabouts.
     triggers = cats & {
@@ -428,7 +436,7 @@ def detect_anonymisierung_needed(args: dict) -> Any:
     return {
         "needed": needed,
         "rechtsgrundlage": (
-            "§ 200a StPO (Anonymisierungsantrag für Anschrift der Anzeigenden)"
+            "§ 68 Abs. 2, 3 StPO (Anonymisierungsantrag für Anschrift der Anzeigenden)"
             if needed
             else None
         ),
@@ -795,7 +803,7 @@ def build_tools(db: Session):
             description=(
                 "For relative Antragsdelikte (§§ 185, 186, 201a StGB), compute "
                 "how many days are left in the 3-month Strafantragsfrist "
-                "(§ 77 StGB), counted from the earliest evidence's Kenntnis-"
+                "(§ 77b StGB), counted from the earliest evidence's Kenntnis-"
                 "date. Returns expired/urgent/ok per statute."
             ),
             schema=CHECK_FRIST_SCHEMA,
@@ -804,7 +812,7 @@ def build_tools(db: Session):
         ToolDef(
             name="detect_anonymisierung_needed",
             description=(
-                "Decide whether the case warrants a § 200a StPO Anonymisierungs-"
+                "Decide whether the case warrants a § 68 Abs. 2, 3 StPO Anonymisierungs-"
                 "antrag (victim's address withheld from the Beschuldigten). "
                 "True for doxxing/stalking/death_threat/intimate_images at "
                 "severity ≥ high."
