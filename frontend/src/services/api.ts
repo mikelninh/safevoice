@@ -476,11 +476,22 @@ export interface CourtPrepArtefacts {
   hash_chain_csv_filename?: string | null
 }
 
+export interface CourtPrepRound {
+  iteration: number
+  prompt_tokens: number
+  completion_tokens: number
+  cost_usd: number
+  tools: string[]
+}
+
 export interface CourtPrepResponse {
   agent_run_id: string
   status: 'completed' | 'failed' | 'aborted_budget' | 'aborted_iterations'
   iterations: number
   total_cost_usd: number
+  total_prompt_tokens?: number
+  total_completion_tokens?: number
+  rounds?: CourtPrepRound[]
   prompt_version: string
   final_message: string | null
   error: string | null

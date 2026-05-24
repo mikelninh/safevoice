@@ -341,19 +341,88 @@ function FlowTimeline({
 
   if (!result) return null
 
+  const rounds = result.rounds ?? []
+  const totalTokens =
+    (result.total_prompt_tokens ?? 0) + (result.total_completion_tokens ?? 0)
+
   return (
-    <details className="mt-5 rounded-xl border border-slate-700/70 bg-slate-950/50 group">
-      <summary className="cursor-pointer list-none p-3 flex items-center justify-between text-xs text-slate-400 hover:text-slate-200">
-        <span className="flex items-center gap-1.5">
-          <span className="transition-transform group-open:rotate-90">›</span>
-          {isDE ? 'Was geprüft wurde' : 'What was checked'}
-        </span>
-        <span className="font-mono text-slate-600">
-          {result.iterations} {isDE ? 'Schritte' : 'steps'}
-        </span>
-      </summary>
-      <div className="px-4 pb-4">{steps}</div>
-    </details>
+    <>
+      <details className="mt-5 rounded-xl border border-slate-700/70 bg-slate-950/50 group">
+        <summary className="cursor-pointer list-none p-3 flex items-center justify-between text-xs text-slate-400 hover:text-slate-200">
+          <span className="flex items-center gap-1.5">
+            <span className="transition-transform group-open:rotate-90">›</span>
+            {isDE ? 'Was geprüft wurde' : 'What was checked'}
+          </span>
+          <span className="font-mono text-slate-600">
+            {result.iterations} {isDE ? 'Schritte' : 'steps'}
+          </span>
+        </summary>
+        <div className="px-4 pb-4">{steps}</div>
+      </details>
+
+      {/* Developer telemetry — for the builder, not the victim. Where time +
+          tokens + cost actually go, per LLM round. */}
+      {rounds.length > 0 && (
+        <details className="mt-3 rounded-xl border border-amber-800/40 bg-amber-950/10 group">
+          <summary className="cursor-pointer list-none p-3 flex items-center justify-between text-xs text-amber-300/70 hover:text-amber-200">
+            <span className="flex items-center gap-1.5">
+              <span className="transition-transform group-open:rotate-90">›</span>
+              <span className="font-bold uppercase tracking-wider text-[10px] bg-amber-900/40 border border-amber-700/40 rounded px-1.5 py-0.5">
+                Dev
+              </span>
+              {isDE ? 'Telemetrie — Zeit, Tokens, Kosten' : 'Telemetry — time, tokens, cost'}
+            </span>
+            <span className="font-mono text-amber-600/80">
+              ${result.total_cost_usd.toFixed(4)} · {totalTokens.toLocaleString()} tok
+            </span>
+          </summary>
+          <div className="px-4 pb-4">
+            <div className="grid grid-cols-4 gap-2 mb-3 text-center">
+              <Metric label={isDE ? 'Zeit' : 'Time'} value={`${elapsedSec}s`} />
+              <Metric label={isDE ? 'Runden' : 'Rounds'} value={String(result.iterations)} />
+              <Metric label="Tokens" value={totalTokens.toLocaleString()} />
+              <Metric label="Cost" value={`$${result.total_cost_usd.toFixed(4)}`} />
+            </div>
+            <table className="w-full text-[11px] font-mono text-slate-400">
+              <thead>
+                <tr className="text-slate-500 border-b border-slate-800">
+                  <th className="text-left py-1 font-normal">#</th>
+                  <th className="text-left py-1 font-normal">tool</th>
+                  <th className="text-right py-1 font-normal">in</th>
+                  <th className="text-right py-1 font-normal">out</th>
+                  <th className="text-right py-1 font-normal">$</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rounds.map((r) => (
+                  <tr key={r.iteration} className="border-b border-slate-900/60">
+                    <td className="py-1 text-slate-600">{r.iteration}</td>
+                    <td className="py-1 text-slate-300">{r.tools.join(', ') || '—'}</td>
+                    <td className="py-1 text-right">{r.prompt_tokens.toLocaleString()}</td>
+                    <td className="py-1 text-right">{r.completion_tokens.toLocaleString()}</td>
+                    <td className="py-1 text-right text-amber-400/70">${r.cost_usd.toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-[10px] text-slate-600 leading-relaxed">
+              {isDE
+                ? 'Tools selbst kosten keine Tokens — der LLM zwischen den Schritten schon. Hohe out-Tokens = teure Runde.'
+                : 'Tools cost no tokens — the LLM between steps does. High out-tokens = the expensive round.'}
+            </p>
+          </div>
+        </details>
+      )}
+    </>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-slate-900/60 border border-slate-800 py-2">
+      <div className="text-sm font-mono text-amber-300/90">{value}</div>
+      <div className="text-[9px] uppercase tracking-wider text-slate-500 mt-0.5">{label}</div>
+    </div>
   )
 }
 

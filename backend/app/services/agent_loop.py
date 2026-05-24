@@ -64,6 +64,10 @@ class AgentRunResult:
     output: dict | None = None
     error: str | None = None
     tool_trace: list[dict] = field(default_factory=list)
+    # Telemetry: per-LLM-round token + cost breakdown ("where do tokens go?").
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
+    rounds: list[dict] = field(default_factory=list)
 
 
 # ── Defaults — chosen so a runaway agent costs at most a coffee, not a meal ──
@@ -156,6 +160,9 @@ def run_agent(
     ]
     tool_trace: list[dict] = []
     total_cost = 0.0
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+    rounds: list[dict] = []
     iterations = 0
     final_message: str | None = None
 
@@ -180,6 +187,27 @@ def run_agent(
                 agent_run_id=agent_run_id,
             )
             total_cost += chat_result.estimated_cost_usd
+
+            # Per-round telemetry: tokens + cost for this LLM call, plus which
+            # tools it requested. This is the "what's slow / what's expensive"
+            # data the dev telemetry panel renders.
+            _usage = getattr(chat_result, "usage", None)
+            _round_pt = (getattr(_usage, "prompt_tokens", 0) or 0) if _usage else 0
+            _round_ct = (getattr(_usage, "completion_tokens", 0) or 0) if _usage else 0
+            total_prompt_tokens += _round_pt
+            total_completion_tokens += _round_ct
+            rounds.append(
+                {
+                    "iteration": iterations,
+                    "prompt_tokens": _round_pt,
+                    "completion_tokens": _round_ct,
+                    "cost_usd": round(chat_result.estimated_cost_usd, 6),
+                    "tools": [
+                        tc["name"]
+                        for tc in (getattr(chat_result, "tool_calls", None) or [])
+                    ],
+                }
+            )
 
             if total_cost > max_cost_usd:
                 run.status = "aborted_budget"
@@ -334,6 +362,9 @@ def run_agent(
         status=run.status,
         iterations=iterations,
         total_cost_usd=total_cost,
+        total_prompt_tokens=total_prompt_tokens,
+        total_completion_tokens=total_completion_tokens,
+        rounds=rounds,
         final_message=final_message,
         output=(
             json.loads(run.output_json)
