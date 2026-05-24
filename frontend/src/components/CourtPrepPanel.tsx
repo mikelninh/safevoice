@@ -78,9 +78,10 @@ export default function CourtPrepPanel({ caseId, caseData, lang }: Props) {
     const elapsedTimer = setInterval(() => {
       setElapsedSec(Math.floor((Date.now() - start) / 1000))
     }, 200)
-    // Pace each "visible" step. PDF gen is the slow one (~11s), front-load
-    // the cheap steps so the UI feels alive immediately.
-    const stepDelays = [400, 800, 1200, 1800, 2400, 2800, 3400, 4200]
+    // Pace each visible step ~proportional to its real cost: the cheap checks
+    // flick by, archiving (idx 3) and PDF gen (idx 6) dwell — so the animation
+    // mirrors where the time actually goes.
+    const stepDelays = [600, 600, 600, 6000, 700, 700, 11000, 900]
     let cancelled = false
     let i = 0
     const tick = () => {
@@ -294,6 +295,9 @@ function FlowTimeline({
   const calls = result?.tool_trace ?? []
   const callByTool = new Map<string, CourtPrepTraceCall>()
   calls.forEach((c) => callByTool.set(c.tool, c))
+  // Slowest step sets the scale — bars are drawn proportional to real latency,
+  // so the expensive steps (PDF gen, archiving) visually dominate.
+  const maxLatency = Math.max(1, ...calls.map((c) => c.latency_ms || 0))
 
   const steps = (
     <ol className="space-y-2">
@@ -317,6 +321,7 @@ function FlowTimeline({
             status={status}
             call={call}
             isDE={isDE}
+            maxLatency={maxLatency}
           />
         )
       })}
@@ -433,6 +438,7 @@ function FlowStep({
   status,
   call,
   isDE,
+  maxLatency = 1,
 }: {
   index: number
   icon: string
@@ -440,8 +446,14 @@ function FlowStep({
   status: 'done' | 'active' | 'idle' | 'skipped'
   call?: CourtPrepTraceCall
   isDE: boolean
+  maxLatency?: number
 }) {
   const isLast = index === FLOW_STEPS.length - 1
+  // Proportional duration bar: width relative to the slowest step.
+  const latency = call?.latency_ms ?? 0
+  const widthPct = call ? Math.max(4, Math.round((latency / maxLatency) * 100)) : 0
+  const isHeavy = latency >= maxLatency * 0.5 // the slow ones, visually flagged
+  const barColor = isHeavy ? 'bg-amber-500/70' : 'bg-emerald-600/50'
   const ringColor =
     status === 'done'
       ? 'border-emerald-500 bg-emerald-950/70 text-emerald-300'
@@ -481,13 +493,21 @@ function FlowStep({
           <span className={`text-sm ${labelColor}`}>{label}</span>
           {call?.latency_ms !== undefined && (
             <span className="text-[10px] text-slate-500 font-mono shrink-0">
-              {call.latency_ms}ms
+              {latency >= 1000 ? `${(latency / 1000).toFixed(1)}s` : `${latency}ms`}
               {call.cached && (
                 <span className="ml-1 uppercase tracking-wider text-slate-600">cached</span>
               )}
             </span>
           )}
         </div>
+        {call && widthPct > 0 && (
+          <div className="mt-1 mb-0.5 h-1 rounded-full bg-slate-800/70 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+              style={{ width: `${widthPct}%` }}
+            />
+          </div>
+        )}
         {call && <OutputChip call={call} isDE={isDE} />}
         {status === 'skipped' && !call && (
           <span className="text-[10px] text-slate-600 italic">
@@ -750,63 +770,82 @@ function SubmissionGuide({
         {isDE ? 'Wie sende ich das?' : 'How do I send this?'}
       </div>
       <div className="space-y-3 text-sm">
-        {/* Path 1: Onlinewache — only if a Bundesland was picked */}
-        {hasOnlinewache && (
+        {/* ONE recommended path visible by default; everything else folds away. */}
+        {hasOnlinewache ? (
           <Path
-            badge={isDE ? 'schnellster Weg' : 'fastest'}
+            badge={isDE ? 'empfohlen · digital' : 'recommended · digital'}
             badgeTone="emerald"
             title={isDE ? 'Direkt online bei der Polizei' : 'File directly online with the police'}
-            time={isDE ? '5 Min' : '5 min'}
-            sign={isDE ? 'Keine Unterschrift nötig' : 'No signature needed'}
+            time={isDE ? '5 Min · keine Unterschrift' : '5 min · no signature'}
+            sign={isDE ? 'Du wirst beim Absenden identifiziert' : "You're identified at submit time"}
             body={isDE
-              ? `Über die Onlinewache ${artefacts.onlinewache?.bundesland_name ?? ''} — du wirst beim Absenden identifiziert. Den vorbereiteten Text einfügen, Strafanzeige-PDF anhängen, fertig.`
-              : `Through Onlinewache ${artefacts.onlinewache?.bundesland_name ?? ''} — you're identified at submit time. Paste the prepared text, attach the Strafanzeige PDF, done.`}
+              ? `Onlinewache ${artefacts.onlinewache?.bundesland_name ?? ''}: vorbereiteten Text einfügen, Strafanzeige-PDF anhängen, fertig.`
+              : `Onlinewache ${artefacts.onlinewache?.bundesland_name ?? ''}: paste the prepared text, attach the PDF, done.`}
           />
-        )}
-
-        {/* Path 2: Email an StA */}
-        {staEmail && (
+        ) : staEmail ? (
           <Path
-            badge={isDE ? 'formell' : 'formal'}
-            badgeTone="indigo"
+            badge={isDE ? 'empfohlen · digital' : 'recommended · digital'}
+            badgeTone="emerald"
             title={isDE ? 'Email an die Staatsanwaltschaft' : 'Email the Staatsanwaltschaft'}
-            time={isDE ? '10 Min' : '10 min'}
-            sign={isDE
-              ? 'Unterschrift optional (digitale Email zählt, wenn Absender klar)'
-              : 'Signature optional (email is valid if sender is identifiable)'}
+            time={isDE ? '10 Min · keine Unterschrift' : '10 min · no signature'}
+            sign={isDE ? 'Email zählt, wenn dein Name klar ist (§ 158 StPO, 2024)' : 'Email is valid if your name is clear (§ 158 StPO, 2024)'}
             body={
               <>
-                {isDE ? 'Adresse: ' : 'Address: '}
                 <span className="font-mono text-slate-200">{staEmail}</span>
-                {isDE
-                  ? '. Strafanzeige-PDF anhängen, kurze Zeile im Body („Anbei meine Strafanzeige zu Fall …"). HateAid-Beratung vorher ist okay.'
-                  : '. Attach the Strafanzeige PDF, short body ("Attached: my Strafanzeige for case …"). HateAid counseling beforehand is fine.'}
+                {isDE ? ' — Strafanzeige-PDF anhängen, kurze Zeile im Body.' : ' — attach the PDF, short body line.'}
               </>
             }
           />
+        ) : (
+          /* No Bundesland yet → don't dump the user into the letter. Nudge digital. */
+          <div className="rounded-lg border border-emerald-800/40 bg-emerald-950/20 p-3">
+            <p className="text-slate-200 leading-relaxed">
+              {isDE
+                ? '📍 Wähle unten dein Bundesland — dann zeigen wir dir den schnellsten digitalen Weg (Onlinewache, ohne Unterschrift).'
+                : '📍 Pick your federal state below — then we show the fastest digital route (online police, no signature).'}
+            </p>
+          </div>
         )}
 
-        {/* Path 3: Brief */}
-        <Path
-          badge={isDE ? 'altmodisch sicher' : 'old-school reliable'}
-          badgeTone="slate"
-          title={isDE ? 'Per Brief mit Unterschrift' : 'By post, signed'}
-          time={isDE ? '20 Min + Postweg' : '20 min + postal time'}
-          sign={isDE
-            ? 'Auf der Linie unten im PDF handschriftlich unterschreiben'
-            : 'Sign by hand on the line at the bottom of the PDF'}
-          body={
-            <>
-              {isDE ? 'Strafanzeige-PDF ausdrucken, unterschreiben, einkuvertieren. Adresse: ' : 'Print the Strafanzeige PDF, sign, put in an envelope. Address: '}
-              {staName ? (
-                <span className="text-slate-200">{staName}{staAddress ? `, ${staAddress}` : ''}</span>
-              ) : (
-                <em className="text-slate-500">{isDE ? '— Bundesland im Feld oben wählen, dann erscheint hier die Adresse.' : '— pick a Bundesland above to see the address.'}</em>
-              )}
-              {isDE ? '. Eingeschrieben empfohlen.' : '. Registered mail recommended.'}
-            </>
-          }
-        />
+        {/* Everything else folds away — keeps the page calm. */}
+        <details className="group">
+          <summary className="cursor-pointer list-none text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1.5">
+            <span className="transition-transform group-open:rotate-90">›</span>
+            {isDE ? 'Andere Wege' : 'Other ways'}
+          </summary>
+          <div className="mt-3 space-y-3">
+            {hasOnlinewache && staEmail && (
+              <Path
+                badge={isDE ? 'formell' : 'formal'}
+                badgeTone="indigo"
+                title={isDE ? 'Email an die Staatsanwaltschaft' : 'Email the Staatsanwaltschaft'}
+                time={isDE ? '10 Min' : '10 min'}
+                sign={isDE ? 'Keine Unterschrift nötig' : 'No signature needed'}
+                body={<><span className="font-mono text-slate-200">{staEmail}</span>{isDE ? ' — PDF anhängen.' : ' — attach the PDF.'}</>}
+              />
+            )}
+            <Path
+              badge={isDE ? 'falls du Papier bevorzugst' : 'if you prefer paper'}
+              badgeTone="slate"
+              title={isDE ? 'Per Brief' : 'By post'}
+              time={isDE ? '20 Min + Postweg' : '20 min + postal time'}
+              sign={isDE
+                ? 'Unterschrift nicht erforderlich (§ 158 StPO, 2024) — dein Name im PDF genügt'
+                : 'No signature required (§ 158 StPO, 2024) — your name in the PDF is enough'}
+              body={
+                <>
+                  {isDE ? 'PDF ausdrucken, einkuvertieren. ' : 'Print the PDF, put it in an envelope. '}
+                  {staName ? (
+                    <span className="text-slate-200">{staName}{staAddress ? `, ${staAddress}` : ''}</span>
+                  ) : (
+                    <em className="text-slate-500">{isDE ? '(Adresse erscheint nach Bundesland-Wahl.)' : '(address appears after you pick a state.)'}</em>
+                  )}
+                  {isDE ? ' Eingeschrieben empfohlen.' : ' Registered mail recommended.'}
+                </>
+              }
+            />
+          </div>
+        </details>
 
         {artefacts.netzdg_emls.length > 0 && (
           <p className="text-xs text-slate-400 leading-relaxed pt-1 border-t border-slate-700/50 mt-3">
