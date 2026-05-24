@@ -1232,29 +1232,11 @@ def _ai_assessment_block(analysis: dict, is_de: bool, styles: dict) -> list:
             )
         elems.append(Spacer(1, 3 * mm))
 
-    actions = analysis.get("recommended_actions") or []
-    if actions:
-        elems.append(
-            Paragraph(
-                _l("Empfohlene nächste Schritte", "Recommended next steps", is_de),
-                styles["FieldLabel"],
-            )
-        )
-        elems.append(Spacer(1, 1.5 * mm))
-        for act in actions[:5]:
-            action_text = act.get("action_de" if is_de else "action_en", "")
-            priority = act.get("priority", "")
-            deadline = act.get("deadline") or ""
-            deadline_str = f" · {deadline}" if deadline and deadline != "none" else ""
-            elems.append(
-                Paragraph(
-                    f"<font color='{GREY_500}'><i>{_escape(priority)}{deadline_str}</i></font>"
-                    f" — {_escape(action_text)}",
-                    styles["Body"],
-                )
-            )
-            elems.append(Spacer(1, 1 * mm))
-        elems.append(Spacer(1, 2 * mm))
+    # NOTE: "recommended next steps" (document evidence, file a complaint,
+    # report to the platform) are victim-facing guidance — they do NOT belong
+    # in the Strafanzeige the police reads (telling the police to "file a
+    # complaint with the police" is nonsensical). The victim still sees these
+    # steps in the app (CaseDetail). Intentionally omitted from the PDF.
 
     disclaimer = analysis.get("disclaimer_de" if is_de else "disclaimer_en", "")
     if disclaimer:
