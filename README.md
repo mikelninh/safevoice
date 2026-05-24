@@ -20,7 +20,7 @@ SafeVoice ships an autonomous **Court-Prep Agent** as of May 2026. It is the fir
 
 | | |
 |---|---|
-| **Court-Prep Agent** | `POST /agent/court-prep/{case_id}` — produces Strafanzeige PDF + NetzDG `.eml` per platform + Staatsanwaltschaft routing + § 77 StGB Strafantrags-Frist-Check + auto re-archived evidence URLs + § 200a StPO Anonymisierungs-Antrag when needed. 8 tools, ~30 seconds, replaces ~3 hours of manual work. |
+| **Court-Prep Agent** | `POST /agent/court-prep/{case_id}` — produces Strafanzeige PDF + NetzDG `.eml` per platform + Staatsanwaltschaft routing + § 77b StGB Strafantrags-Frist-Check + auto re-archived evidence URLs + § 68 Abs. 2, 3 StPO Anonymisierungs-Antrag when needed. 8 tools, ~30 seconds, replaces ~3 hours of manual work. |
 | **Agent runtime** | `backend/app/services/agent_loop.py` · `court_prep_agent.py` · `court_prep_tools.py` |
 | **Safety guards (built in from day 1)** | `max_iterations=10` · `max_cost_usd=0.50` · idempotency key `(run_id, tool, sha256(input))` · tool-call audit table (`agent_runs` + `tool_calls`) · human-in-loop checkpoint before every external send |
 | **Eval set** | `evals/agent_court_prep.json` — runs on every prompt change |
