@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeVoice — Digital Justice Platform</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+<style>
+  :root {
+    --r-background-color: #0f172a;
+    --r-main-color: #e2e8f0;
+    --r-heading-color: #fff;
+    --r-link-color: #818cf8;
+    --r-selection-background-color: #4338ca;
+    --r-heading-font: 'Inter', system-ui, -apple-system, sans-serif;
+    --r-main-font: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  .reveal { font-size: 32px; }
+  .reveal h1 { font-size: 2.2em; font-weight: 800; }
+  .reveal h2 { font-size: 1.6em; font-weight: 700; color: #c7d2fe; }
+  .reveal h3 { font-size: 1.2em; font-weight: 600; color: #a5b4fc; }
+  .reveal p, .reveal li { line-height: 1.6; }
+  .reveal .small { font-size: 0.65em; color: #94a3b8; }
+  .reveal .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 32px; }
+  .reveal .stat-box { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: 16px; padding: 28px 20px; text-align: center; }
+  .reveal .stat-box .num { font-size: 2.4em; font-weight: 800; color: #818cf8; }
+  .reveal .stat-box .label { font-size: 0.6em; color: #94a3b8; margin-top: 4px; }
+  .reveal .accent { color: #818cf8; }
+  .reveal .red { color: #f87171; }
+  .reveal .green { color: #4ade80; }
+  .reveal .yellow { color: #fbbf24; }
+  .reveal .orange { color: #fb923c; }
+  .reveal .dim { color: #64748b; }
+  .reveal .badge { display: inline-block; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 999px; padding: 4px 16px; font-size: 0.55em; color: #a5b4fc; margin-bottom: 16px; }
+  .reveal .badge-red { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+  .reveal .badge-green { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: #86efac; }
+  .reveal .flow-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 24px 0; flex-wrap: wrap; }
+  .reveal .flow-box { background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 12px; padding: 16px 20px; text-align: center; min-width: 140px; }
+  .reveal .flow-box .flow-title { font-size: 0.7em; font-weight: 700; color: #c7d2fe; }
+  .reveal .flow-box .flow-desc { font-size: 0.5em; color: #94a3b8; margin-top: 4px; }
+  .reveal .flow-arrow { font-size: 1.2em; color: #4338ca; }
+  .reveal .tier-row { display: flex; gap: 16px; margin: 16px 0; }
+  .reveal .tier-card { flex: 1; background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 12px; padding: 16px; text-align: left; }
+  .reveal .tier-card h4 { font-size: 0.65em; color: #a5b4fc; margin: 0 0 6px 0; font-weight: 700; }
+  .reveal .tier-card p { font-size: 0.5em; color: #94a3b8; margin: 0; line-height: 1.5; }
+  .reveal .country-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 20px; }
+  .reveal .country-card { background: rgba(30,41,59,0.8); border: 1px solid #334155; border-radius: 12px; padding: 14px 8px; text-align: center; }
+  .reveal .country-card .flag { font-size: 1.8em; }
+  .reveal .country-card .name { font-size: 0.55em; color: #e2e8f0; margin-top: 6px; font-weight: 600; }
+  .reveal .country-card .laws { font-size: 0.45em; color: #94a3b8; }
+  .reveal .comparison-table { width: 100%; border-collapse: collapse; font-size: 0.55em; margin-top: 16px; }
+  .reveal .comparison-table th { color: #a5b4fc; text-align: left; padding: 8px 12px; border-bottom: 1px solid #334155; }
+  .reveal .comparison-table td { padding: 8px 12px; color: #cbd5e1; border-bottom: 1px solid #1e293b; }
+  .reveal .comparison-table tr:nth-child(even) td { background: rgba(30,41,59,0.4); }
+  .reveal blockquote { border-left: 4px solid #4338ca; padding: 12px 24px; background: rgba(67,56,202,0.08); border-radius: 0 12px 12px 0; font-style: italic; }
+  .reveal blockquote p { color: #c7d2fe; }
+  .reveal .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; background: #4f46e5; border-radius: 16px; font-size: 1.4em; font-weight: 800; color: white; margin-bottom: 16px; }
+  .reveal .timeline { text-align: left; margin: 20px auto; max-width: 600px; }
+  .reveal .timeline-item { display: flex; gap: 16px; margin-bottom: 16px; }
+  .reveal .timeline-dot { width: 12px; height: 12px; border-radius: 50%; background: #4f46e5; margin-top: 8px; flex-shrink: 0; }
+  .reveal .timeline-content { font-size: 0.6em; }
+  .reveal .timeline-content strong { color: #c7d2fe; }
+  .reveal .timeline-content span { color: #94a3b8; }
+  .slide-number { color: #475569 !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- SLIDE 1: TITLE -->
+<section>
+  <div class="logo-mark">SV</div>
+  <h1>SafeVoice</h1>
+  <p>Digital justice. One report at a time.</p>
+  <p class="small" style="margin-top: 32px;">Document harassment &bull; Classify under law &bull; File reports &bull; In 30 seconds</p>
+</section>
+
+<!-- SLIDE 2: THE PROBLEM -->
+<section>
+  <span class="badge badge-red">THE PROBLEM</span>
+  <h2>Every 3 minutes, someone in Germany<br>is harassed online</h2>
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="num red">90%</div>
+      <div class="label">goes unreported</div>
+    </div>
+    <div class="stat-box">
+      <div class="num orange">78%</div>
+      <div class="label">of women under 30 affected</div>
+    </div>
+    <div class="stat-box">
+      <div class="num yellow">3-8h</div>
+      <div class="label">to file one report manually</div>
+    </div>
+    <div class="stat-box">
+      <div class="num dim">&euro;50M+</div>
+      <div class="label">NetzDG fines uncollected</div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 3: THREE BARRIERS -->
+<section>
+  <span class="badge badge-red">WHY 90% GOES UNREPORTED</span>
+  <h2>Three barriers stop victims</h2>
+  <div style="text-align:left; max-width:700px; margin:24px auto; font-size:0.75em;">
+    <p><strong class="red">1. "Is this even illegal?"</strong><br>
+    <span class="dim">Victims can't tell if a comment is &sect; 185 (insult, 1 year) or &sect; 241 (threat, 2 years).<br>Legal literacy shouldn't be required to report a crime.</span></p>
+    <p><strong class="orange">2. "My evidence disappeared"</strong><br>
+    <span class="dim">Posts get deleted. Screenshots aren't timestamped. When victims go to police, evidence is gone.</span></p>
+    <p><strong class="yellow">3. "It's too complicated"</strong><br>
+    <span class="dim">NetzDG forms buried in settings. Police need structured reports. Filing takes hours. Most give up.</span></p>
+  </div>
+</section>
+
+<!-- SLIDE 4: THE SOLUTION -->
+<section>
+  <span class="badge badge-green">THE SOLUTION</span>
+  <h2>Paste. Classify. Report.<br><span class="accent">In 30 seconds.</span></h2>
+  <div class="flow-row">
+    <div class="flow-box">
+      <div class="flow-title">PASTE</div>
+      <div class="flow-desc">URL, screenshot,<br>or raw text</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">
+      <div class="flow-title">CLASSIFY</div>
+      <div class="flow-desc">3-tier AI maps to<br>criminal law</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">
+      <div class="flow-title">DOCUMENT</div>
+      <div class="flow-desc">SHA-256 hash<br>+ archive.org</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box">
+      <div class="flow-title">REPORT</div>
+      <div class="flow-desc">NetzDG, police,<br>BaFin, PDF, ZIP</div>
+    </div>
+  </div>
+  <p class="small" style="margin-top:24px;">No account needed &bull; No legal knowledge required &bull; Free forever for victims</p>
+</section>
+
+<!-- SLIDE 5: DEMO SCREENSHOT PLACEHOLDER -->
+<section>
+  <span class="badge">LIVE DEMO</span>
+  <h2>Let me show you</h2>
+  <div style="background:#1e293b; border:1px solid #334155; border-radius:16px; padding:40px; margin:24px auto; max-width:600px;">
+    <p style="font-size:0.7em; color:#94a3b8;">Paste this into SafeVoice:</p>
+    <p style="font-size:0.8em; color:#f87171; font-style:italic;">"Frauen wie du sollten die Klappe halten. Ich wei&szlig; wo du wohnst."</p>
+    <p style="font-size:0.55em; color:#94a3b8; margin-top:20px;">Result in &lt; 3 seconds:</p>
+    <p style="font-size:0.65em;">
+      <span style="background:#991b1b; padding:3px 10px; border-radius:6px; color:#fca5a5; font-weight:700;">CRITICAL</span>
+      &nbsp; Misogyny + Threat &nbsp;&bull;&nbsp; &sect; 185 + &sect; 241 StGB &nbsp;&bull;&nbsp; NetzDG 24h deadline
+    </p>
+  </div>
+  <p class="small">http://localhost:5173/analyze</p>
+</section>
+
+<!-- SLIDE 6: VICTIM-FIRST DESIGN -->
+<section>
+  <span class="badge">DESIGN PHILOSOPHY</span>
+  <h2>Victim-first. Always.</h2>
+  <div style="text-align:left; max-width:650px; margin:20px auto; font-size:0.7em;">
+    <p><span class="accent">Safe Exit</span> &mdash; one tap to Google. Replaces browser history. For monitored victims.</p>
+    <p><span class="accent">No account needed</span> &mdash; full flow without login. Cases on device. Zero PII.</p>
+    <p><span class="accent">Trauma-informed language</span> &mdash; "What happened to you is not okay" not "Report abuse"</p>
+    <p><span class="accent">HateAid referral</span> &mdash; automatic for severe cases. Phone number shown. One tap.</p>
+    <p><span class="accent">Emergency delete</span> &mdash; instant, permanent. Everything gone. For victims in danger.</p>
+  </div>
+</section>
+
+<!-- SLIDE 7: 3-TIER CLASSIFIER -->
+<section>
+  <span class="badge">TECHNOLOGY</span>
+  <h2>3-tier AI classifier</h2>
+  <p class="small" style="margin-bottom:16px;">Automatic fallback &mdash; SafeVoice never returns "analysis unavailable"</p>
+  <div class="tier-row">
+    <div class="tier-card" style="border-color:#4f46e5;">
+      <h4>TIER 1: Claude API</h4>
+      <p>Context-aware. Understands sarcasm, indirect threats, German legal nuance. Writes bilingual summaries.</p>
+    </div>
+    <div class="tier-card" style="border-color:#6366f1;">
+      <h4>TIER 2: Transformer</h4>
+      <p>Works offline. Multilingual toxicity detection. No API key needed. Fast.</p>
+    </div>
+    <div class="tier-card" style="border-color:#334155;">
+      <h4>TIER 3: Regex</h4>
+      <p>Always works. Zero dependencies. DE, EN, Turkish, Arabic patterns. Guaranteed fallback.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 8: EVIDENCE INTEGRITY -->
+<section>
+  <span class="badge">EVIDENCE</span>
+  <h2>Court-ready evidence integrity</h2>
+  <div style="text-align:left; max-width:600px; margin:20px auto; font-size:0.7em;">
+    <p><span class="accent">SHA-256 hash</span> at capture time &mdash; tamper-proof, deterministic</p>
+    <p><span class="accent">UTC timestamps</span> with timezone &mdash; legal requirement in Germany</p>
+    <p><span class="accent">archive.org backup</span> &mdash; independent third-party proof of existence</p>
+    <p><span class="accent">Cryptographic hash chain</span> &mdash; each item linked to previous, genesis block anchored</p>
+    <p style="margin-top:20px;"><span class="accent">Court export package</span> &mdash; ZIP with 3 PDFs, evidence files, hash verification report, JSON manifest, chain of evidence timeline</p>
+  </div>
+</section>
+
+<!-- SLIDE 9: INTERNATIONAL -->
+<section>
+  <span class="badge">SCALE</span>
+  <h2>5 countries. 33 laws.</h2>
+  <div class="country-grid">
+    <div class="country-card">
+      <div class="flag">&#127465;&#127466;</div>
+      <div class="name">Germany</div>
+      <div class="laws">8 laws + NetzDG</div>
+    </div>
+    <div class="country-card">
+      <div class="flag">&#127462;&#127481;</div>
+      <div class="name">Austria</div>
+      <div class="laws">6 laws</div>
+    </div>
+    <div class="country-card">
+      <div class="flag">&#127464;&#127469;</div>
+      <div class="name">Switzerland</div>
+      <div class="laws">6 laws</div>
+    </div>
+    <div class="country-card">
+      <div class="flag">&#127468;&#127463;</div>
+      <div class="name">United Kingdom</div>
+      <div class="laws">7 laws</div>
+    </div>
+    <div class="country-card">
+      <div class="flag">&#127467;&#127479;</div>
+      <div class="name">France</div>
+      <div class="laws">6 laws</div>
+    </div>
+  </div>
+  <p class="small" style="margin-top:20px;">Classifier languages: German, English, Turkish, Arabic</p>
+</section>
+
+<!-- SLIDE 10: INSTITUTIONAL -->
+<section>
+  <span class="badge">INSTITUTIONAL</span>
+  <h2>Built for police, NGOs, law firms</h2>
+  <div style="text-align:left; max-width:650px; margin:20px auto; font-size:0.65em;">
+    <p><span class="accent">Partner API</span> &mdash; API key auth, submit/retrieve/assign cases programmatically</p>
+    <p><span class="accent">Case assignment</span> &mdash; route to Bundesland, unit type (cybercrime, fraud)</p>
+    <p><span class="accent">Onlinewache</span> &mdash; all 16 Bundesl&auml;nder, copy-ready police report text</p>
+    <p><span class="accent">SLA tracking</span> &mdash; NetzDG 24h/7d deadlines, compliance dashboard</p>
+    <p><span class="accent">Serial offender DB</span> &mdash; cross-case pattern matching, pseudonymized</p>
+    <p><span class="accent">Anonymized dashboard</span> &mdash; aggregate stats for BKA, researchers, policy makers</p>
+  </div>
+</section>
+
+<!-- SLIDE 11: COMPARISON -->
+<section>
+  <span class="badge">COMPETITIVE EDGE</span>
+  <h2>30 seconds vs. 3 hours</h2>
+  <table class="comparison-table">
+    <tr><th></th><th class="accent">SafeVoice</th><th>Manual</th></tr>
+    <tr><td>Time to report</td><td class="green">30 seconds</td><td class="red">3-8 hours</td></tr>
+    <tr><td>Legal classification</td><td class="green">Automatic (3-tier AI)</td><td class="red">Requires lawyer</td></tr>
+    <tr><td>Evidence preservation</td><td class="green">SHA-256 + archive.org</td><td class="red">Screenshots</td></tr>
+    <tr><td>Tamper detection</td><td class="green">Hash chain</td><td class="red">None</td></tr>
+    <tr><td>Platform coverage</td><td class="green">IG, X, WhatsApp, TikTok</td><td class="red">Manual each</td></tr>
+    <tr><td>Countries</td><td class="green">5 (33 laws)</td><td class="red">1</td></tr>
+    <tr><td>Report formats</td><td class="green">6 formats</td><td class="red">Freeform text</td></tr>
+    <tr><td>Cost</td><td class="green">Free</td><td class="yellow">Free but time</td></tr>
+  </table>
+</section>
+
+<!-- SLIDE 12: BUSINESS MODEL -->
+<section>
+  <span class="badge">BUSINESS MODEL</span>
+  <h2>Free for victims. Revenue from institutions.</h2>
+  <div class="tier-row">
+    <div class="tier-card">
+      <h4>FREE FOREVER</h4>
+      <p>Victims: document, classify, export one report per case. No limits on core features.</p>
+    </div>
+    <div class="tier-card" style="border-color:#4f46e5;">
+      <h4>PRO &euro;0-9/mo</h4>
+      <p>Sliding scale. Unlimited exports. Pattern detection. PDF letterhead. Priority AI.</p>
+    </div>
+    <div class="tier-card" style="border-color:#818cf8;">
+      <h4>INSTITUTIONAL &euro;500-2k/mo</h4>
+      <p>Police, NGOs, law firms. API access. Case management. SLA tracking. Court packages.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 13: REVENUE -->
+<section>
+  <span class="badge">GROWTH</span>
+  <h2>Revenue projection</h2>
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="num" style="font-size:1.8em;">&euro;100-300k</div>
+      <div class="label">Year 1 &mdash; grants + 10-20 institutional</div>
+    </div>
+    <div class="stat-box">
+      <div class="num accent" style="font-size:1.8em;">&euro;1-3M</div>
+      <div class="label">Year 2 &mdash; 50-100 clients (DACH)</div>
+    </div>
+    <div class="stat-box">
+      <div class="num" style="font-size:1.8em; color:#4ade80;">&euro;5-15M</div>
+      <div class="label">Year 3 &mdash; 200-500 clients (DACH + UK + FR)</div>
+    </div>
+    <div class="stat-box">
+      <div class="num dim" style="font-size:1em;">Non-dilutive first</div>
+      <div class="label">BMJV, EU DSA, Open Society, Prototype Fund</div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 14: TRACTION -->
+<section>
+  <span class="badge badge-green">BUILT &amp; TESTED</span>
+  <h2>What exists today</h2>
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="num">452</div>
+      <div class="label">Backend tests passing</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">41</div>
+      <div class="label">Features shipped</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">40+</div>
+      <div class="label">API endpoints</div>
+    </div>
+    <div class="stat-box">
+      <div class="num">33</div>
+      <div class="label">Laws across 5 countries</div>
+    </div>
+  </div>
+  <p class="small" style="margin-top:20px;">All 5 phases complete &bull; Docker-ready &bull; Production-hardened &bull; DSGVO-compliant</p>
+</section>
+
+<!-- SLIDE 15: NEXT STEPS -->
+<section>
+  <span class="badge">NEXT</span>
+  <h2>Go-to-market</h2>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-dot" style="background:#4ade80;"></div>
+      <div class="timeline-content"><strong>Week 1-2:</strong> <span>Deploy to Hetzner. PostgreSQL. Email delivery. HTTPS.</span></div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot" style="background:#818cf8;"></div>
+      <div class="timeline-content"><strong>Month 1-3:</strong> <span>HateAid pilot. LKA Berlin pilot. University Bielefeld research.</span></div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot" style="background:#818cf8;"></div>
+      <div class="timeline-content"><strong>Month 3-6:</strong> <span>Public launch. Product Hunt. Press (taz, SPIEGEL). re:publica.</span></div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot" style="background:#c084fc;"></div>
+      <div class="timeline-content"><strong>Month 6-12:</strong> <span>Austria + Switzerland launch. UK launch. 100 institutional clients.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 16: CLOSING -->
+<section>
+  <div class="logo-mark" style="width:80px; height:80px; font-size:1.8em;">SV</div>
+  <h1>SafeVoice</h1>
+  <p style="font-size:1.1em; color:#c7d2fe;">Digital justice. One report at a time.</p>
+  <p style="margin-top:40px; font-size:0.7em; color:#94a3b8;">
+    Paste a link. Get a legal classification. File every report.<br>
+    <strong class="accent">In 30 seconds. Free. Always.</strong>
+  </p>
+  <p class="small" style="margin-top:40px;">
+    safevoice.org &bull; github.com/mikelninh/safevoice
+  </p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: true,
+  transition: 'slide',
+  backgroundTransition: 'fade',
+  center: true,
+  width: 1200,
+  height: 700,
+  margin: 0.08,
+});
+</script>
+</body>
+</html>
