@@ -1,0 +1,46 @@
+{
+  "date": "2026-08-07",
+  "changes": 3,
+  "paragraphs_affected": [
+    "StGB § 184k",
+    "StGB § 201b (neu)",
+    "StGB § 202e (neu)",
+    "StGB § 241",
+    "StGB § 184i",
+    "StGB §§ 185-187"
+  ],
+  "highlights": [
+    "BMJV-Referentenentwurf 'Gesetz gegen digitale Gewalt' (17.04.2026): neue/erweiterte Tatbestaende § 184k (Deepfake-Pornos, digitaler Voyeurismus), § 201b (taeuschende Inhalte), § 202e (Cyberstalking via GPS-Tracker). Noch nicht in Kraft.",
+    "Zivilrechtliche Saeule: Auskunftsanspruch mit Richtervorbehalt, beweissichernde Anordnungen, zeitweilige Accountsperre, Zustellungsbevollmaechtigter fuer Nicht-EU-Plattformen.",
+    "BRAK 30/2026 kritisiert § 184k-E als zu unbestimmt; djb und DIMR sehen Schutzluecken. § 241 StGB (Bedrohung) wird laut BMJV NICHT geaendert -> SafeVoice-Pfad stabil.",
+    "BT-Drs. 21/7054 / hib 581/2026 (13.07.2026): Zeitplanfrage, EU-Umsetzungsfrist 14.06.2027; Cyberflashing und Nudifizierungs-Apps bleiben ungeregelt."
+  ],
+  "sources": [
+    "https://www.bmjv.de/SharedDocs/Pressemitteilungen/DE/2026/0417_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bmjv.de/SharedDocs/Gesetzgebungsverfahren/DE/2026_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.lto.de/recht/nachrichten/n/entwurf-bmjv-verschaerfungen-stgb-strafrecht-schutz-gegen-digitale-gewalt",
+    "https://www.brak.de/fileadmin/05_zur_rechtspolitik/stellungnahmen-pdf/stellungnahmen-deutschland/2026/stellungnahme-der-brak-2026-30.pdf",
+    "https://www.djb.de/presse/stellungnahmen/detail/st26-13",
+    "https://www.institut-fuer-menschenrechte.de/fileadmin/Redaktion/Publikationen/Stellungnahmen/Stellungnahme_BSt_gG_Gesetz_digitale_Gewalt_BMJV_05_2026.pdf",
+    "https://www.bundestag.de/presse/hib/kurzmeldungen-1194878",
+    "https://dserver.bundestag.de/btd/21/070/2107054.pdf"
+  ],
+  "schema_impact": {
+    "code_change_required_now": false,
+    "files_to_watch": [
+      "backend/app/services/law_mapper.py (GERMAN_LAW_MAP: fehlen § 184k, § 201b, § 202e)",
+      "backend/app/data/mock_data.py (neue LAW_184K / LAW_201B / LAW_202E Objekte)",
+      "backend/app/services/court_prep_tools.py (Strafantragsfristen-Map stgb:185/186/201a/238/241 erweitern)"
+    ],
+    "trigger": "Verkuendung im Bundesgesetzblatt; spaetestens EU-Frist 14.06.2027"
+  },
+  "actions_taken": [
+    "Fresh clone + dated branch agent/abuse-safety-2026-08-07",
+    "Targeted research: BMJV, LTO, Bundestag hib, BRAK, djb, DIMR",
+    "Digest agent-digests/abuse-safety-2026-08-07.md erstellt",
+    "Log agent-logs/abuse-safety-2026-08-07.json erstellt",
+    "Branch gepusht, PR geoeffnet (kein Merge - Human review only)"
+  ],
+  "repo": "safevoice",
+  "branch": "agent/abuse-safety-2026-08-07"
+}
