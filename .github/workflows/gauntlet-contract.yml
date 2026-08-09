@@ -26,3 +26,7 @@ jobs:
           assert p.get('mode') == 'offline-only', 'SafeVoice Gauntlet must remain offline-only'
           print('Gauntlet contract OK:', p['system'])
           PY
+      - name: Compile classifier Gauntlet
+        run: python -m py_compile gauntlet/run_classifier_gauntlet.py backend/app/services/classifier.py
+      - name: Enforce frozen classifier safety gates
+        run: python gauntlet/run_classifier_gauntlet.py
