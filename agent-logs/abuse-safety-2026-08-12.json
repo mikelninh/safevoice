@@ -1,0 +1,35 @@
+{
+  "date": "2026-08-12",
+  "changes": 4,
+  "paragraphs_affected": [
+    "§ 184k StGB (NEW — Verletzung der Intimsphäre durch Bildaufnahmen; extends § 201a)",
+    "§ 201b StGB (NEW — Verletzung von Persönlichkeitsrechten durch täuschende Inhalte / non-sexual Deepfakes)",
+    "§ 202e StGB (NEW — Unbefugte Überwachung mittels Informations-/Kommunikationstechnik; extends § 238)",
+    "NetzDG § 3 (netzdg-3) — new Zustellungsbevollmächtigter duty for non-EU networks"
+  ],
+  "highlights": [
+    "BMJ 'Gesetz gegen digitale Gewalt' (GgdG) introduced 17 Apr 2026 by Justice Minister Hubig.",
+    "Three new StGB paragraphs (184k, 201b, 202e) cover pornographic/non-sexual Deepfakes, digital voyeurism and tech-enabled cyberstalking — core SafeVoice harassment scenarios currently unmapped.",
+    "NetzDG amended with a domestic-service-agent duty for non-EU platforms, strengthening the existing netzdg-3 platform-obligations entry.",
+    "Law is NOT yet in force: Referentenentwurf → parliamentary process; driven by EU Directive (EU) 2024/1385 (transposition deadline 14 Jun 2027).",
+    "SafeVoice schema (backend/app/database.py laws list + backend/app/data/mock_data.py GermanLaw objects) must add the 3 new paragraphs and update netzdg-3 before enactment."
+  ],
+  "sources": [
+    "https://www.bmjv.de/SharedDocs/Pressemitteilungen/DE/2026/0417_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bmjv.de/SharedDocs/Gesetzgebungsverfahren/DE/2026_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.tagesschau.de/inland/innenpolitik/hubig-digitale-gewalt-102.html",
+    "https://hateaid.org/gesetz-gegen-digitale-gewalt/",
+    "https://www.bundestag.de/presse/hib/kurzmeldungen-1194878",
+    "https://dserver.bundestag.de/btd/21/070/2107054.pdf"
+  ],
+  "actions_taken": [
+    "Cloned mikelninh/safevoice and checked out branch agent/abuse-safety-2026-08-12.",
+    "Researched current German digital-violence law via BMJV, Bundestag, tagesschau, HateAid.",
+    "Identified 4 schema-relevant changes from the GgdG draft (3 new StGB §§ + NetzDG amendment).",
+    "Wrote citizen digest to agent-digests/abuse-safety-2026-08-12.md with exact schema files to update.",
+    "Wrote structured log to agent-logs/abuse-safety-2026-08-12.json.",
+    "Committed artifacts and opened a PR for human review (no merge — watchdog is read-only)."
+  ],
+  "repo": "safevoice",
+  "branch": "agent/abuse-safety-2026-08-12"
+}
