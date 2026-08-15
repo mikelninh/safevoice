@@ -1,0 +1,51 @@
+{
+  "date": "2026-08-11",
+  "changes": 1,
+  "paragraphs_affected": [
+    "§ 184k StGB (neu, Entwurf)",
+    "§ 201b StGB (neu, Entwurf)",
+    "§ 202e StGB (neu, Entwurf)",
+    "NetzDG § 5 (Zustellungsbevollmächtigter, geplant geändert)"
+  ],
+  "highlights": [
+    "BMJV-Referentenentwurf 'Gesetz gegen digitale Gewalt' (GgdG) v. 17.04.2026 schafft 3 neue StGB-Paragraphen: § 184k (sexualisierte Deepfakes/Voyeurismus/Rachepornos), § 201b (Identitäts-Deepfakes), § 202e (Cyberstalking via GPS).",
+    "Kein in Kraft getretener 2026er StGB-Änderung betrifft die 12 erfassten SafeVoice-Paragraphen (§§ 185,186,187,241,126a,238,263,263a,269,130,201a StGB + NetzDG § 3) - verifiziert via Buzer.de Änderungshistorie.",
+    "SafeVoice-Law-Catalog (mock_data.py / law_mapper.py) deckt §§ 184k/201b/202e noch nicht ab - Aktualisierung nötig, sobald GgdG verabschiedet ist.",
+    "GgdG enthält Plattformpflichten (Auskunftsanspruch, Beweissicherung, zeitweilige Accountsperre, § 5 NetzDG Zustellungsbevollmächtigter) - relevant für NetzDG-Meldekontakte in court_prep_tools.py.",
+    "Status: Referentenentwurf, NICHT in Kraft. Stakeholder-Frist 22.05.2026 abgelaufen; Stand Aug 2026 im Gesetzgebungsverfahren, noch nicht vom Bundestag verabschiedet."
+  ],
+  "watch_scope": {
+    "tracked_stgb": ["§ 185", "§ 186", "§ 187", "§ 241", "§ 126a", "§ 238", "§ 263", "§ 263a", "§ 269", "§ 130", "§ 201a"],
+    "tracked_netzdg": ["NetzDG § 3"],
+    "schema_files": [
+      "backend/app/data/mock_data.py",
+      "backend/app/services/law_mapper.py",
+      "backend/app/services/court_prep_tools.py",
+      "schema.dbml"
+    ]
+  },
+  "recommended_schema_updates_when_enacted": [
+    "backend/app/data/mock_data.py: add LAW_184K, LAW_201B, LAW_202E",
+    "backend/app/services/law_mapper.py: GERMAN_LAW_MAP SEXUAL_HARASSMENT->LAW_184K, IMPERSONATION/DEFAMATION->LAW_201B, stalking/THREAT->LAW_202E",
+    "backend/app/services/court_prep_tools.py: Antragsdelikte list add § 184k; reflect § 5 NetzDG Zustellungsbevollmächtigter",
+    "schema.dbml: laws table supports new rows without structural change"
+  ],
+  "sources": [
+    "https://www.bmjv.de/SharedDocs/Pressemitteilungen/DE/2026/0417_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bmjv.de/SharedDocs/Gesetzgebungsverfahren/DE/2026_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bundestag.de/dokumente/textarchiv/2026/kw13-de-aktuelle-stunde-gewalt-1157648",
+    "https://www.bundestag.de/dokumente/textarchiv/2026/kw13-de-strafgesetzbuch-1157670",
+    "https://www.buzer.de/gesetz/6165/l.htm"
+  ],
+  "actions_taken": [
+    "cloned mikelninh/safevoice to temp dir",
+    "created branch agent/abuse-safety-2026-08-11",
+    "researched StGB/NetzDG 2026 changes (BMJV, Bundestag, Buzer.de)",
+    "wrote agent-digests/abuse-safety-2026-08-11.md",
+    "wrote agent-logs/abuse-safety-2026-08-11.json",
+    "committed + pushed branch",
+    "opened PR for human review (NOT merged - watchdog guardrail)"
+  ],
+  "repo": "safevoice",
+  "branch": "agent/abuse-safety-2026-08-11"
+}
