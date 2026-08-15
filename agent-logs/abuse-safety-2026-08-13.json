@@ -1,0 +1,47 @@
+{
+  "date": "2026-08-13",
+  "repo": "safevoice",
+  "branch": "agent/abuse-safety-2026-08-13",
+  "changes": 3,
+  "paragraphs_affected": [
+    "§ 184k StGB",
+    "§ 201b StGB",
+    "§ 202e StGB",
+    "§ 201a StGB (indirekt)"
+  ],
+  "highlights": [
+    "BMJV Referentenentwurf 'Gesetz gegen digitale Gewalt' v. 17.04.2026: drei neue/erweiterte StGB-Tatbestände zu KI-Deepfakes, Bildmaterial-Missbrauch und tech. Überwachung.",
+    "§ 184k StGB neu gefasst: erfasst intimes Bildmaterial unabhängig von Herstellungsart (echt/KI) und Ort (privat/öffentlich) — pornographische Deepfakes, Upskirting, Rache-Pornos.",
+    "§ 201b StGB NEU: Strafbarkeit des Verbreitens ansehensschädigender (auch nicht-sexualisierter) Deepfakes/Manipulationen.",
+    "§ 202e StGB NEU: Strafbarkeit der unbfugten digitalen Überwachung (Cyberstalking per GPS-Tracker), orientiert an EU-RL (EU) 2024/1385 Art. 6.",
+    "SafeVoice bildet diese Tatbestände aktuell NICHT ab (law_mapper nutzt nur § 185/186/241/126a/263/263a/269 + NetzDG § 3) — Court-Prep wäre bei Deepfake-/Image-Abuse-/Tracking-Fällen lückenhaft.",
+    "Status: noch nicht in Kraft (Referentenentwurf, Anhörung bis 22.05.2026, erwartet H2 2026).",
+    "NetzDG / BNetzA: kein neuer Änderungsbefund in diesem Scan."
+  ],
+  "schema_updates_needed": [
+    "backend/app/data/mock_data.py: GermanLaw-Objekte LAW_184k, LAW_201b, LAW_202e anlegen",
+    "backend/app/services/law_mapper.py: Imports + Kategorien DEEPFAKE/IMAGE_ABUSE/CYBER_SURVEILLANCE in GERMAN_LAW_MAP",
+    "evals/harassment_eval_set.json: Eval-Cases für Deepfake/Bildmaterial/GPS-Tracking ergänzen"
+  ],
+  "sources": [
+    "https://www.bmjv.de/SharedDocs/Pressemitteilungen/DE/2026/0417_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bmjv.de/SharedDocs/Gesetzgebungsverfahren/DE/2026_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.mofo.com/resources/insights/260429-germany-s-draft-act-against-digital-violence",
+    "https://netzpolitik.org/2026/gesetz-gegen-digitale-gewalt-diese-deepfakes-sollen-kuenftig-strafbar-sein/",
+    "https://www.djb.de/presse/stellungnahmen/detail/st26-13",
+    "https://www.brak.de/fileadmin/05_zur_rechtspolitik/stellungnahmen-pdf/stellungnahmen-deutschland/2026/stellungnahme-der-brak-2026-30.pdf",
+    "https://www.bundesregierung.de/breg-en/service/archive/bekaempfung-hasskriminalitaet-1738462",
+    "https://www.bundesnetzagentur.de/DE/Fachthemen/Telekommunikation/Unternehmenspflichten/Meldepflicht/start.html"
+  ],
+  "actions_taken": [
+    "Fresh clone of mikelninh/safevoice",
+    "Created branch agent/abuse-safety-2026-08-13",
+    "Researched BMJV Digital Violence Act draft + NetzDG/BNetzA status via web_search/web_extract",
+    "Wrote agent-digests/abuse-safety-2026-08-13.md (bilingual DE/EN, citizen-readable)",
+    "Wrote agent-logs/abuse-safety-2026-08-13.json",
+    "Committed both artifacts to branch",
+    "Opened PR against main (human review only — agent does NOT merge)"
+  ],
+  "pr_opened": true,
+  "merged": false
+}
