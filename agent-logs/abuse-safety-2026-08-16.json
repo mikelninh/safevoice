@@ -1,0 +1,38 @@
+{
+  "date": "2026-08-16",
+  "changes": 2,
+  "paragraphs_affected": [
+    "§ 184k StGB (neu)",
+    "§ 201b StGB (neu)",
+    "§ 202e StGB (neu)",
+    "§ 201a StGB",
+    "§ 238 StGB",
+    "§ 185 StGB",
+    "§ 186 StGB",
+    "§ 187 StGB",
+    "NetzDG § 3"
+  ],
+  "highlights": [
+    "Gesetz gegen digitale Gewalt (GgdG) Referentenentwurf 17.04.2026: 3 neue Straftatbestände §§ 184k, 201b, 202e + neue zivilrechtliche Rechtsbehelfe (Auskunft, Beweissicherung, Accountsperre).",
+    "§ 188 StGB Reform: JUMIKO-Beschluss 12.06.2026, Sonderregelung für Spitzenpolitiker soll entfallen -> betrifft Anwendung von §§ 185/186/187."
+  ],
+  "sources": [
+    "https://www.bmjv.de/SharedDocs/Pressemitteilungen/DE/2026/0417_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bmjv.de/SharedDocs/Gesetzgebungsverfahren/DE/2026_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.tagesschau.de/inland/innenpolitik/hubig-digitale-gewalt-102.html",
+    "https://www.medienservice.sachsen.de/medien/news/1097968",
+    "https://www.lto.de/recht/nachrichten/n/beschluesse-justizministerkonferenz-jumiko-2026-hamburg-sexualisierte-gewalt-politikerbeleidigung",
+    "https://jum.baden-wuerttemberg.de/de/presse-service/presse/pressemitteilung/pid/justizministerkonferenz-fordert-reform-von-188-stgb"
+  ],
+  "actions_taken": [
+    "Fresh clone of mikelninh/safevoice",
+    "Created branch agent/abuse-safety-2026-08-16",
+    "Researched BMJV GgdG Referentenentwurf and § 188 StGB JUMIKO reform via web_search/web_extract",
+    "Wrote agent-digests/abuse-safety-2026-08-16.md (bilingual, citizen-readable)",
+    "Wrote agent-logs/abuse-safety-2026-08-16.json",
+    "Committed artifacts on branch agent/abuse-safety-2026-08-16",
+    "Opened PR against main (human review only — not merged)"
+  ],
+  "repo": "safevoice",
+  "branch": "agent/abuse-safety-2026-08-16"
+}
