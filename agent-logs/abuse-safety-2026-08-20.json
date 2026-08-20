@@ -1,0 +1,49 @@
+{
+  "date": "2026-08-20",
+  "changes": 3,
+  "paragraphs_affected": [
+    "§ 184k StGB-E",
+    "§ 201b StGB-E",
+    "§ 202e StGB-E",
+    "§ 201a StGB",
+    "§ 238 StGB",
+    "§§ 2, 4 GgdG-E"
+  ],
+  "highlights": [
+    "Referentenentwurf 'Gesetz gegen digitale Gewalt' (17.04.2026) schafft drei neue Straftatbestände: § 184k StGB (Verletzung der Intimsphäre durch Bildaufnahmen, inkl. pornografische Deepfakes, digitaler Voyeurismus, Rache-Pornos), § 201b StGB (täuschende Inhalte / sonstige Deepfakes, Satire ausgenommen), § 202e StGB (unbefugte Überwachung per IKT, u. a. GPS-Tracker-Cyberstalking).",
+    "Neues GgdG-E bringt unter Richtervorbehalt: Auskunftsanspruch zur Identität von Rechtsverletzern, gerichtliche Beweissicherung, zeitweilige Accountsperre bei Wiederholungsgefahr, Pflicht zum inländischen Zustellungsbevollmächtigten für Nicht-EU-Plattformen.",
+    "Verbändeanhörung endete 22.05.2026, Stellungnahmen veröffentlicht 03.06.2026; djb und BRAK fordern Nachschärfungen (Accountsperre auch für private Nachrichten, Erheblichkeitsschwelle analog § 238 StGB, Erweiterung des Gewaltschutzgesetzes).",
+    "Bundestag-Drucksache 21/7054 und Plenardebatte KW 13/2026 prüfen die vollständige Umsetzung der EU-Richtlinie gegen Gewalt an Frauen — Nachschärfungen wahrscheinlich.",
+    "Kein Inkrafttreten, kein belegter Kabinettsbeschluss zum Stand 20.08.2026 — Court-Prep-Schema jetzt NICHT ändern, nur Platzhalter vorbereiten.",
+    "Keine Änderungen bei §§ 185, 186, 187, 240, 241, 303a, 303b StGB; keine neuen BNetzA-Durchsetzungsregeln; NetzDG weiterhin durch DSA überlagert."
+  ],
+  "sources": [
+    "https://www.bmjv.de/SharedDocs/Pressemitteilungen/DE/2026/0417_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bmjv.de/SharedDocs/Gesetzgebungsverfahren/DE/2026_Gesetz_gegen_digitale_Gewalt.html",
+    "https://netzpolitik.org/2026/gesetz-gegen-digitale-gewalt-diese-deepfakes-sollen-kuenftig-strafbar-sein/",
+    "https://www.tagesschau.de/inland/innenpolitik/hubig-digitale-gewalt-102.html",
+    "https://www.djb.de/presse/stellungnahmen/detail/st26-13",
+    "https://www.brak.de/newsroom/newsletter/nachrichten-aus-berlin/2026/ausgabe-11-2026-v-2752026/gute-ziele-aber-viele-offene-fragen-brak-kritisiert-gesetzentwurf-gegen-digitale-gewalt/",
+    "https://www.taylorwessing.com/de/insights-and-events/insights/2026/04/german-act-against-digital-violence-new-obligations-for-online-service-providers",
+    "https://dserver.bundestag.de/btd/21/070/2107054.pdf",
+    "https://www.bundestag.de/presse/hib/kurzmeldungen-1194878",
+    "https://www.bundestag.de/dokumente/textarchiv/2026/kw13-de-strafgesetzbuch-1157670",
+    "https://hateaid.org/wp-content/uploads/2026/04/hateaid-pressemitteilung-gesetz-gegen-digitale-gewalt.pdf"
+  ],
+  "schema_files_to_update_when_law_enacted": [
+    "backend/app/services/law_mapper.py",
+    "backend/app/services/law_text.py",
+    "backend/app/services/court_prep_tools.py",
+    "backend/app/services/pdf_generator.py"
+  ],
+  "actions_taken": [
+    "Fresh clone of mikelninh/safevoice",
+    "Created branch agent/abuse-safety-2026-08-20",
+    "Targeted research: BMJV, netzpolitik, tagesschau, djb, BRAK, Taylor Wessing, Bundestag Drucksache 21/7054, HateAid",
+    "Wrote bilingual digest agent-digests/abuse-safety-2026-08-20.md",
+    "Wrote log agent-logs/abuse-safety-2026-08-20.json",
+    "Committed and pushed branch; opened PR for human review (no merge)"
+  ],
+  "repo": "safevoice",
+  "branch": "agent/abuse-safety-2026-08-20"
+}
