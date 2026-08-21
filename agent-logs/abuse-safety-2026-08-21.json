@@ -1,0 +1,58 @@
+{
+  "date": "2026-08-21",
+  "changes": 3,
+  "in_force": 0,
+  "status": "Referentenentwurf (draft bill) — consultation closed 22.05.2026, cabinet decision pending",
+  "paragraphs_affected": [
+    "§ 184k StGB",
+    "§ 201b StGB",
+    "§ 202e StGB",
+    "§ 201a StGB (scope reduced, wording unchanged)",
+    "§ 238 StGB (relieved by § 202e, wording unchanged)",
+    "§ 187 StGB (remains applicable to defamatory deepfakes)"
+  ],
+  "highlights": [
+    "§ 184k StGB fully rewritten: producing AND distributing intimate imagery punishable, real or deepfake, private or public location — up to 2 years or fine. Covers pornographic deepfakes, public sauna/changing-room/beach voyeurism, clothed intimate body parts 'in sexually determined manner', revenge porn, non-consensual sharing of sexting material.",
+    "New § 201b StGB: unauthorised making-available (not production) of reputation-damaging non-sexual deepfakes, incl. of deceased persons; satire excluded. Precursor was Bundesrat proposal BT-Drs. 21/1383.",
+    "New § 202e StGB: repeated/continuous unauthorised surveillance of location or activities via IT/communication tech (GPS trackers, spyware) — up to 2 years or fine; only if likely to cause serious harm. Lowers the § 238 StGB evidentiary hurdle for stalkerware cases.",
+    "Civil enforcement package: extended right to information about infringer identity (judicial approval), evidence-preservation orders against platforms, temporary court-ordered account suspension, mandatory domestic authorised recipient for non-EU social networks.",
+    "German draft goes beyond EU Directive 2024/1385 (which only requires criminalising distribution); EU transposition deadline mid-2027.",
+    "No changes detected to §§ 185/186/187, § 241, § 238 wording, §§ 303a/303b, § 201a wording. No new BNetzA harassment-related enforcement rules found."
+  ],
+  "court_prep_impact": {
+    "severity": "high",
+    "action_now": "none — draft law only; adding to catalogue would produce incorrect legal advice",
+    "files_to_update_when_in_force": [
+      "backend/app/database.py (~line 554, stgb seed catalogue: add stgb-184k, stgb-201b, stgb-202e)",
+      "backend/app/data/mock_data.py (add LAW_184K, LAW_201B, LAW_202E GermanLaw objects)",
+      "backend/app/services/law_text.py (add full texts; citation regex already accepts '§ 184k StGB')",
+      "backend/app/services/court_prep_tools.py (deepfake/image category; cite § 202e alongside § 238 for tracking)",
+      "backend/app/services/legal_ai.py (offence mapping for image-based and tracking cases)"
+    ],
+    "schema_note": "§ 201b requires the court-prep agent to capture WHERE content was published, not only that it exists — only making-available is punishable."
+  },
+  "sources": [
+    "https://www.bmjv.de/SharedDocs/Pressemitteilungen/DE/2026/0417_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bmjv.de/SharedDocs/Gesetzgebungsverfahren/DE/2026_Gesetz_gegen_digitale_Gewalt.html",
+    "https://netzpolitik.org/2026/gesetz-gegen-digitale-gewalt-diese-deepfakes-sollen-kuenftig-strafbar-sein/",
+    "https://www.tagesschau.de/inland/innenpolitik/hubig-digitale-gewalt-102.html",
+    "https://www.djb.de/presse/stellungnahmen/detail/st26-13",
+    "https://www.brak.de/newsroom/newsletter/nachrichten-aus-berlin/2026/ausgabe-11-2026-v-2752026/gute-ziele-aber-viele-offene-fragen-brak-kritisiert-gesetzentwurf-gegen-digitale-gewalt/",
+    "https://dserver.bundestag.de/btd/21/013/2101383.pdf",
+    "https://eur-lex.europa.eu/legal-content/DE/TXT/HTML/?uri=OJ:L_202401385",
+    "https://www.gesetze-im-internet.de/stgb/__184k.html",
+    "https://www.gesetze-im-internet.de/stgb/__238.html",
+    "https://www.gesetze-im-internet.de/stgb/__241.html"
+  ],
+  "actions_taken": [
+    "Fresh clone of mikelninh/safevoice",
+    "Created branch agent/abuse-safety-2026-08-21",
+    "Targeted research: StGB digital violence reform, BMJV, Bundestag, netzpolitik, tagesschau, djb, BRAK",
+    "Audited repo paragraph catalogue (backend/app/database.py, data/mock_data.py, services/law_text.py) — § 184k, § 201b, § 202e absent",
+    "Wrote bilingual digest agent-digests/abuse-safety-2026-08-21.md",
+    "Wrote log agent-logs/abuse-safety-2026-08-21.json",
+    "Committed and pushed branch, opened PR for human review (NOT merged)"
+  ],
+  "repo": "safevoice",
+  "branch": "agent/abuse-safety-2026-08-21"
+}
