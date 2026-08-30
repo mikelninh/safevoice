@@ -1,0 +1,33 @@
+{
+  "date": "2026-08-30",
+  "changes": 2,
+  "paragraphs_affected": [
+    "§ 201a StGB",
+    "§ 238 StGB",
+    "§ 184k StGB",
+    "NetzDG § 3"
+  ],
+  "highlights": [
+    "BMJV finalized Referentenentwurf 'Gesetz gegen digitale Gewalt' (11 Paragrafen): 3 neue Straftatbestände (pornografische Deepfakes, nicht-sexualisierte KI-Bilder, heimliche digitale Überwachung/GPS-Tracker) plus zivilrechtliches Auskunftsverfahren.",
+    "Internetzugangsanbieter sollen IP-Adressen 3 Monate 'vorsorglich' speichern (Wiederbelebung Vorratsdatenspeicherung); Landgericht kann in schweren Fällen Accountsperren anordnen (Richtervorbehalt).",
+    "Grüne brachten BT-Drs 21/4949 ein: Neuausrichtung § 184k StGB (bildbasierte sexualisierte Gewalt), im Bundestag debattiert am 26.03.2026.",
+    "NetzDG-Wortlaut und BNetzA-Regeln: kein spezifischer 2026-Änderungsfund in diesem Lauf."
+  ],
+  "sources": [
+    "https://www.lto.de/recht/hintergruende/h/gesetzentwurf-hubig-digitale-gewalt-account-sperren-ip-vorratsdatenspeicherung",
+    "https://www.tagesschau.de/inland/innenpolitik/hubig-digitale-gewalt-102.html",
+    "https://www.bmjv.de/SharedDocs/Pressemitteilungen/DE/2026/0417_Gesetz_gegen_digitale_Gewalt.html",
+    "https://www.bundestag.de/dokumente/textarchiv/2026/kw13-de-strafgesetzbuch-1157670",
+    "https://www.berliner-zeitung.de/article/bis-zu-zwei-jahren-haft-fuer-sexuelle-deepfakes-so-sieht-hubigs-gesetz-gegen-digitale-gewalt-aus-10031026"
+  ],
+  "actions_taken": [
+    "Fresh clone of mikelninh/safevoice",
+    "Created branch agent/abuse-safety-2026-08-30",
+    "Researched StGB §§ 201a/238/184k, NetzDG, GgdG reform status via web_search/web_extract",
+    "Wrote agent-digests/abuse-safety-2026-08-30.md (bilingual DE+EN)",
+    "Wrote agent-logs/abuse-safety-2026-08-30.json",
+    "Committed and pushed branch; opened PR for human review (no self-merge)"
+  ],
+  "repo": "safevoice",
+  "branch": "agent/abuse-safety-2026-08-30"
+}
