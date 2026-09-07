@@ -1,0 +1,26 @@
+{
+  "version": "security-posture/v1",
+  "project": { "id": "safevoice", "repository": "mikelninh/safevoice", "domain": "evidence-first digital-harassment case preparation" },
+  "thesis": "AI may structure and prepare evidence, but evidence integrity, source metadata and external legal actions remain independently inspectable and human-controlled.",
+  "controls": [
+    { "id": "authority_outside_model", "status": "implemented", "evidence": [{ "type": "doc", "path": "README.md", "claim": "SafeVoice does not determine guilt, provide qualified legal advice or autonomously file consequential actions." }] },
+    { "id": "least_privilege", "status": "partial", "evidence": [{ "type": "doc", "path": "README.md", "claim": "The agent runtime uses explicit tools and bounded iteration, but a portable capability-policy contract is not yet published." }] },
+    { "id": "tenant_isolation", "status": "not_proven", "evidence": [{ "type": "doc", "path": "README.md", "claim": "The public prototype does not publish production multi-tenant isolation evidence." }] },
+    { "id": "human_approval", "status": "implemented", "evidence": [{ "type": "doc", "path": "README.md", "claim": "An approval checkpoint is required before external action." }] },
+    { "id": "provenance", "status": "implemented", "evidence": [{ "type": "doc", "path": "README.md", "claim": "Evidence receives SHA-256 hashes, timestamps, source metadata and browser-side integrity verification." }] },
+    { "id": "protected_data", "status": "partial", "evidence": [{ "type": "doc", "path": "README.md", "claim": "Evidence and case outputs are bounded, but a dedicated exfiltration/protected-scope adversarial contract is not yet published." }] },
+    { "id": "bounded_execution", "status": "implemented", "evidence": [{ "type": "doc", "path": "README.md", "claim": "The agent runtime has explicit tools, iteration limits and audit records." }] },
+    { "id": "auditability", "status": "implemented", "evidence": [{ "type": "doc", "path": "README.md", "claim": "Evidence hashes/source metadata and bounded agent audit records support inspectable review." }] },
+    { "id": "supply_chain", "status": "not_proven", "evidence": [{ "type": "doc", "path": "README.md", "claim": "No complete SBOM, signing or third-party supply-chain assurance claim is published." }] },
+    { "id": "adversarial_evals", "status": "not_proven", "evidence": [{ "type": "doc", "path": "README.md", "claim": "The existing 35-case evaluation corpus measures classification/legal-grounding behavior, not an adversarial security gauntlet." }] },
+    { "id": "production_monitoring", "status": "not_proven", "evidence": [{ "type": "doc", "path": "README.md", "claim": "The current repository does not claim production security monitoring or incident-response evidence." }] }
+  ],
+  "adversarial": { "taxonomy": "No dedicated agentic-security gauntlet published yet", "cases": 0, "passed": 0, "criticalEscapes": 0, "liveModel": false },
+  "claims": { "productionSecure": false, "promptInjectionSolved": false, "certified": false },
+  "residualRisks": [
+    "The 35-case product evaluation is not counted as adversarial security evidence.",
+    "Cross-tenant access, evidence poisoning, indirect prompt injection and data-exfiltration attacks need dedicated regression cases.",
+    "Production multi-tenant isolation, supply-chain integrity and security monitoring remain unproven.",
+    "Qualified human review remains required before any external legal action."
+  ]
+}
