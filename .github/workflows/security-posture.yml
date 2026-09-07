@@ -1,0 +1,42 @@
+name: security-posture-v1
+
+on:
+  pull_request:
+    paths:
+      - 'security/security-posture.json'
+      - '.github/workflows/security-posture.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'security/security-posture.json'
+      - '.github/workflows/security-posture.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate security-posture/v1 evidence contract
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const p = JSON.parse(fs.readFileSync('security/security-posture.json', 'utf8'))
+          const statuses = new Set(['implemented','partial','not_proven','not_applicable'])
+          if (p.version !== 'security-posture/v1') throw new Error('invalid posture version')
+          if (!p.project?.id || !p.project?.repository || !p.project?.domain) throw new Error('project identity incomplete')
+          if (!Array.isArray(p.controls) || p.controls.length === 0) throw new Error('controls missing')
+          for (const c of p.controls) {
+            if (!statuses.has(c.status)) throw new Error(`invalid status: ${c.id}`)
+            if (!Array.isArray(c.evidence)) throw new Error(`evidence missing: ${c.id}`)
+            if (c.status === 'implemented' && c.evidence.length === 0) throw new Error(`implemented without evidence: ${c.id}`)
+          }
+          if (p.adversarial?.criticalEscapes !== 0) throw new Error('critical impact escape present')
+          if (p.claims?.productionSecure || p.claims?.promptInjectionSolved || p.claims?.certified) throw new Error('unsupported security claim')
+          console.log(`Security posture OK: ${p.project.id}`)
+          NODE
