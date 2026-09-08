@@ -20,6 +20,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.services import agent_loop
+from app.services.court_prep_security import bind_court_prep_tools
 from app.services.court_prep_tools import build_tools
 
 logger = logging.getLogger(__name__)
@@ -110,7 +111,14 @@ def run_court_prep(
     blobs inside `tool_trace` — the calling route stores or returns them.
     """
 
-    tools = build_tools(db)
+    # The authenticated request owns case authority. Model-generated tool
+    # arguments are proposals and cannot switch to another case or invent
+    # network archive targets.
+    tools = bind_court_prep_tools(
+        db=db,
+        case_id=case_id,
+        tools=build_tools(db),
+    )
 
     # The final user-facing summary follows the user's language. Tool-generated
     # legal documents (the Strafanzeige PDF) stay German — they are filed with
