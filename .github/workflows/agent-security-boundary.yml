@@ -9,6 +9,8 @@ on:
       - 'backend/app/services/court_prep_tools.py'
       - 'backend/app/services/evidence.py'
       - 'backend/tests/test_agent_security_boundary.py'
+      - 'backend/tests/test_agent_security_exploit_replay.py'
+      - 'security/agent-boundary-report.json'
       - '.github/workflows/agent-security-boundary.yml'
   push:
     branches: [main]
@@ -19,6 +21,8 @@ on:
       - 'backend/app/services/court_prep_tools.py'
       - 'backend/app/services/evidence.py'
       - 'backend/tests/test_agent_security_boundary.py'
+      - 'backend/tests/test_agent_security_exploit_replay.py'
+      - 'security/agent-boundary-report.json'
       - '.github/workflows/agent-security-boundary.yml'
 
 permissions:
@@ -34,7 +38,7 @@ jobs:
           python-version: '3.12'
       - name: Install backend test dependencies
         run: python -m pip install --disable-pip-version-check -r backend/requirements.txt
-      - name: Prove case and network targets stay outside model authority
+      - name: Prove exploit before fix and zero impact after boundary
         env:
           PYTHONPATH: backend
-        run: pytest -q backend/tests/test_agent_security_boundary.py
+        run: pytest -q backend/tests/test_agent_security_boundary.py backend/tests/test_agent_security_exploit_replay.py
