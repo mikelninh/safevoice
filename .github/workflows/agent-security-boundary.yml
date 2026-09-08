@@ -11,6 +11,7 @@ on:
       - 'backend/tests/test_agent_security_boundary.py'
       - 'backend/tests/test_agent_security_exploit_replay.py'
       - 'security/agent-boundary-report.json'
+      - 'security/security_delta.py'
       - '.github/workflows/agent-security-boundary.yml'
   push:
     branches: [main]
@@ -23,7 +24,9 @@ on:
       - 'backend/tests/test_agent_security_boundary.py'
       - 'backend/tests/test_agent_security_exploit_replay.py'
       - 'security/agent-boundary-report.json'
+      - 'security/security_delta.py'
       - '.github/workflows/agent-security-boundary.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -42,3 +45,23 @@ jobs:
         env:
           PYTHONPATH: backend
         run: pytest -q backend/tests/test_agent_security_boundary.py backend/tests/test_agent_security_exploit_replay.py
+      - name: Normalize target-native security delta evidence
+        run: python security/security_delta.py
+      - name: Assert delta evidence contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('security/security-delta-proof.json').read_text())
+          assert r['version'] == 'security-delta-target-proof/v1'
+          s = r['summary']
+          assert s['before']['impactEscapes'] == s['attackCases']
+          assert s['after']['impactEscapes'] == 0
+          assert s['benign']['retentionRate'] == 1
+          assert r['mutation']['historicalVulnerabilityClaimed'] is True
+          assert r['methodology']['holdoutAvailable'] is False
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: safevoice-security-delta-v1
+          path: security/security-delta-proof.json
