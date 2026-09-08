@@ -9,6 +9,7 @@ from __future__ import annotations
 from app.database import Case as DBCase, SessionLocal
 from app.services import court_prep_agent
 from app.services import evidence as evidence_service
+from app.services.agent_loop import ToolDef
 from app.services.court_prep_security import bind_court_prep_tools
 from app.services.court_prep_tools import build_tools
 
@@ -25,6 +26,38 @@ def _bound_tools(db):
             tools=build_tools(db),
         )
     }
+
+
+def test_cross_case_attack_never_reaches_underlying_handler():
+    """Executor-level proof: a model-selected foreign case causes zero handler calls."""
+
+    handler_calls = 0
+
+    def underlying_handler(args):
+        nonlocal handler_calls
+        handler_calls += 1
+        return {"ok": True, "case_id": args["case_id"]}
+
+    tool = ToolDef(
+        name="read_case",
+        description="test tool",
+        schema={
+            "type": "object",
+            "properties": {"case_id": {"type": "string"}},
+            "required": ["case_id"],
+        },
+        handler=underlying_handler,
+    )
+    bound = bind_court_prep_tools(
+        db=None,
+        case_id=TEST_CASE_ID,
+        tools=[tool],
+    )[0]
+
+    result = bound.handler({"case_id": "case-attacker-selected"})
+
+    assert result["error"] == "case_scope_violation"
+    assert handler_calls == 0
 
 
 def test_all_case_id_tools_fail_closed_on_model_case_switch():
